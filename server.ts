@@ -8,8 +8,15 @@ import OpenAI from "openai";
 import { config } from "./config.ts";
 import { Journal } from "./journal.ts";
 import { analyze } from "./src/analysis/analyze.ts";
+import { parsePeriodDays } from "./src/analysis/score.ts";
 import { cleanLlmOutput } from "./src/utils/llmText.ts";
 import { isStreamTeardownError } from "./src/utils/streamErrors.ts";
+import {
+  createModelDetector,
+  downstreamHeaders,
+  resolveModel,
+  upstreamHeaders,
+} from "./src/utils/upstream.ts";
 
 const tracer = trace.getTracer("grammaria");
 
@@ -28,6 +35,9 @@ const llmClient = new OpenAI({
   baseURL: `${config.llmTarget}/v1`,
   apiKey: config.llmApiKey || "unused",
 });
+
+/** Modèle par défaut du serveur LLM, quand ni la config ni l'interface n'en fixent un. */
+const detectModel = createModelDetector(config.llmTarget, config.llmApiKey);
 
 function getCorsHeaders(req: Request): Headers {
   const origin = req.headers.get("Origin") ?? "";
@@ -158,7 +168,7 @@ Bun.serve({
       }
 
       if (path === "/api/journal" && req.method === "GET") {
-        const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 1), 365);
+        const days = parsePeriodDays(url.searchParams.get("days"));
         return new Response(JSON.stringify(journal.summary(days)), { headers });
       }
 
@@ -181,12 +191,12 @@ Bun.serve({
       try {
         const ltResponse = await fetch(ltUrl, {
           method: req.method,
-          headers: req.headers,
+          headers: upstreamHeaders(req.headers),
           body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
           redirect: "follow",
         });
 
-        const responseHeaders = new Headers(ltResponse.headers);
+        const responseHeaders = downstreamHeaders(ltResponse.headers);
         const origin = req.headers.get("Origin") ?? "";
         const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
         const allowed = isLocalhost || config.corsOrigins.some((o) => origin === o);
@@ -232,7 +242,7 @@ Bun.serve({
         const userMessage = [...messages].reverse().find((m) => m.role === "user");
         const inputText: string = userMessage?.content ?? "";
 
-        const resolvedModel = config.llmModelName || llmBody.model || "unknown";
+        const resolvedModel = await resolveModel(config.llmModelName, llmBody.model, detectModel);
         span.setAttributes({
           "openinference.span.kind": "LLM",
           "llm.model_name": resolvedModel,
@@ -387,8 +397,8 @@ Bun.serve({
 
       try {
         // Override Authorization with the real LLM API key (frontend sends a placeholder)
-        const proxyHeaders = new Headers(req.headers);
-        if (config.llmApiKey) proxyHeaders.set("Authorization", `Bearer ${config.llmApiKey}`);
+        // and drop Host & co., which describe the browser → Grammaria hop.
+        const proxyHeaders = upstreamHeaders(req.headers, config.llmApiKey);
 
         const llmResponse = await fetch(llmUrl, {
           method: req.method,
@@ -397,7 +407,7 @@ Bun.serve({
           redirect: "follow",
         });
 
-        const responseHeaders = new Headers(llmResponse.headers);
+        const responseHeaders = downstreamHeaders(llmResponse.headers);
         const origin = req.headers.get("Origin") ?? "";
         const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
         const allowed = isLocalhost || config.corsOrigins.some((o) => origin === o);

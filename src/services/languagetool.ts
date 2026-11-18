@@ -21,7 +21,9 @@ export async function runLanguageTool(text: string, signal?: AbortSignal): Promi
     });
 
     if (!response.ok) {
-      throw new Error(`LanguageTool API error: ${response.status}`);
+      throw new Error(
+        `LanguageTool ne répond pas (HTTP ${response.status}). Vérifiez que son conteneur est lancé.`,
+      );
     }
 
     const data: LTResponse = await response.json();

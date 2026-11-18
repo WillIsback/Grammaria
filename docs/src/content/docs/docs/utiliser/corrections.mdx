@@ -15,7 +15,10 @@ La colonne « règle » contient, selon le cas :
 
 - le **titre d'une fiche**, pour une confusion reconnue (par exemple « on / ont ») ;
 - le **message de LanguageTool**, pour une faute qu'il a détectée ;
+- **Accord (nombre, genre ou personne)**, quand seule la terminaison d'un mot change (« était → étaient », « content → contents ») et que LanguageTool ne l'a pas signalé ;
 - **Non classé**, pour une modification du modèle qu'aucune détection n'explique. C'est souvent une reformulation.
+
+Une correction qui ne porte que sur des espaces les affiche sous la forme `␣` ; un passage ajouté ou supprimé est noté `∅`.
 
 Deux compteurs résument le traitement : la durée de génération et le nombre de corrections.
 
@@ -44,6 +47,7 @@ Une fiche donne un test à appliquer soi-même, à la première occurrence de la
 |---|---|---|
 | Confusion d'une fiche | oui | oui |
 | Grammaire, conjugaison, orthographe (LanguageTool) | oui | oui |
+| Accord déduit du diff | oui | oui |
 | Typographie, ponctuation, style | oui | non |
 | Modification non classée | oui | non |
 

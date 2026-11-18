@@ -75,5 +75,32 @@ export function diffHunks(original: string, corrected: string): Hunk[] {
     }
   }
   flush();
-  return hunks;
+  return mergeAcrossSpaces(original, hunks);
+}
+
+/**
+ * Réunit deux passages séparés par de simples espaces quand l'un est un ajout
+ * ou une suppression pure : « allez vous » → « allez-vous » donne une seule
+ * correction au lieu de « allez → allez-vous » puis « vous → ». Deux
+ * remplacements voisins (« son parti » → « sont partis ») restent distincts
+ * pour que chacun garde sa fiche.
+ */
+function mergeAcrossSpaces(original: string, hunks: Hunk[]): Hunk[] {
+  const merged: Hunk[] = [];
+  for (const hunk of hunks) {
+    const prev = merged[merged.length - 1];
+    const gap = prev ? original.slice(prev.end, hunk.start) : "";
+    const pure = (h: Hunk) => h.before === "" || h.after === "";
+    if (prev && /^\s+$/.test(gap) && (pure(prev) || pure(hunk))) {
+      merged[merged.length - 1] = {
+        start: prev.start,
+        end: hunk.end,
+        before: prev.before + gap + hunk.before,
+        after: prev.after + gap + hunk.after,
+      };
+    } else {
+      merged.push(hunk);
+    }
+  }
+  return merged;
 }

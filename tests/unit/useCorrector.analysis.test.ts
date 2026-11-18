@@ -117,3 +117,80 @@ describe("useCorrector — analyse des fautes", () => {
     expect(JSON.parse(analyzeCall?.[1]?.body as string).matches).toEqual([]);
   });
 });
+
+// Régression QA (2026-11-18) : le texte envoyé au correcteur était nettoyé et
+// tronqué, mais LanguageTool et /api/analyze recevaient le texte brut. La partie
+// coupée apparaissait comme une « correction » comptée comme faute, sans que
+// l'utilisateur sache que la fin de son texte avait disparu.
+describe("useCorrector — texte préparé et troncature", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  const analysisBody = {
+    corrections: [],
+    wordCount: 1,
+    faultCount: 0,
+    unclassifiedCount: 0,
+    score: 20,
+    week: { texts: 1, words: 1, faults: 0, score: 20 },
+  };
+
+  async function correctWith(input: string) {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
+      if (url.includes("/api/lt/")) return json({ matches: [] });
+      return json(analysisBody);
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const { correctText } = await import("../../src/utils/llm");
+    vi.mocked(correctText).mockReset();
+    vi.mocked(correctText).mockImplementation(async (text: string) => ({ text, duration: 1 }));
+
+    const { result } = renderHook(() => useCorrector());
+    await act(async () => {
+      result.current.setTextContent(input);
+    });
+    await act(async () => {
+      await result.current.handleCorrect();
+    });
+    await waitFor(() => expect(result.current.analysis).not.toBeNull());
+
+    const ltBody = fetchMock.mock.calls.find(([url]) => url.includes("/api/lt/"))?.[1]?.body;
+    const analyzeBody = fetchMock.mock.calls.find(([url]) => url === "/api/analyze")?.[1]?.body;
+    return {
+      result,
+      sentToLlm: vi.mocked(correctText).mock.calls[0]?.[0],
+      sentToLt: new URLSearchParams(ltBody as URLSearchParams).get("text"),
+      analyzed: JSON.parse(analyzeBody as string),
+    };
+  }
+
+  it("un texte trop long est coupé partout pareil et l'utilisateur est prévenu", async () => {
+    const long = "Le projet avance bien. ".repeat(600); // 13 800 caractères
+    const { result, sentToLlm, sentToLt, analyzed } = await correctWith(long);
+
+    expect(sentToLlm.length).toBeLessThanOrEqual(10000);
+    expect(sentToLt).toBe(sentToLlm);
+    expect(analyzed.original).toBe(sentToLlm);
+    expect(analyzed.corrected).toBe(sentToLlm);
+    expect(result.current.analysisNotice).toMatch(/dépasse 10[\s\u202f]000 caractères/);
+  });
+
+  it("aucun avertissement pour un texte court", async () => {
+    const { result } = await correctWith("Bonjour à tous.");
+    expect(result.current.analysisNotice).toBeNull();
+  });
+
+  it("les caractères typographiques arrivent intacts au correcteur et à l'analyse", async () => {
+    const text = "Le cœur de l’équipe a coûté 10 €… Brzęczyszczykiewicz 😊";
+    const { sentToLlm, sentToLt, analyzed } = await correctWith(`  ${text}  `);
+    expect(sentToLlm).toBe(text);
+    expect(sentToLt).toBe(text);
+    expect(analyzed.original).toBe(text);
+  });
+});

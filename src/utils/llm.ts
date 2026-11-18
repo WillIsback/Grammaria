@@ -51,7 +51,21 @@ export async function correctText(
       signal: controller.signal,
     });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      // Le serveur renvoie { error, details } : afficher la cause plutôt qu'un code nu.
+      let details = "";
+      try {
+        const body = await response.json();
+        details = typeof body?.details === "string" ? body.details : "";
+      } catch {
+        /* corps absent ou non JSON */
+      }
+      throw new Error(
+        details
+          ? `Le serveur de correction a échoué (HTTP ${response.status}) : ${details}`
+          : `Le serveur de correction a échoué (HTTP ${response.status}).`,
+      );
+    }
     if (!response.body) throw new Error("No response body");
 
     streamTimeoutId = setTimeout(() => controller.abort(), streamTimeoutMs);
@@ -94,11 +108,9 @@ export async function correctText(
     throw new Error("Stream ended without done event");
   } catch (error) {
     if (error instanceof Error) {
-      if (error.name === "AbortError") throw new Error("Delai d'attente depasse");
+      if (error.name === "AbortError") throw new Error("Délai d'attente dépassé.");
       if (error.message.includes("Failed to fetch"))
-        throw new Error(
-          "Impossible de contacter le serveur de correction. Verifiez que le serveur LLM est lance.",
-        );
+        throw new Error("Impossible de contacter le serveur Grammaria. Vérifiez qu'il est lancé.");
     }
     throw error;
   }

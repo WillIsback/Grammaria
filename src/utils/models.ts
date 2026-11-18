@@ -1,4 +1,5 @@
 import type { ModelInfo } from "../types";
+import { pickChatModel } from "./upstream";
 
 let _currentModel: string = import.meta.env.VITE_LLM_MODEL_NAME || "auto";
 const _modelListeners: Set<(model: string) => void> = new Set();
@@ -33,8 +34,9 @@ export async function fetchModels(): Promise<ModelInfo[]> {
 export async function initModel(): Promise<void> {
   try {
     const models = await fetchModels();
-    if (models.length > 0 && _currentModel === "auto") {
-      setCurrentModel(models[0].id);
+    const preferred = pickChatModel(models);
+    if (preferred && _currentModel === "auto") {
+      setCurrentModel(preferred);
     }
   } catch {
     // vLLM peut ne pas être disponible — conserver la valeur par défaut

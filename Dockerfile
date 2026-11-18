@@ -21,7 +21,7 @@ COPY --from=builder /app/public ./public
 
 # Copier les fichiers serveur
 COPY server.ts journal.ts telemetry.ts config.ts package.json bun.lock ./
-COPY src/utils/streamErrors.ts src/utils/llmText.ts ./src/utils/
+COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts ./src/utils/
 COPY src/analysis ./src/analysis
 COPY src/types.ts ./src/
 

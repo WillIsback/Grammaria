@@ -109,8 +109,22 @@ export function detecterConfusion(avant: string, apres: string): string | null {
   const b = normaliser(apres);
   if (!a || !b || a === b) return null;
 
-  for (const groupe of GROUPES) {
-    if (groupe.includes(a) && groupe.includes(b)) return `PAIRE:${groupe.join("/")}`;
+  const paire = (x: string, y: string) =>
+    GROUPES.find((groupe) => groupe.includes(x) && groupe.includes(y));
+
+  const groupe = paire(a, b);
+  if (groupe) return `PAIRE:${groupe.join("/")}`;
+
+  // Mot composé : « la-bas → là-bas », « celle-la → celle-là ». Limité à
+  // la / là : pour « peu-être → peut-être », le test de la fiche peu / peut
+  // (« remplacez par pouvait ») ne s'applique pas à l'adverbe.
+  const pa = a.split("-");
+  const pb = b.split("-");
+  if (pa.length > 1 && pa.length === pb.length) {
+    const differentes = pa.map((p, i) => [p, pb[i]]).filter(([x, y]) => x !== y);
+    if (differentes.length === 1 && paire(differentes[0][0], differentes[0][1])?.[0] === "la") {
+      return "PAIRE:la/là";
+    }
   }
 
   const da = decouper(a);
