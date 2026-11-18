@@ -58,7 +58,7 @@ function writeValidWords(words: string[]): void {
 
 Bun.serve({
   port: PORT,
-  async fetch(req: Request, server: Bun.Server): Promise<Response> {
+  async fetch(req: Request, server: Bun.Server<undefined>): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
@@ -122,7 +122,7 @@ Bun.serve({
       }
 
       if (path === "/api/analyze" && req.method === "POST") {
-        // biome-ignore lint/suspicious/noExplicitAny: corps JSON non typé, validé ci-dessous
+        // corps JSON non typé, validé ci-dessous
         let body: any;
         try {
           body = await req.json();
@@ -220,7 +220,7 @@ Bun.serve({
       });
 
       try {
-        // biome-ignore lint/suspicious/noExplicitAny: req.json() returns unknown JSON structure
+        // req.json() returns unknown JSON structure
         const body = (await req.json()) as any;
 
         // Extraire les métadonnées de correction (non transmises à vLLM)
@@ -253,7 +253,7 @@ Bun.serve({
           top_k: config.llmTopK,
           ...extraParams,
         };
-        // biome-ignore lint/suspicious/noExplicitAny: OpenAI SDK requires escape hatch for spread params
+        // OpenAI SDK requires escape hatch for spread params
         const stream = (await llmClient.chat.completions.create(
           createParams as any,
         )) as unknown as AsyncIterable<{

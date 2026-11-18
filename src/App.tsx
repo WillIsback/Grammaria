@@ -32,7 +32,7 @@ function App() {
   const { isAvailable: ltAvailable, isChecking: ltChecking } = useLanguageTool();
 
   useEffect(() => {
-    initModel();
+    void initModel();
   }, []);
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -59,7 +59,7 @@ function App() {
   }, []);
 
   const handleCopySuccess = (text: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setToast({
       id: `copy-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       message: "Texte copié dans le presse-papier",

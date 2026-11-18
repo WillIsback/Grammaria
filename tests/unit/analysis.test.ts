@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { analyze, isCounted, sentenceAt } from "../../src/analysis/analyze";
 import { countWords, diffHunks } from "../../src/analysis/diff";
 import { detecterConfusion, FICHES } from "../../src/analysis/fiches";

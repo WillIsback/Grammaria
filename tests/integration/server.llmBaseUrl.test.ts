@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for issue #4 (llm.chat 404 'no body' after image 1.5.1):
 // commit 3425666 changed the OpenAI SDK client baseURL in server.ts from
@@ -28,7 +28,7 @@ function llmClientBaseUrlTemplate(): string {
     .slice(clientStart, clientStart + 500)
     .match(/baseURL:\s*`([^`]+)`/);
   expect(baseMatch, "OpenAI client must set baseURL via a template literal").not.toBeNull();
-  return baseMatch[1];
+  return baseMatch?.[1] ?? "";
 }
 
 describe("OpenAI SDK client baseURL (issue #4)", () => {

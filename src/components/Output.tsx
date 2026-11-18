@@ -234,7 +234,7 @@ export function Output({
                     >
                       {corrections.map((c, i) => (
                         <div
-                          // biome-ignore lint/suspicious/noArrayIndexKey: corrections list is static per render
+                          // corrections list is static per render
                           key={i}
                           className="px-4 py-3 sm:py-2.5 min-w-0"
                         >

@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useCorrector } from "../../src/hooks/useCorrector";
 
 // Mock correctText at module level
@@ -58,7 +58,7 @@ describe("useCorrector", () => {
 
       // Démarre première correction
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // Vérifie que isLoading est à true (la correction est en cours)
@@ -67,7 +67,7 @@ describe("useCorrector", () => {
       // Tente une deuxième correction pendant que la première est en cours
       // Cette deuxième appel ne devrait PAS démarrer
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // isLoading devrait toujours être true (première correction pas terminée)
@@ -100,7 +100,7 @@ describe("useCorrector", () => {
 
       // Première correction
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
         await new Promise((r) => setTimeout(r, 10));
       });
 
@@ -109,7 +109,7 @@ describe("useCorrector", () => {
 
       // Deuxième correction devrait être possible
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
         await new Promise((r) => setTimeout(r, 10));
       });
 
@@ -141,7 +141,7 @@ describe("useCorrector", () => {
 
       // Démarre première correction - LT va être appelé
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // Attend que le fetch LT soit appelé
@@ -192,7 +192,7 @@ describe("useCorrector", () => {
 
       // Démarre correction
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       await act(async () => {
@@ -204,7 +204,7 @@ describe("useCorrector", () => {
 
       // Résout le fetch LT après unmount
       await act(async () => {
-        // biome-ignore lint/style/noNonNullAssertion: set in mock before unmount
+        // set in mock before unmount
         resolveFetch!({ ok: true, json: async () => ({ matches: [] }) });
         await new Promise((r) => setTimeout(r, 50));
       });

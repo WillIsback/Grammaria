@@ -54,6 +54,8 @@ export function useCorrector() {
     }
   }, []);
 
+  const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cleanup à l'unmount
   useEffect(() => {
     return () => {
@@ -61,8 +63,6 @@ export function useCorrector() {
       if (localStorageTimeoutRef.current) clearTimeout(localStorageTimeoutRef.current);
     };
   }, []);
-
-  const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounce de la sauvegarde des settings (500ms)
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { sanitizeInput } from "../../src/utils/sanitize";
 
 describe("sanitizeInput", () => {

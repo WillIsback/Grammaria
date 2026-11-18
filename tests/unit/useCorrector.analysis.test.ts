@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useCorrector } from "../../src/hooks/useCorrector";
 
 vi.mock("../../src/utils/llm", () => ({
@@ -40,7 +40,7 @@ describe("useCorrector — analyse des fautes", () => {
 
   it("envoie le texte d'origine, le texte corrigé et les détections au journal", async () => {
     const matches = [{ offset: 4, length: 2, rule: { id: "ON_ONT" } }];
-    const fetchMock = vi.fn((url: string) => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
       if (url.includes("/api/lt/")) return json({ matches });
       return json({
         corrections: [
@@ -66,7 +66,7 @@ describe("useCorrector — analyse des fautes", () => {
     await waitFor(() => expect(result.current.analysis).not.toBeNull());
 
     const analyzeCall = fetchMock.mock.calls.find(([url]) => url === "/api/analyze");
-    expect(JSON.parse((analyzeCall?.[1] as RequestInit).body as string)).toEqual({
+    expect(JSON.parse(analyzeCall?.[1]?.body as string)).toEqual({
       original: ORIGINAL,
       corrected: CORRECTED,
       matches,
@@ -83,7 +83,7 @@ describe("useCorrector — analyse des fautes", () => {
   });
 
   it("rend le texte corrigé même si l'analyse échoue", async () => {
-    const fetchMock = vi.fn((url: string) => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
       if (url.includes("/api/lt/")) return json({ matches: [] });
       return json({}, false);
     });
@@ -97,7 +97,7 @@ describe("useCorrector — analyse des fautes", () => {
   });
 
   it("signale une analyse partielle quand LanguageTool ne répond pas", async () => {
-    const fetchMock = vi.fn((url: string) => {
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
       if (url.includes("/api/lt/")) return Promise.reject(new Error("down"));
       return json({
         corrections: [],
@@ -114,6 +114,6 @@ describe("useCorrector — analyse des fautes", () => {
 
     expect(result.current.analysisNotice).toContain("partielle");
     const analyzeCall = fetchMock.mock.calls.find(([url]) => url === "/api/analyze");
-    expect(JSON.parse((analyzeCall?.[1] as RequestInit).body as string).matches).toEqual([]);
+    expect(JSON.parse(analyzeCall?.[1]?.body as string).matches).toEqual([]);
   });
 });

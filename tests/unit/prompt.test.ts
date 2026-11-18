@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CorrectionSettings } from "../../src/types";
 import { buildSystemPrompt, buildUserPrompt } from "../../src/utils/prompt";
 

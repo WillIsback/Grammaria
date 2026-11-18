@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { isStreamTeardownError } from "../../src/utils/streamErrors";
 
 // Regression test for issue #14 (incident 2026-09-28): Node/Bun threw

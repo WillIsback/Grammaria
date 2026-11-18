@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { checkLanguageTool, checkLTAvailable } from "../../src/services/languagetool";
+import { describe, expect, it } from "vite-plus/test";
+import {
+  applyLTCorrections,
+  checkLTAvailable,
+  runLanguageTool,
+} from "../../src/services/languagetool";
 
 const testText = `Bonjour Gwladys,
 
@@ -18,9 +22,10 @@ describe("E2E - Real LanguageTool", () => {
       return;
     }
 
-    const result = await checkLanguageTool(testText);
+    const matches = await runLanguageTool(testText);
+    const result = applyLTCorrections(testText, matches);
 
-    expect(result.matchCount).toBeGreaterThan(0);
+    expect(matches.length).toBeGreaterThan(0);
     expect(result.correctedText).not.toBe(testText);
     expect(result.correctedText).toContain("vendredi");
   }, 10000);
@@ -33,7 +38,7 @@ describe("E2E - Real LanguageTool", () => {
     }
 
     const start = Date.now();
-    await checkLanguageTool(testText);
+    await runLanguageTool(testText);
     const duration = Date.now() - start;
 
     expect(duration).toBeLessThan(5000);

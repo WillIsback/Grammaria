@@ -1,8 +1,11 @@
 # Stage 1 : Build frontend
-FROM node:20-alpine AS builder
+# Vite+ requiert Node ^22.18, ^24.11 ou >=26
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
+# Pas de hooks git dans l'image
+ENV VP_GIT_HOOKS=0
 RUN npm ci
 
 COPY . .
@@ -23,7 +26,8 @@ COPY src/analysis ./src/analysis
 COPY src/types.ts ./src/
 
 # Installer uniquement les dépendances de production
-RUN bun install --production --frozen-lockfile
+# --ignore-scripts : le script "prepare" appelle vp, absent des dépendances de production
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 # Créer le fichier valid-words.json vide si absent
 RUN mkdir -p public/data && \

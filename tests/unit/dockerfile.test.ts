@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for the v1.5.14 incident (2026-10-23): server.ts imported a
 // new ./src/utils/llmJson.ts, but the runtime stage of the Dockerfile copies

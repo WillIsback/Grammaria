@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for issue #12 (v1.5.9 incident, 2026-09-27):
 // commit 33140fa added `top_k: config.llmTopK` to the chat completion params

@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useLanguageTool } from "../../src/hooks/useLanguageTool";
 
 describe("useLanguageTool", () => {
@@ -45,7 +45,7 @@ describe("useLanguageTool", () => {
       // Maintenant on résout le fetch - si le cleanup est manquant,
       // setIsAvailable sera appelé sur un unmounted component et causera un warning
       await act(async () => {
-        // biome-ignore lint/style/noNonNullAssertion: set in mock before unmount
+        // set in mock before unmount
         resolveFetch!({ ok: true });
         await new Promise((r) => setTimeout(r, 50));
       });

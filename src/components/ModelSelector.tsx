@@ -27,7 +27,7 @@ export function ModelSelector({ currentModel, onModelSelect }: Props) {
   }, []);
 
   useEffect(() => {
-    loadModels();
+    void loadModels();
   }, [loadModels]);
 
   const handleSelect = (modelId: string) => {
