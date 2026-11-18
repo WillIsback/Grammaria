@@ -36,7 +36,9 @@ Le détail du mécanisme est décrit dans [Fonctionnement](/docs/decouvrir/fonct
 Grammaria s'héberge soi-même. Vos textes ne quittent pas votre infrastructure.
 
 - un modèle de langage accessible par une API compatible OpenAI (vLLM, SGLang, Ollama, ou un fournisseur en ligne) ;
-- [LanguageTool](https://languagetool.org), lancé en conteneur ;
-- Docker, ou Bun et Node.js.
+- Docker, ou Bun et Node.js ;
+- environ 1 Go de mémoire vive pour le serveur.
+
+Les règles françaises de [LanguageTool](https://languagetool.org) sont intégrées au serveur : aucun service supplémentaire n'est à lancer.
 
 Poursuivez avec l'[installation](/docs/demarrer/installation/).

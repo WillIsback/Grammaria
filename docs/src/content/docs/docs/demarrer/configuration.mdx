@@ -13,7 +13,6 @@ La configuration se fait par variables d'environnement, lues dans le fichier `.e
 | `LLM_MODEL_NAME` | vide | Nom du modèle. S'il est vide, le premier modèle de génération de texte listé par `GET /v1/models` est utilisé (les modèles d'embedding ou de transcription sont écartés quand le fournisseur indique leur type) |
 | `LLM_DISABLE_THINKING` | `true` | Désactive le mode « réflexion » (vLLM, Qwen). Mettre `false` pour OpenAI, Groq, Mistral |
 | `LLM_TOP_K` | `-1` | Paramètre `top_k` transmis au modèle ; `-1` le désactive |
-| `LT_TARGET` | `http://127.0.0.1:3002` | Adresse de LanguageTool |
 | `JOURNAL_PATH` | `./data/grammaria.db` | Fichier SQLite du journal des fautes |
 | `CORS_ORIGIN` | vide | Origines autorisées, séparées par des virgules ; `localhost` est toujours autorisé |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | vide | Active la [télémétrie](/docs/exploiter/telemetrie/) |

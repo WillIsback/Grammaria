@@ -216,30 +216,8 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
           </div>
         </div>
 
-        {settings.engine === "llm" && (
-          <ModelSelector currentModel={currentModel} onModelSelect={setCurrentModelState} />
-        )}
+        <ModelSelector currentModel={currentModel} onModelSelect={setCurrentModelState} />
 
-        <div className="mb-2 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
-          <h2 className={sectionTitle}>Moteur</h2>
-          <div className="flex gap-1 p-1 rounded-xl bg-gray-100/80 dark:bg-gray-800/60 border border-gray-200/70 dark:border-gray-700/60 text-sm">
-            {(["llm", "lt"] as const).map((eng) => (
-              <button
-                type="button"
-                key={eng}
-                onClick={() => setSettings({ ...settings, engine: eng })}
-                className={`flex-1 py-1.5 rounded-lg font-medium transition-all duration-200
-                  ${
-                    settings.engine === eng
-                      ? "bg-white dark:bg-gray-700 text-brand-700 dark:text-brand-300 shadow-sm"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                  }`}
-              >
-                {eng === "llm" ? "LLM" : "LanguageTool"}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
           <h2 className={sectionTitle}>Journal des fautes</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">

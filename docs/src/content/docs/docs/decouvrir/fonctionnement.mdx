@@ -15,9 +15,9 @@ Le texte s'affiche au fil de la génération. Le bouton **Copier** est utilisabl
 
 Grammaria compare mot à mot le texte d'origine et le texte corrigé. Chaque différence devient une correction « avant → après ». Ce calcul est déterministe et ne coûte aucun appel au modèle.
 
-## 3. LanguageTool classe les fautes
+## 3. Les règles de LanguageTool classent les fautes
 
-Pendant que le LLM travaille, LanguageTool analyse le texte d'origine. Il fournit pour chaque détection un identifiant de règle stable, une catégorie et un message.
+Pendant que le LLM travaille, les règles françaises de [LanguageTool](https://languagetool.org), intégrées au serveur Grammaria, analysent le texte d'origine. Il fournit pour chaque détection un identifiant de règle stable, une catégorie et un message.
 
 Une détection LanguageTool n'est retenue que si le LLM a **réellement modifié** le passage concerné. Ce croisement écarte les faux positifs de LanguageTool, par exemple un nom propre signalé à tort.
 
@@ -50,6 +50,6 @@ Votre texte ──┬──► LLM ──────────► texte corri
                et fiches       sur 20
 ```
 
-## Si LanguageTool est arrêté
+## Si le correcteur grammatical est indisponible
 
-La correction fonctionne quand même. Seules les confusions des fiches et les accords sont alors classés, et un message signale que l'analyse est partielle.
+La correction fonctionne quand même. Seules les confusions des fiches et les accords sont alors classés, et le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. » s'affiche.

@@ -118,8 +118,8 @@ describe("useCorrector", () => {
   });
 
   describe("request cancellation", () => {
-    it("AbortController - Annule les requêtes LT en cours lors d'un nouveau handleCorrect", async () => {
-      // Simuler LT call avec AbortController
+    it("AbortController - Lance la détection grammaticale en parallèle de la correction", async () => {
+      // La détection grammaticale (/api/check) ne répond jamais
       const ltFetch = vi
         .fn()
         .mockImplementation((_input: RequestInfo | URL, _init?: RequestInit) => {
@@ -136,20 +136,19 @@ describe("useCorrector", () => {
 
       await act(async () => {
         result.current.setTextContent("Test text");
-        result.current.setSettings((prev) => ({ ...prev, engine: "lt" }));
       });
 
-      // Démarre première correction - LT va être appelé
+      // Démarre la correction : /api/check est appelé en parallèle du LLM
       act(() => {
         void result.current.handleCorrect();
       });
 
-      // Attend que le fetch LT soit appelé
+      // Attend que la détection soit lancée
       await act(async () => {
         await new Promise((r) => setTimeout(r, 10));
       });
 
-      // LT fetch devrait avoir été appelé
+      // La détection doit avoir été appelée
       expect(ltFetch).toHaveBeenCalled();
 
       // Maintenant résoud la correction
@@ -159,7 +158,7 @@ describe("useCorrector", () => {
     });
 
     it("no setState après unmount pendant correction", async () => {
-      // Simuler fetch lent pour LT
+      // Simuler une détection grammaticale lente
       let resolveFetch: (value: unknown) => void;
       const mockFetch = vi.fn().mockImplementation(
         () =>
@@ -187,7 +186,6 @@ describe("useCorrector", () => {
 
       await act(async () => {
         result.current.setTextContent("Test text");
-        result.current.setSettings((prev) => ({ ...prev, engine: "lt" }));
       });
 
       // Démarre correction
@@ -199,10 +197,10 @@ describe("useCorrector", () => {
         await new Promise((r) => setTimeout(r, 10));
       });
 
-      // Unmount pendant que le fetch LT est en attente
+      // Unmount pendant que la détection est en attente
       unmount();
 
-      // Résout le fetch LT après unmount
+      // Résout la détection après unmount
       await act(async () => {
         // set in mock before unmount
         resolveFetch!({ ok: true, json: async () => ({ matches: [] }) });

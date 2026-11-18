@@ -8,7 +8,7 @@ description: "Composants, fichiers et flux de données."
 ```
 Navigateur (React)
   ├─ POST /v1/chat/completions ─► serveur Bun ─► LLM (API compatible OpenAI)
-  ├─ POST /api/lt/v2/check ─────► serveur Bun ─► LanguageTool
+  ├─ POST /api/check ───────────► serveur Bun : correcteur grammatical (worker)
   └─ POST /api/analyze ─────────► serveur Bun : diff, croisement, journal SQLite
 ```
 
@@ -18,7 +18,8 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 
 | Fichier | Rôle |
 |---|---|
-| `server.ts` | Serveur Bun : fichiers statiques, relais LLM et LanguageTool, analyse, journal |
+| `server.ts` | Serveur Bun : fichiers statiques, relais LLM, correcteur grammatical, analyse, journal |
+| `grammar.ts`, `grammar.worker.ts` | Correcteur grammatical intégré : règles françaises de LanguageTool exécutées dans un worker |
 | `journal.ts` | Journal SQLite (`bun:sqlite`) |
 | `config.ts` | Lecture des variables d'environnement |
 | `telemetry.ts` | Initialisation d'OpenTelemetry |
@@ -33,6 +34,7 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 ## Choix de conception
 
 - **Le code d'analyse est partagé.** `src/analysis` ne dépend ni du navigateur ni de Bun ; il est exécuté par le serveur et testé sous Vitest.
-- **L'analyse ne bloque jamais la correction.** Si LanguageTool ou le journal échoue, le texte corrigé reste affiché et copiable.
+- **L'analyse ne bloque jamais la correction.** Si le correcteur grammatical ou le journal échoue, le texte corrigé reste affiché et copiable.
 - **Une clé stable par règle.** Les confusions des fiches ont une clé interne (`PAIRE:on/ont`) ; les autres fautes utilisent l'identifiant de règle de LanguageTool. C'est ce qui permet de compter les récurrences.
+- **Un correcteur grammatical intégré.** Les règles françaises de LanguageTool tournent dans le serveur Bun grâce à [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de LanguageTool distribué sous licence GPL-3.0-or-later. Elles s'exécutent dans un worker pour ne pas bloquer le serveur, se chargent en arrière-plan au démarrage (quelques secondes) et occupent environ 1 Go de mémoire vive.
 - **Mono-utilisateur.** Il n'y a pas d'authentification. Les tables portent une colonne `user_id` pour ne pas fermer la porte au multi-utilisateur.

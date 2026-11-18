@@ -41,7 +41,7 @@ describe("useCorrector — analyse des fautes", () => {
   it("envoie le texte d'origine, le texte corrigé et les détections au journal", async () => {
     const matches = [{ offset: 4, length: 2, rule: { id: "ON_ONT" } }];
     const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
-      if (url.includes("/api/lt/")) return json({ matches });
+      if (url === "/api/check") return json({ matches });
       return json({
         corrections: [
           {
@@ -84,7 +84,7 @@ describe("useCorrector — analyse des fautes", () => {
 
   it("rend le texte corrigé même si l'analyse échoue", async () => {
     const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
-      if (url.includes("/api/lt/")) return json({ matches: [] });
+      if (url === "/api/check") return json({ matches: [] });
       return json({}, false);
     });
 
@@ -96,9 +96,9 @@ describe("useCorrector — analyse des fautes", () => {
     expect(result.current.analysisNotice).toContain("indisponible");
   });
 
-  it("signale une analyse partielle quand LanguageTool ne répond pas", async () => {
+  it("signale une analyse partielle quand le correcteur grammatical ne répond pas", async () => {
     const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
-      if (url.includes("/api/lt/")) return Promise.reject(new Error("down"));
+      if (url === "/api/check") return Promise.reject(new Error("down"));
       return json({
         corrections: [],
         wordCount: 5,
@@ -119,7 +119,7 @@ describe("useCorrector — analyse des fautes", () => {
 });
 
 // Régression QA (2026-11-18) : le texte envoyé au correcteur était nettoyé et
-// tronqué, mais LanguageTool et /api/analyze recevaient le texte brut. La partie
+// tronqué, mais la détection grammaticale et /api/analyze recevaient le texte brut. La partie
 // coupée apparaissait comme une « correction » comptée comme faute, sans que
 // l'utilisateur sache que la fin de son texte avait disparu.
 describe("useCorrector — texte préparé et troncature", () => {
@@ -143,7 +143,7 @@ describe("useCorrector — texte préparé et troncature", () => {
 
   async function correctWith(input: string) {
     const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
-      if (url.includes("/api/lt/")) return json({ matches: [] });
+      if (url === "/api/check") return json({ matches: [] });
       return json(analysisBody);
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -160,12 +160,12 @@ describe("useCorrector — texte préparé et troncature", () => {
     });
     await waitFor(() => expect(result.current.analysis).not.toBeNull());
 
-    const ltBody = fetchMock.mock.calls.find(([url]) => url.includes("/api/lt/"))?.[1]?.body;
+    const ltBody = fetchMock.mock.calls.find(([url]) => url === "/api/check")?.[1]?.body;
     const analyzeBody = fetchMock.mock.calls.find(([url]) => url === "/api/analyze")?.[1]?.body;
     return {
       result,
       sentToLlm: vi.mocked(correctText).mock.calls[0]?.[0],
-      sentToLt: new URLSearchParams(ltBody as URLSearchParams).get("text"),
+      sentToLt: JSON.parse(ltBody as string).text,
       analyzed: JSON.parse(analyzeBody as string),
     };
   }

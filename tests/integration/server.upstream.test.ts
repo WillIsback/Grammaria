@@ -6,7 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 // server.ts tourne sous Bun et ne s'importe pas sous vitest, on vérifie donc
 // au niveau du source que les relais et la correction passent par les
 // helpers testés dans tests/unit/upstream.test.ts.
-//  - Les relais /v1/* et /api/lt/* transmettaient l'en-tête Host du client.
+//  - Les relais /v1/* transmettaient l'en-tête Host du client.
 //  - Sans LLM_MODEL_NAME, le modèle « auto » de l'interface partait tel quel.
 
 const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
@@ -17,14 +17,9 @@ describe("server.ts — relais amont", () => {
     expect(serverSource).not.toMatch(/new Headers\(req\.headers\)/);
   });
 
-  it("le relais LanguageTool passe par upstreamHeaders", () => {
-    const block = serverSource.slice(serverSource.indexOf("const ltResponse = await fetch("));
-    expect(block.slice(0, 200)).toMatch(/headers:\s*upstreamHeaders\(req\.headers\)/);
-  });
-
   it("les réponses relayées passent par downstreamHeaders (corps déjà décompressé)", () => {
-    expect(serverSource).not.toMatch(/new Headers\((lt|llm)Response\.headers\)/);
-    expect(serverSource.match(/downstreamHeaders\((lt|llm)Response\.headers\)/g)).toHaveLength(2);
+    expect(serverSource).not.toMatch(/new Headers\(llmResponse\.headers\)/);
+    expect(serverSource).toMatch(/downstreamHeaders\(llmResponse\.headers\)/);
   });
 
   it("le relais LLM passe par upstreamHeaders avec la clé configurée", () => {
@@ -49,5 +44,20 @@ describe("server.ts — bilan du journal", () => {
   // Régression QA : days=0 donnait 7 jours au lieu de 1.
   it("lit la période via parsePeriodDays", () => {
     expect(serverSource).toMatch(/parsePeriodDays\(url\.searchParams\.get\("days"\)\)/);
+  });
+});
+
+// Le correcteur grammatical est intégré : plus de relais vers un serveur
+// LanguageTool externe.
+describe("server.ts — correcteur grammatical intégré", () => {
+  it("n'a plus de relais /api/lt ni de cible LT_TARGET", () => {
+    expect(serverSource).not.toMatch(/\/api\/lt/);
+    expect(serverSource).not.toMatch(/ltTarget/);
+  });
+
+  it("/api/check analyse le texte dans le processus via GrammarChecker", () => {
+    expect(serverSource).toMatch(/path === "\/api\/check"/);
+    expect(serverSource).toMatch(/await grammar\.check\(text\)/);
+    expect(serverSource).toMatch(/text\.length > MAX_ANALYZE_LENGTH/);
   });
 });

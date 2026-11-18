@@ -10,15 +10,9 @@ G='\033[0;32m'
 N='\033[0m'
 log() { echo -e "${G}[$(date '+%H:%M:%S')]${N} $*"; }
 
-# Start LanguageTool
-log "Starting LanguageTool..."
 cd "$SCRIPT_DIR"
-docker compose up -d
 
-log "Waiting for LanguageTool..."
-sleep 3
-
-# Start Bun server (API + proxy) in background
+# Start Bun server (API, grammar checker, LLM relay) in background
 log "Starting Bun server on port 25000..."
 bun run server.ts &
 BUN_PID=$!

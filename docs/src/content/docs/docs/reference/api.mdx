@@ -23,9 +23,36 @@ En cas d'erreur pendant le flux : `data: {"error":"…"}`. Des lignes `: keepali
 
 Les autres routes, dont `GET /v1/models`, sont relayées telles quelles au serveur du modèle.
 
-### `/api/lt/*`
+### `POST /api/check`
 
-Relais vers LanguageTool. L'interface appelle `POST /api/lt/v2/check` et `GET /api/lt/v2/languages`.
+Analyse le texte avec le correcteur grammatical intégré (règles françaises de LanguageTool). L'interface l'appelle en parallèle de la correction par le modèle.
+
+```json
+{ "text": "Les enfants était content." }
+```
+
+`text` est obligatoire, non vide, et limité à 20 000 caractères. Réponse (extrait) :
+
+```json
+{
+  "matches": [
+    {
+      "offset": 12,
+      "length": 5,
+      "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
+      "shortMessage": "",
+      "replacements": [{ "value": "étaient" }],
+      "rule": {
+        "id": "ACCORD_SUJET_VERBE",
+        "issueType": "uncategorized",
+        "category": { "id": "CAT_GRAMMAIRE", "name": "Grammaire" }
+      }
+    }
+  ]
+}
+```
+
+Les détections suivent le format de LanguageTool. Erreurs : 400 si le JSON ou le corps est invalide, 405 pour une autre méthode que `POST`, 503 si le correcteur échoue.
 
 ## Analyse et journal
 
@@ -41,7 +68,7 @@ Calcule le diff, le croise avec les détections, enregistre le résultat dans le
 }
 ```
 
-`matches` est le tableau renvoyé par LanguageTool. Chaque faute indique sa `source` : `fiche`, `lt` (LanguageTool) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
+`matches` est le tableau renvoyé par `POST /api/check`. Chaque faute indique sa `source` : `fiche`, `lt` (LanguageTool) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
 
 Réponse :
 

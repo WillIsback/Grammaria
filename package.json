@@ -21,6 +21,8 @@
     "@opentelemetry/exporter-trace-otlp-proto": "^0.219.0",
     "@opentelemetry/resources": "^2.8.0",
     "@opentelemetry/sdk-trace-base": "^2.8.0",
+    "@valueerror/ltjs-core": "^0.3.0",
+    "@valueerror/ltjs-lang-fr": "^0.3.0",
     "compromise": "^14.15.0",
     "diff-match-patch": "^1.0.5",
     "openai": "^6.44.0",

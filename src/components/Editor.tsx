@@ -3,29 +3,89 @@ interface Props {
   onChange: (text: string) => void;
   onCorrect: () => void;
   isLoading: boolean;
+  /** Bouton « Corriger » dans l'en-tête (écrans larges) plutôt que sous la zone de texte. */
+  actionsInHeader?: boolean;
 }
 
-export function Editor({ text, onChange, onCorrect, isLoading }: Props) {
+export function Editor({ text, onChange, onCorrect, isLoading, actionsInHeader = false }: Props) {
   const charCount = text.length;
+
+  const correctButton = (
+    <button
+      type="button"
+      onClick={onCorrect}
+      disabled={isLoading || !text.trim()}
+      className={`group relative px-6 py-2.5 rounded-xl text-sm font-semibold
+      transition-all duration-200
+      ${
+        isLoading
+          ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+          : !text.trim()
+            ? "bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+            : "bg-brand-600 hover:bg-brand-700 text-white shadow-sm shadow-brand-500/25 hover:shadow-md hover:shadow-brand-500/30 active:scale-[0.98]"
+      }`}
+    >
+      {isLoading ? (
+        <span className="flex items-center gap-2">
+          <svg aria-hidden="true" className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          Correction en cours...
+        </span>
+      ) : (
+        <span className="flex items-center gap-2">
+          <svg
+            aria-hidden="true"
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+          Corriger
+        </span>
+      )}
+    </button>
+  );
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-2xl mx-auto h-full flex flex-col">
-          <div className="flex items-end justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between gap-4 mb-4 md:min-h-10">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                 Texte à corriger
               </h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
                 Saisissez ou collez votre texte ci-dessous
               </p>
             </div>
-            {charCount > 0 && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums shrink-0">
-                {charCount.toLocaleString()} car.
-              </span>
-            )}
+            <div className="flex items-center gap-3 shrink-0">
+              {charCount > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                  {charCount.toLocaleString()} car.
+                </span>
+              )}
+              {actionsInHeader && correctButton}
+            </div>
           </div>
 
           <div className="flex-1 relative group">
@@ -45,65 +105,7 @@ export function Editor({ text, onChange, onCorrect, isLoading }: Props) {
             />
           </div>
 
-          <div className="mt-5 flex justify-end">
-            <button
-              type="button"
-              onClick={onCorrect}
-              disabled={isLoading || !text.trim()}
-              className={`group relative px-6 py-2.5 rounded-xl text-sm font-semibold
-                transition-all duration-200
-                ${
-                  isLoading
-                    ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
-                    : !text.trim()
-                      ? "bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                      : "bg-brand-600 hover:bg-brand-700 text-white shadow-sm shadow-brand-500/25 hover:shadow-md hover:shadow-brand-500/30 active:scale-[0.98]"
-                }`}
-            >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    aria-hidden="true"
-                    className="w-4 h-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Correction en cours...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <svg
-                    aria-hidden="true"
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14" />
-                    <path d="m12 5 7 7-7 7" />
-                  </svg>
-                  Corriger
-                </span>
-              )}
-            </button>
-          </div>
+          {!actionsInHeader && <div className="mt-5 flex justify-end">{correctButton}</div>}
         </div>
       </div>
     </div>

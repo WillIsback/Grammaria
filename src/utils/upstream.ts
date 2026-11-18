@@ -1,5 +1,5 @@
 /**
- * Relais vers les serveurs amont (LLM et LanguageTool).
+ * Relais vers le serveur LLM amont.
  *
  * Module sans dépendance à Bun pour rester testable sous vitest.
  */

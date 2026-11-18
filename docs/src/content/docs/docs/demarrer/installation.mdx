@@ -6,8 +6,8 @@ description: "Installer Grammaria depuis les sources ou avec Docker."
 ## Prérequis
 
 - Un modèle de langage exposé par une API compatible OpenAI.
-- Docker, pour LanguageTool.
-- Pour une installation depuis les sources : [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`.
+- Pour une installation depuis les sources : [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`. Pour une installation par conteneur : Docker.
+- Environ 1 Go de mémoire vive pour le serveur, qui charge les règles du correcteur grammatical.
 
 ## Depuis les sources
 
@@ -30,10 +30,6 @@ npm install
 ```
 
 ```bash
-docker compose up -d
-```
-
-```bash
 npm run build
 ```
 
@@ -41,7 +37,7 @@ npm run build
 bun run server.ts
 ```
 
-`docker compose up -d` lance LanguageTool sur le port 3002. L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000).
+L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000). Le correcteur grammatical (règles françaises de [LanguageTool](https://languagetool.org)) est intégré au serveur : aucun service supplémentaire n'est à lancer. Ses règles se chargent en arrière-plan au démarrage, en quelques secondes.
 
 ## Avec Docker
 
@@ -51,7 +47,7 @@ Construisez l'image à partir du dépôt :
 docker build -t grammaria .
 ```
 
-Lancez-la ensuite avec LanguageTool, comme décrit dans [Déploiement Docker](/docs/exploiter/docker/).
+Lancez-la ensuite comme décrit dans [Déploiement Docker](/docs/exploiter/docker/).
 
 :::note
 Une image prête à l'emploi et un script `install.sh` sont publiés automatiquement à chaque version étiquetée du dépôt. Tant qu'aucune version n'est publiée, construisez l'image vous-même.
@@ -59,6 +55,6 @@ Une image prête à l'emploi et un script `install.sh` sont publiés automatique
 
 ## Vérifier l'installation
 
-1. Ouvrez l'application : aucun bandeau « LanguageTool n'est pas disponible » ne doit s'afficher.
-2. Le modèle détecté apparaît dans la barre latérale, section **Modèle LLM**.
-3. Collez une phrase contenant une faute et cliquez sur **Corriger**.
+1. Ouvrez l'application : le modèle détecté apparaît dans la barre latérale, section **Modèle LLM**.
+2. Collez une phrase contenant une faute et cliquez sur **Corriger**.
+3. Le détail des corrections s'affiche sans le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. »
