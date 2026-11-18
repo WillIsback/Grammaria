@@ -4,6 +4,7 @@ import { type AnalysisResponse, analyzeCorrection } from "../services/journal";
 import { applyLTCorrections, runLanguageTool } from "../services/languagetool";
 import type { CorrectionEntry, CorrectionSettings, CorrectionStats, LTMatch } from "../types";
 import { correctText } from "../utils/llm";
+import { MAX_CONTENT_LENGTH, prepareInput } from "../utils/sanitize";
 
 const SETTINGS_KEY = "grammaria:settings";
 
@@ -117,12 +118,25 @@ export function useCorrector() {
       } else {
         // Moteur LLM : le correcteur ne renvoie que le texte. LanguageTool
         // tourne en parallèle sur le texte d'origine pour classer les fautes.
+        // Les trois étapes (LanguageTool, correcteur, analyse) reçoivent le
+        // même texte préparé : sinon une coupe ou un caractère retiré
+        // apparaîtrait comme une correction, voire comme une faute.
         const signal = abortControllerRef.current.signal;
-        const ltPromise: Promise<LTMatch[] | null> = runLanguageTool(textContent, signal).catch(
+        const input = prepareInput(textContent);
+        const notices: string[] = [];
+        if (input.truncated) {
+          notices.push(
+            `Le texte dépasse ${MAX_CONTENT_LENGTH.toLocaleString("fr-FR")} caractères : ` +
+              `seuls les ${input.text.length.toLocaleString("fr-FR")} premiers ont été corrigés ` +
+              `(sur ${input.originalLength.toLocaleString("fr-FR")}).`,
+          );
+          setAnalysisNotice(notices.join(" "));
+        }
+        const ltPromise: Promise<LTMatch[] | null> = runLanguageTool(input.text, signal).catch(
           () => null,
         );
 
-        const { text: finalText, duration } = await correctText(textContent, settings, {
+        const { text: finalText, duration } = await correctText(input.text, settings, {
           onText: (text) => {
             if (!text) return;
             setOutputText(text);
@@ -144,11 +158,10 @@ export function useCorrector() {
         try {
           const matches = await ltPromise;
           if (matches === null) {
-            setAnalysisNotice(
-              "LanguageTool est indisponible : l'analyse des fautes est partielle.",
-            );
+            notices.push("LanguageTool est indisponible : l'analyse des fautes est partielle.");
+            setAnalysisNotice(notices.join(" "));
           }
-          const result = await analyzeCorrection(textContent, finalText, matches ?? [], signal);
+          const result = await analyzeCorrection(input.text, finalText, matches ?? [], signal);
           // L'astuce d'une règle n'est affichée qu'à sa première occurrence.
           const seenTips = new Set<string>();
           const entries = result.corrections.map((c) => {
@@ -162,7 +175,8 @@ export function useCorrector() {
           setStats((prev) => ({ ...prev, modificationCount: entries.length }));
         } catch (analysisError) {
           if (analysisError instanceof Error && analysisError.name === "AbortError") return;
-          setAnalysisNotice("L'analyse des fautes est indisponible pour ce texte.");
+          notices.push("L'analyse des fautes est indisponible pour ce texte.");
+          setAnalysisNotice(notices.join(" "));
         }
       }
     } catch (err) {

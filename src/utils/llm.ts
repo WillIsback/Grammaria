@@ -51,7 +51,19 @@ export async function correctText(
       signal: controller.signal,
     });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      // Le serveur renvoie { error, details } : afficher la cause plutôt qu'un code nu.
+      let details = "";
+      try {
+        const body = await response.json();
+        details = typeof body?.details === "string" ? body.details : "";
+      } catch {
+        /* corps absent ou non JSON */
+      }
+      throw new Error(
+        details ? `API error: ${response.status} — ${details}` : `API error: ${response.status}`,
+      );
+    }
     if (!response.body) throw new Error("No response body");
 
     streamTimeoutId = setTimeout(() => controller.abort(), streamTimeoutMs);
