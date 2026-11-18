@@ -2,7 +2,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { analyze, isCounted, sentenceAt } from "../../src/analysis/analyze";
 import { countWords, diffHunks } from "../../src/analysis/diff";
 import { detecterConfusion, FICHES } from "../../src/analysis/fiches";
-import { noteSur20 } from "../../src/analysis/score";
+import { detecterAccord } from "../../src/analysis/accord";
+import { noteSur20, parsePeriodDays } from "../../src/analysis/score";
 import type { LTMatch } from "../../src/types";
 
 function match(text: string, fragment: string, rule: Partial<LTMatch["rule"]> = {}): LTMatch {
@@ -65,6 +66,10 @@ describe("detecterConfusion", () => {
     ["c’est", "s'est", "PAIRE:c'est/s'est"],
     ["manger", "mangé", "TERMINAISON:er/é"],
     ["envoyé", "envoyer", "TERMINAISON:er/é"],
+    // Régression QA : un mot composé n'était pas rattaché à sa fiche.
+    ["la-bas", "là-bas", "PAIRE:la/là"],
+    ["La-bas", "Là-bas", "PAIRE:la/là"],
+    ["celle-la", "celle-là", "PAIRE:la/là"],
     ["mangez", "mangées", "TERMINAISON:er/é"],
   ])("%s → %s donne %s", (avant, apres, cle) => {
     expect(detecterConfusion(avant, apres)).toBe(cle);
@@ -77,6 +82,9 @@ describe("detecterConfusion", () => {
     ["a", "a"],
     ["er", "é"],
     ["chat", "chien"],
+    ["la-bas", "là-haut"],
+    ["peu-être", "peut-être"],
+    ["est-ce", "et-ce"],
   ])("%s → %s n'est pas une confusion connue", (avant, apres) => {
     expect(detecterConfusion(avant, apres)).toBeNull();
   });
@@ -203,5 +211,102 @@ describe("analyze", () => {
     const result = analyze("  Bonjour à tous.\n", "Bonjour à tous.", []);
     expect(result.corrections).toEqual([]);
     expect(result.unclassifiedCount).toBe(0);
+  });
+});
+
+// Régression QA (2026-11-18) : LanguageTool ne signale pas « les enfants était
+// content » ; la correction du modèle restait « Non classé » et la note était
+// surévaluée.
+describe("detecterAccord", () => {
+  it.each([
+    ["était", "étaient"],
+    ["content", "contents"],
+    ["aidés", "aidé"],
+    ["parti", "partis"],
+    ["mangé", "mangée"],
+    ["petit", "petite"],
+    ["court", "courent"],
+  ])("%s → %s est un accord", (avant, apres) => {
+    expect(detecterAccord(avant, apres)).toBe(true);
+  });
+
+  it.each([
+    ["ma", "mon"],
+    ["va", "vont"],
+    ["est", "es"],
+    ["truc", "dispositif"],
+    ["vu", "regardé"],
+    ["Paris", "paris"],
+    ["afin de", "pour"],
+    ["l'équipe", "l'équipes"],
+    ["finit", "finissent"],
+  ])("%s → %s n'est pas un accord", (avant, apres) => {
+    expect(detecterAccord(avant, apres)).toBe(false);
+  });
+});
+
+describe("analyze — accords et passages fusionnés", () => {
+  it("compte un accord que LanguageTool n'a pas vu", () => {
+    const result = analyze("Les enfants était content.", "Les enfants étaient contents.", []);
+    expect(result.corrections.map((c) => c.faults[0]?.ruleKey)).toEqual(["ACCORD", "ACCORD"]);
+    expect(result.corrections[0].faults[0]).toMatchObject({ source: "accord", counted: true });
+    expect(result.faultCount).toBe(2);
+    expect(result.unclassifiedCount).toBe(0);
+  });
+
+  it("une détection LanguageTool l'emporte sur l'accord déduit", () => {
+    const original = "Les enfants était là.";
+    const result = analyze(original, "Les enfants étaient là.", [
+      match(original, "était", { id: "ACCORD_SV" }),
+    ]);
+    expect(result.corrections[0].faults.map((f) => f.ruleKey)).toEqual(["ACCORD_SV"]);
+  });
+
+  it("une confusion à fiche l'emporte sur l'accord", () => {
+    const result = analyze("Il a manger.", "Il a mangé.", []);
+    expect(result.corrections[0].faults[0].ruleKey).toBe("TERMINAISON:er/é");
+  });
+
+  it("une reformulation reste non classée", () => {
+    const result = analyze(
+      "Je vous écris afin de vous demander.",
+      "Je vous écris pour vous demander.",
+      [],
+    );
+    expect(result.unclassifiedCount).toBe(1);
+    expect(result.faultCount).toBe(0);
+  });
+
+  // Régression QA : « allez vous » → « allez-vous » donnait deux lignes, dont
+  // un « vous → (rien) » non classé.
+  it("réunit un ajout ou une suppression séparé par une espace", () => {
+    const hunks = diffHunks("Comment allez vous?", "Comment allez-vous ?");
+    expect(hunks.filter((h) => h.before.trim() !== h.after.trim())).toHaveLength(1);
+    expect(hunks[0].before).toBe("allez vous");
+    expect(hunks[0].after.trim()).toBe("allez-vous");
+  });
+
+  it("garde séparés deux remplacements voisins, chacun avec sa règle", () => {
+    const result = analyze("Ils son parti.", "Ils sont partis.", []);
+    expect(result.corrections.map((c) => c.faults[0].ruleKey)).toEqual([
+      "PAIRE:son/sont",
+      "ACCORD",
+    ]);
+  });
+});
+
+describe("parsePeriodDays", () => {
+  it.each([
+    [null, 7],
+    ["", 7],
+    ["abc", 7],
+    ["0", 1],
+    ["-5", 1],
+    ["1", 1],
+    ["30", 30],
+    ["7.9", 7],
+    ["400", 365],
+  ])("days=%j → %i", (raw, expected) => {
+    expect(parsePeriodDays(raw)).toBe(expected);
   });
 });

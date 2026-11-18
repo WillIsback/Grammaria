@@ -13,3 +13,11 @@ export function noteSur20(fautes: number, mots: number): number | null {
   const note = Math.max(0, 20 - POINTS_PAR_FAUTE_POUR_100_MOTS * densite);
   return Math.round(note * 10) / 10;
 }
+
+/** Période du bilan : entier de 1 à 365 jours, 7 si absent ou illisible. */
+export function parsePeriodDays(raw: string | null): number {
+  if (raw === null || raw.trim() === "") return 7;
+  const days = Number(raw);
+  if (!Number.isFinite(days)) return 7;
+  return Math.min(Math.max(Math.trunc(days), 1), 365);
+}

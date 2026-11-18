@@ -30,7 +30,7 @@ describe("runLanguageTool", () => {
     globalThis.fetch = vi
       .fn()
       .mockResolvedValue({ ok: false, status: 500 }) as unknown as typeof fetch;
-    await expect(runLanguageTool("Texte")).rejects.toThrow("LanguageTool API error: 500");
+    await expect(runLanguageTool("Texte")).rejects.toThrow("LanguageTool ne répond pas (HTTP 500)");
   });
 });
 

@@ -39,8 +39,32 @@ describe("buildSystemPrompt", () => {
       fixSyntax: false,
       fixStyle: false,
     });
-    expect(prompt).toContain("grammaire");
-    expect(prompt).not.toContain("orthographe");
+    expect(prompt).toContain("Corrections actives: grammaire.");
+    expect(prompt).toContain("N'interviens pas sur: orthographe, syntaxe, style.");
+  });
+
+  // Régression QA : style décoché, le modèle reformulait encore « on va » en
+  // « nous allons ». La consigne de conservation n'apparaît que dans ce cas.
+  it("style décoché : impose de garder les tournures et le registre", () => {
+    const prompt = buildSystemPrompt({ ...base, fixStyle: false });
+    expect(prompt).toContain("Le style n'est PAS a corriger");
+    expect(prompt).toContain("« on » reste « on »");
+  });
+
+  it("style coché : pas de consigne de conservation", () => {
+    expect(buildSystemPrompt(base)).not.toContain("Le style n'est PAS a corriger");
+  });
+
+  it("mode informel : garde les tournures familières", () => {
+    expect(buildSystemPrompt({ ...base, mode: "informel" })).toContain("« on »");
+  });
+
+  it("toutes les cases cochées : pas de liste d'exclusion", () => {
+    expect(buildSystemPrompt(base)).not.toContain("N'interviens pas sur");
+  });
+
+  it("demande de conserver la typographie et les noms propres", () => {
+    expect(buildSystemPrompt(base)).toContain("noms propres");
   });
 });
 

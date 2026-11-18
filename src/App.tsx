@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
 import { LTSetupBanner } from "./components/LTSetupBanner";
@@ -39,6 +39,14 @@ function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePane, setActivePane] = useState<Pane>("editor");
+
+  // Sur mobile, un seul panneau est visible : afficher le résultat dès le
+  // lancement, pour que le texte et le bouton Copier apparaissent sans
+  // toucher l'onglet « Résultat ».
+  const startCorrection = useCallback(() => {
+    if (textContent.trim()) setActivePane("output");
+    void handleCorrect();
+  }, [textContent, handleCorrect]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -120,7 +128,7 @@ function App() {
             <Editor
               text={textContent}
               onChange={setTextContent}
-              onCorrect={handleCorrect}
+              onCorrect={startCorrection}
               isLoading={isLoading}
             />
           </div>
@@ -161,7 +169,7 @@ function App() {
                   <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-sm text-red-700 dark:text-red-300 truncate">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300 break-words">{error}</p>
             </div>
             <button
               type="button"

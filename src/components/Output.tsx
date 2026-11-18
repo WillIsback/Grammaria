@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CorrectionEntry, WeekSummary } from "../types";
+import { visibleText } from "../utils/visibleText";
 
 interface Props {
   outputText: string;
@@ -246,14 +247,14 @@ export function Output({
                               className="text-red-500 dark:text-red-400 line-through font-mono truncate"
                               title={c.avant}
                             >
-                              {c.avant}
+                              {visibleText(c.avant)}
                             </span>
                             <span className="hidden sm:inline text-gray-400 shrink-0">→</span>
                             <span
                               className="text-emerald-700 dark:text-emerald-400 font-mono truncate"
                               title={c.apres}
                             >
-                              {c.apres}
+                              {visibleText(c.apres)}
                             </span>
                             <span
                               className="text-[11px] text-gray-400 dark:text-gray-500 italic truncate sm:text-right"

@@ -61,7 +61,9 @@ export async function correctText(
         /* corps absent ou non JSON */
       }
       throw new Error(
-        details ? `API error: ${response.status} — ${details}` : `API error: ${response.status}`,
+        details
+          ? `Le serveur de correction a échoué (HTTP ${response.status}) : ${details}`
+          : `Le serveur de correction a échoué (HTTP ${response.status}).`,
       );
     }
     if (!response.body) throw new Error("No response body");
@@ -106,11 +108,9 @@ export async function correctText(
     throw new Error("Stream ended without done event");
   } catch (error) {
     if (error instanceof Error) {
-      if (error.name === "AbortError") throw new Error("Delai d'attente depasse");
+      if (error.name === "AbortError") throw new Error("Délai d'attente dépassé.");
       if (error.message.includes("Failed to fetch"))
-        throw new Error(
-          "Impossible de contacter le serveur de correction. Verifiez que le serveur LLM est lance.",
-        );
+        throw new Error("Impossible de contacter le serveur Grammaria. Vérifiez qu'il est lancé.");
     }
     throw error;
   }

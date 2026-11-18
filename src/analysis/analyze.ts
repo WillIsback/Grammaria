@@ -1,4 +1,5 @@
 import type { LTMatch } from "../types";
+import { ACCORD_MESSAGE, ACCORD_RULE_KEY, detecterAccord } from "./accord";
 import { countWords, diffHunks, type Hunk } from "./diff";
 import { detecterConfusion, FICHES, type Fiche } from "./fiches";
 import { noteSur20 } from "./score";
@@ -6,7 +7,7 @@ import { noteSur20 } from "./score";
 export interface Fault {
   /** Clé stable de la règle : fiche interne ou identifiant LanguageTool. */
   ruleKey: string;
-  source: "fiche" | "lt";
+  source: "fiche" | "lt" | "accord";
   categoryId: string;
   categoryName: string;
   issueType: string;
@@ -120,6 +121,21 @@ export function analyze(original: string, corrected: string, matches: LTMatch[])
         word: original.slice(m.offset, m.offset + m.length).toLowerCase(),
         counted: isCounted(m),
       }));
+    }
+    if (!ficheKey && faults.length === 0 && detecterAccord(hunk.before, hunk.after)) {
+      faults = [
+        {
+          ...base,
+          ruleKey: ACCORD_RULE_KEY,
+          source: "accord",
+          categoryId: "ACCORD",
+          categoryName: "Accord",
+          issueType: "grammar",
+          message: ACCORD_MESSAGE,
+          word: hunk.before.trim().toLowerCase(),
+          counted: true,
+        },
+      ];
     }
     for (const m of overlapping) used.add(m);
 

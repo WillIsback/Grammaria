@@ -21,6 +21,8 @@ Pendant que le LLM travaille, LanguageTool analyse le texte d'origine. Il fourni
 
 Une détection LanguageTool n'est retenue que si le LLM a **réellement modifié** le passage concerné. Ce croisement écarte les faux positifs de LanguageTool, par exemple un nom propre signalé à tort.
 
+Une modification qui ne change que la terminaison d'un mot (« était → étaient », « aidés → aidé ») est classée comme **accord** et comptée, même si LanguageTool ne l'a pas signalée.
+
 À l'inverse, une modification du LLM qu'aucune détection n'explique reste affichée, avec la mention « Non classé », et n'est pas comptée.
 
 ## 4. Les confusions courantes ont leur fiche
@@ -50,4 +52,4 @@ Votre texte ──┬──► LLM ──────────► texte corri
 
 ## Si LanguageTool est arrêté
 
-La correction fonctionne quand même. Seules les confusions des fiches sont alors classées, et un message signale que l'analyse est partielle.
+La correction fonctionne quand même. Seules les confusions des fiches et les accords sont alors classés, et un message signale que l'analyse est partielle.

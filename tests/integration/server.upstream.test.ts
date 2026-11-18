@@ -44,3 +44,10 @@ describe("server.ts — choix du modèle", () => {
     expect(serverSource).toMatch(/createModelDetector\(config\.llmTarget,\s*config\.llmApiKey\)/);
   });
 });
+
+describe("server.ts — bilan du journal", () => {
+  // Régression QA : days=0 donnait 7 jours au lieu de 1.
+  it("lit la période via parsePeriodDays", () => {
+    expect(serverSource).toMatch(/parsePeriodDays\(url\.searchParams\.get\("days"\)\)/);
+  });
+});

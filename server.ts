@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { config } from "./config.ts";
 import { Journal } from "./journal.ts";
 import { analyze } from "./src/analysis/analyze.ts";
+import { parsePeriodDays } from "./src/analysis/score.ts";
 import { cleanLlmOutput } from "./src/utils/llmText.ts";
 import { isStreamTeardownError } from "./src/utils/streamErrors.ts";
 import {
@@ -167,7 +168,7 @@ Bun.serve({
       }
 
       if (path === "/api/journal" && req.method === "GET") {
-        const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 1), 365);
+        const days = parsePeriodDays(url.searchParams.get("days"));
         return new Response(JSON.stringify(journal.summary(days)), { headers });
       }
 

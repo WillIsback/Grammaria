@@ -41,7 +41,7 @@ Calcule le diff, le croise avec les détections, enregistre le résultat dans le
 }
 ```
 
-`matches` est le tableau renvoyé par LanguageTool. `original` et `corrected` sont limités à 20 000 caractères.
+`matches` est le tableau renvoyé par LanguageTool. Chaque faute indique sa `source` : `fiche`, `lt` (LanguageTool) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
 
 Réponse :
 
@@ -65,7 +65,7 @@ Réponse :
 
 ### `GET /api/journal?days=7`
 
-Bilan de la période (1 à 365 jours, 7 par défaut) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
+Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illisible, 1 pour une valeur inférieure à 1) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
 
 ### `DELETE /api/journal`
 
