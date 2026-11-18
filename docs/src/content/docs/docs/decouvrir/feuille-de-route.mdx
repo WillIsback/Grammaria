@@ -1,0 +1,41 @@
+---
+title: "Feuille de route"
+description: "Ce qui est disponible aujourd'hui et ce qui est prévu."
+---
+
+## Phase 1 — disponible
+
+- Correction instantanée en streaming.
+- Détail des corrections calculé par diff et croisé avec LanguageTool.
+- Douze fiches de règles.
+- Journal des fautes et note sur 20.
+
+## Phase 2 — prévue
+
+:::caution
+Rien de ce qui suit n'est encore disponible. Les seuils indiqués sont des choix de conception de départ, à régler sur des données réelles.
+:::
+
+L'objectif est d'intervenir sur les fautes **récurrentes** sans ralentir la correction. La contrainte de conception : une personne pressée ne regarde que le bouton **Copier**. Toute intervention se joue donc à cet endroit.
+
+### Cycle de vie d'une règle
+
+| État | Entrée dans l'état | Intervention |
+|---|---|---|
+| Observée | première occurrence | aucune |
+| Signalée | 3 occurrences sur 7 jours | une ligne d'astuce près du bouton Copier |
+| Travaillée | la faute persiste après plusieurs astuces | le bouton Copier propose les deux formes |
+| Acquise | 14 jours d'usage sans faute | message de réussite |
+| Rechute | faute après acquisition | retour à « signalée » |
+
+### Le choix sur le bouton Copier
+
+Pour une règle « travaillée », le bouton est remplacé par les deux formes possibles, sur votre propre phrase. Cliquer la bonne forme copie le texte. Cliquer la mauvaise affiche l'explication, puis copie. Dans les deux cas, un seul clic.
+
+### Budget de friction
+
+Les interventions sont plafonnées : au plus trois règles travaillées en même temps, et une sollicitation par règle et par jour. Ces valeurs s'appuient sur des résultats généraux (une mémoire de travail limitée à quelques éléments, l'intérêt du rappel actif et de l'espacement dans le temps), mais ne sont pas tirées d'une étude qui les fixerait.
+
+### Bilan
+
+Un écran de synthèse : note moyenne, règles actives, règles acquises et mots pièges.

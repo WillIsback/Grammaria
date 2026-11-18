@@ -1,68 +1,57 @@
 # Grammaria
 
-Correcteur de français qui corrige aussi vite qu'avant, mais observe vos fautes pour vous aider à ne plus les refaire. Issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector).
+**Le correcteur de français qui corrige tout de suite, et vous aide à ne plus refaire les mêmes fautes.**
 
-## Principe
+Documentation : [grammaria.fr/docs](https://grammaria.fr/docs/)
 
-1. **Correction instantanée.** Le LLM renvoie uniquement le texte corrigé, affiché au fil de la génération. Le bouton « Copier » est disponible tout de suite.
-2. **Analyse sans coût pour le LLM.** Les modifications sont calculées par diff entre le texte d'origine et le texte corrigé. LanguageTool analyse le texte d'origine en parallèle.
-3. **Croisement.** Une détection LanguageTool n'est retenue que si le LLM a réellement modifié le passage, ce qui écarte les faux positifs. Les confusions courantes (a/à, on/ont, ces/ses, -er/-é…) sont reconnues directement dans le diff et accompagnées d'une fiche « remplacez par X, car Y ».
-4. **Journal.** Chaque faute retenue est enregistrée dans une base SQLite locale : règle, mot fautif, correction et phrase concernée. Le texte complet n'est jamais conservé.
-5. **Note.** Une note sur 20 est calculée sur la densité de fautes (2 points par faute pour 100 mots). La moyenne sur 7 jours cumule fautes et mots avant le calcul.
+## Pour qui
 
-La typographie, la ponctuation et le style sont affichés mais n'entrent pas dans la note. Une modification du LLM que rien n'explique est affichée « Non classé » et n'est pas comptée.
+Pour les **adultes qui écrivent en français tous les jours** (messages, courriels, comptes rendus) et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
 
-### Feuille de route
+Grammaria n'est pas un outil scolaire : pas de cours à suivre, pas de série d'exercices. Quand on est pressé, on veut un texte propre, pas une leçon.
 
-- **Phase 1 (cette version)** : socle décrit ci-dessus, sans événement pédagogique.
-- **Phase 2** : cycle de vie des règles (observée, signalée, travaillée, acquise) et interventions sur le bouton « Copier », réglées sur les données du journal.
+## Pourquoi
 
-## Architecture
+Un correcteur automatique a un effet pervers : on colle son texte, on copie le résultat, et on n'apprend jamais rien. Les mêmes fautes reviennent pendant des mois. Les méthodes d'apprentissage classiques échouent pour la raison inverse : elles demandent du temps au moment précis où l'on n'en a pas.
 
-```
-Navigateur
-  ├─ POST /v1/chat/completions → Bun → LLM (API compatible OpenAI, streaming)
-  ├─ POST /api/lt/v2/check     → Bun → LanguageTool
-  └─ POST /api/analyze         → Bun : diff + croisement + journal SQLite
+Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
 
-GET    /api/journal?days=7   bilan : note, règles et mots les plus fréquents
-DELETE /api/journal          efface tout le journal
-```
+- la correction reste **instantanée**, sans étape imposée ;
+- l'application **repère les fautes qui reviennent**, sur vos vrais textes ;
+- elle explique en une phrase, au format « remplacez par X, car Y ».
 
-| Fichier | Rôle |
-|---|---|
-| `server.ts` | Serveur Bun : fichiers statiques, proxys, analyse, journal |
-| `journal.ts` | Journal SQLite (`bun:sqlite`) |
-| `src/analysis/diff.ts` | Diff au niveau du mot |
-| `src/analysis/fiches.ts` | Fiches de règles et détection des confusions |
-| `src/analysis/analyze.ts` | Croisement diff / LanguageTool |
-| `src/analysis/score.ts` | Note sur 20 |
+## Comment
 
-## Pré-requis
+1. Vous collez un texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie aussitôt.
+2. Le modèle de langage ne fait que corriger. Les modifications sont **calculées** par comparaison entre votre texte et le texte corrigé, sans appel supplémentaire au modèle.
+3. [LanguageTool](https://languagetool.org) analyse votre texte en parallèle. Une de ses détections n'est retenue que si le modèle a réellement corrigé le passage, ce qui écarte les faux positifs.
+4. Douze confusions courantes (a/à, on/ont, ces/ses, -er/-é…) sont reconnues directement et accompagnées d'une **fiche**.
+5. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
+6. Une **note sur 20**, calculée sur la densité de fautes, suit votre progression texte par texte et sur sept jours.
 
-- Bun (serveur) et Node.js 20+ (build)
-- Un fournisseur LLM compatible avec l'API OpenAI (vLLM, SGLang, Ollama…)
-- LanguageTool (port 3002). Sans lui, la correction fonctionne mais seules les confusions des fiches sont classées.
+Les interventions sur les fautes récurrentes (astuce puis choix entre deux formes sur le bouton « Copier ») sont la prochaine étape. Elles sont décrites dans la [feuille de route](https://grammaria.fr/docs/decouvrir/feuille-de-route/) et ne sont pas encore disponibles.
 
-## Configuration
+## Vos textes restent chez vous
 
-Fichier `.env` à la racine (voir `.env.example`) :
+Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle et à l'instance LanguageTool que vous avez configurés. Le journal est un fichier SQLite sur votre serveur.
 
-```env
-PORT=25000
-LLM_TARGET=http://localhost:11434
-LLM_API_KEY=sk-...
-LLM_MODEL_NAME=llama3
-LLM_DISABLE_THINKING=true
-LT_TARGET=http://localhost:3002
-JOURNAL_PATH=./data/grammaria.db
-CORS_ORIGIN=https://mondomaine.com
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:6006
+## Démarrage rapide
+
+Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), Docker pour LanguageTool, [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`.
+
+```bash
+git clone https://github.com/WillIsback/Grammaria.git
 ```
 
-En Docker, le journal est écrit dans `/app/data` : montez un volume pour le conserver.
+```bash
+cd Grammaria
+```
 
-## Démarrage
+```bash
+cp .env.example .env
+```
+
+Renseignez `LLM_TARGET` dans `.env`, puis :
 
 ```bash
 npm install
@@ -80,23 +69,22 @@ npm run build
 bun run server.ts
 ```
 
-Accès : http://localhost:25000
+L'application est sur http://localhost:25000. Le détail est dans le guide d'[installation](https://grammaria.fr/docs/demarrer/installation/) et de [configuration](https://grammaria.fr/docs/demarrer/configuration/).
 
-En développement, lancez `bun run server.ts` dans un terminal et `npm run dev` dans un autre (Vite sur http://localhost:25001).
+## Développement
 
-## Tests
+Le projet utilise [Vite+](https://viteplus.dev) : toute la configuration de l'outillage est dans `vite.config.ts`.
 
-```bash
-npm run test:run
-```
+| Commande               | Rôle                               |
+| ---------------------- | ---------------------------------- |
+| `npm run dev`          | Serveur de développement           |
+| `npm run build`        | Vérification des types, puis build |
+| `npm run check`        | Format, lint et types              |
+| `npm run test:run`     | Tests                              |
+| `npm run test:journal` | Tests du journal, exécutés par Bun |
 
-```bash
-npm run test:journal
-```
+Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/) et l'[architecture](https://grammaria.fr/docs/reference/architecture/).
 
-Le second lance les tests du journal avec Bun, car `bun:sqlite` n'est pas disponible sous vitest.
+## Origine et licence
 
-## Limites connues
-
-- Le classement des catégories LanguageTool (ce qui compte ou non dans la note) repose sur `issueType` et sur l'identifiant de catégorie. Il reste à ajuster sur des réponses réelles du serveur LanguageTool français.
-- Le dossier `docs/` et le dossier `eval/` décrivent encore ai_corrector.
+Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector). Licence MIT.

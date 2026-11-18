@@ -1,0 +1,41 @@
+---
+title: "Corriger un texte"
+description: "Modes de correction, types de corrections, moteur et modèle."
+---
+
+## En pratique
+
+1. Collez votre texte dans la zone de gauche.
+2. Cliquez sur **Corriger**.
+3. Le texte corrigé s'affiche à droite au fil de la génération.
+4. Cliquez sur **Copier**. Vous n'avez pas à attendre la fin de l'analyse des fautes.
+
+Un texte est limité à 10 000 caractères ; au-delà, il est tronqué.
+
+## Mode de correction
+
+Le mode indique au modèle le registre à respecter.
+
+| Mode | Registre |
+|---|---|
+| Formel | formel et professionnel |
+| Semi-formel | neutre, adapté au courrier |
+| Informel | décontracté, conversationnel |
+| Technique | texte technique, clarté et précision |
+
+## Types de corrections
+
+Quatre cases activent ou désactivent ce que le modèle a le droit de corriger : **grammaire**, **orthographe**, **syntaxe** et **style**. Décochez « style » si vous voulez que vos tournures restent intactes.
+
+## Modèle
+
+La section **Modèle LLM** liste les modèles exposés par votre serveur. Le premier est sélectionné par défaut.
+
+## Moteur
+
+- **LLM** (par défaut) : correction par le modèle, analyse des fautes, note et journal.
+- **LanguageTool** : correction par LanguageTool seul, en appliquant sa première suggestion pour chaque détection. Ce mode est un secours quand le modèle est indisponible ; il n'alimente ni la note ni le journal.
+
+## Votre texte n'est jamais une consigne
+
+Le modèle a pour instruction de traiter votre texte comme un contenu à corriger, pas comme une demande. Si vous collez « Peux-tu m'envoyer le fichier ? », il corrige la phrase et n'y répond pas.

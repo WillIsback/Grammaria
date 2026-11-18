@@ -1,0 +1,48 @@
+---
+title: "Note et journal des fautes"
+description: "Calcul de la note sur 20, contenu du journal et effacement."
+---
+
+## La note sur 20
+
+La note mesure la **densité** de fautes, pour qu'un long courrier ne soit pas pénalisé par rapport à un message de trois mots.
+
+```
+note = 20 − 2 × (fautes pour 100 mots)     jamais en dessous de 0
+```
+
+| Texte | Fautes | Note |
+|---|---|---|
+| 100 mots | 0 | 20 |
+| 100 mots | 3 | 14 |
+| 200 mots | 1 | 19 |
+| 10 mots | 5 | 0 |
+
+Deux valeurs s'affichent au-dessus du bouton **Copier** :
+
+- la note du texte que vous venez de corriger ;
+- la **moyenne sur sept jours**, calculée en additionnant toutes les fautes et tous les mots de la période. Un texte très court pèse donc peu.
+
+Sur un seul texte, la note est peu significative. C'est sa tendance qui indique une progression.
+
+## Ce que contient le journal
+
+Pour chaque texte corrigé : la date, le nombre de mots, le nombre de fautes et la note.
+
+Pour chaque faute : la règle, la catégorie, le mot fautif, la correction et **la phrase** qui contient la faute.
+
+**Le texte entier n'est jamais enregistré.** Le journal est un fichier SQLite sur votre serveur (`JOURNAL_PATH`) ; rien n'est envoyé ailleurs.
+
+## Effacer le journal
+
+Dans la barre latérale, section **Journal des fautes**, le bouton **Effacer le journal** supprime définitivement toutes les données après confirmation.
+
+## Consulter le bilan
+
+Le bilan n'a pas encore d'écran. Il est accessible par l'API :
+
+```bash
+curl "http://localhost:25000/api/journal?days=7"
+```
+
+La réponse donne la note de la période, les règles et les mots les plus fréquents. Voir la [référence de l'API](/docs/reference/api/).

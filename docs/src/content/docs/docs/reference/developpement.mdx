@@ -1,0 +1,62 @@
+---
+title: "Développement"
+description: "Outillage Vite+, commandes, tests et conventions."
+---
+
+Le projet utilise [Vite+](https://viteplus.dev) (`vp`), qui regroupe Vite, Vitest, Oxlint et Oxfmt. Toute la configuration est dans `vite.config.ts` : build, serveur de développement, tests, lint, format, Tailwind et hook de pre-commit.
+
+Node.js `^22.18`, `^24.11` ou `>=26` est requis.
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `npm run dev` | Serveur de développement sur le port 25001 |
+| `npm run build` | Vérification des types, puis build |
+| `npm run check` | Format, lint et types |
+| `npx vp check --fix` | Corrige le format et les règles de lint réparables |
+| `npm run test:run` | Tests Vitest |
+| `npm run test:coverage` | Tests avec couverture |
+| `npm run test:journal` | Tests du journal, exécutés par Bun |
+
+## Lancer en développement
+
+Dans un premier terminal, le serveur Bun (API et relais) :
+
+```bash
+bun run server.ts
+```
+
+Dans un second, l'interface avec rechargement à chaud :
+
+```bash
+npm run dev
+```
+
+Le serveur de développement relaie `/api` et `/v1` vers le port 25000.
+
+## Tests
+
+- Les tests importent depuis `vite-plus/test`.
+- Le journal utilise `bun:sqlite`, indisponible sous Vitest : ses tests sont dans `tests-bun/` et tournent avec `bun test`.
+- `server.ts` ne peut pas être importé sous Vitest ; plusieurs tests vérifient son code source directement.
+
+## Hook de pre-commit
+
+`vp check --fix` s'exécute sur les fichiers indexés à chaque commit. La variable `VP_GIT_HOOKS=0` désactive l'installation du hook.
+
+## Documentation
+
+Ce site est un projet Astro Starlight situé dans `docs/`. Il est publié sur GitHub Pages à chaque modification de `docs/` sur la branche `main`.
+
+```bash
+cd docs
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```

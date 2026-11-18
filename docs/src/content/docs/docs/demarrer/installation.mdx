@@ -1,0 +1,64 @@
+---
+title: "Installation"
+description: "Installer Grammaria depuis les sources ou avec Docker."
+---
+
+## Prérequis
+
+- Un modèle de langage exposé par une API compatible OpenAI.
+- Docker, pour LanguageTool.
+- Pour une installation depuis les sources : [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`.
+
+## Depuis les sources
+
+```bash
+git clone https://github.com/WillIsback/Grammaria.git
+```
+
+```bash
+cd Grammaria
+```
+
+```bash
+cp .env.example .env
+```
+
+Renseignez au minimum `LLM_TARGET` dans `.env` (voir [Configuration](/docs/demarrer/configuration/)), puis :
+
+```bash
+npm install
+```
+
+```bash
+docker compose up -d
+```
+
+```bash
+npm run build
+```
+
+```bash
+bun run server.ts
+```
+
+`docker compose up -d` lance LanguageTool sur le port 3002. L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000).
+
+## Avec Docker
+
+Construisez l'image à partir du dépôt :
+
+```bash
+docker build -t grammaria .
+```
+
+Lancez-la ensuite avec LanguageTool, comme décrit dans [Déploiement Docker](/docs/exploiter/docker/).
+
+:::note
+Une image prête à l'emploi et un script `install.sh` sont publiés automatiquement à chaque version étiquetée du dépôt. Tant qu'aucune version n'est publiée, construisez l'image vous-même.
+:::
+
+## Vérifier l'installation
+
+1. Ouvrez l'application : aucun bandeau « LanguageTool n'est pas disponible » ne doit s'afficher.
+2. Le modèle détecté apparaît dans la barre latérale, section **Modèle LLM**.
+3. Collez une phrase contenant une faute et cliquez sur **Corriger**.

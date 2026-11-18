@@ -1,0 +1,27 @@
+---
+title: "Configuration"
+description: "Variables d'environnement du serveur Grammaria."
+---
+
+La configuration se fait par variables d'environnement, lues dans le fichier `.env` à la racine. Le fichier `.env.example` sert de modèle.
+
+| Variable | Valeur par défaut | Rôle |
+|---|---|---|
+| `PORT` | `25000` | Port du serveur |
+| `LLM_TARGET` | `http://127.0.0.1:30000` | Adresse de l'API du modèle, sans `/v1` |
+| `LLM_API_KEY` | vide | Clé d'API, si le fournisseur en demande une |
+| `LLM_MODEL_NAME` | vide | Nom du modèle ; détecté automatiquement s'il est vide |
+| `LLM_DISABLE_THINKING` | `true` | Désactive le mode « réflexion » (vLLM, Qwen). Mettre `false` pour OpenAI, Groq, Mistral |
+| `LLM_TOP_K` | `-1` | Paramètre `top_k` transmis au modèle ; `-1` le désactive |
+| `LT_TARGET` | `http://127.0.0.1:3002` | Adresse de LanguageTool |
+| `JOURNAL_PATH` | `./data/grammaria.db` | Fichier SQLite du journal des fautes |
+| `CORS_ORIGIN` | vide | Origines autorisées, séparées par des virgules ; `localhost` est toujours autorisé |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | vide | Active la [télémétrie](/docs/exploiter/telemetrie/) |
+
+## La clé d'API reste côté serveur
+
+Le navigateur n'a jamais accès à `LLM_API_KEY`. Il appelle le serveur Grammaria, qui ajoute la clé avant de relayer la requête au modèle.
+
+## Réglages de l'interface
+
+Le mode de correction et les types de corrections choisis dans la barre latérale sont mémorisés dans le navigateur. Ils ne dépendent pas du fichier `.env`.
