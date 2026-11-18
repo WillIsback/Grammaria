@@ -7,7 +7,6 @@ export interface CorrectionSettings {
   fixSpelling: boolean;
   fixSyntax: boolean;
   fixStyle: boolean;
-  showCorrections: boolean;
 }
 
 export interface CorrectionStats {
@@ -30,7 +29,12 @@ export interface LTMatch {
   offset: number;
   length: number;
   replacements: string[];
-  rule: { id: string };
+  rule: {
+    id: string;
+    description?: string;
+    issueType?: string;
+    category?: { id: string; name: string };
+  };
 }
 
 export interface LTResponse {
@@ -49,13 +53,24 @@ export interface CorrectionEntry {
   avant: string;
   apres: string;
   regle: string;
-}
-
-export interface CorrectionResult {
-  text: string;
-  corrections: CorrectionEntry[];
+  /** Astuce de la fiche de règle, quand la faute en possède une. */
+  astuce?: string;
 }
 
 export interface StreamCallbacks {
-  onTextDone?: (text: string, duration: number) => void;
+  /** Appelé à chaque fragment reçu, avec le texte accumulé. */
+  onText?: (text: string) => void;
+}
+
+export interface LlmResult {
+  text: string;
+  duration: number;
+}
+
+/** Bilan des sept derniers jours renvoyé par le journal. */
+export interface WeekSummary {
+  texts: number;
+  words: number;
+  faults: number;
+  score: number | null;
 }

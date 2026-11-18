@@ -6,8 +6,8 @@ import { config } from "./config.ts";
 
 if (config.otelEndpoint) {
   const resource = resourceFromAttributes({
-    "service.name": "ai-corrector",
-    "openinference.project.name": "ai-corrector",
+    "service.name": "grammaria",
+    "openinference.project.name": "grammaria",
   });
 
   const exporter = new OTLPTraceExporter({ url: `${config.otelEndpoint}/v1/traces` });

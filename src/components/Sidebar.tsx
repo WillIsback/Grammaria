@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
+import { purgeJournal } from "../services/journal";
 import type { CorrectionMode, CorrectionSettings } from "../types";
 import { getCurrentModel, subscribeToModelChange } from "../utils/models";
 import { ModelSelector } from "./ModelSelector";
@@ -28,6 +29,18 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
   useEffect(() => {
     return subscribeToModelChange(setCurrentModelState);
   }, []);
+
+  const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
+
+  const handlePurge = async () => {
+    if (!window.confirm("Effacer définitivement tout le journal des fautes ?")) return;
+    try {
+      await purgeJournal();
+      setPurgeStatus("Journal effacé.");
+    } catch {
+      setPurgeStatus("Le journal n'a pas pu être effacé.");
+    }
+  };
 
   const handleModeChange = (newMode: CorrectionMode) => {
     setSettings({ ...settings, mode: newMode });
@@ -200,29 +213,6 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
                 <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
               </label>
             ))}
-
-            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800/60">
-              <label
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer
-                  hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={settings.showCorrections}
-                  onChange={(e) => handleSettingChange("showCorrections", e.target.checked)}
-                  className="peer sr-only"
-                />
-                {checkbox(settings.showCorrections)}
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Détail des corrections
-                  </span>
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {settings.showCorrections ? "Ralentit l'inférence" : "Mode rapide"}
-                  </span>
-                </div>
-              </label>
-            </div>
           </div>
         </div>
 
@@ -249,6 +239,26 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
               </button>
             ))}
           </div>
+        </div>
+        <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
+          <h2 className={sectionTitle}>Journal des fautes</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Seule la phrase contenant une faute est conservée, jamais le texte entier.
+          </p>
+          <button
+            type="button"
+            onClick={handlePurge}
+            className="w-full px-3 py-2 rounded-xl text-sm font-medium text-red-600 dark:text-red-400
+              border border-red-200/80 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40
+              transition-colors"
+          >
+            Effacer le journal
+          </button>
+          {purgeStatus && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400" role="status">
+              {purgeStatus}
+            </p>
+          )}
         </div>
       </aside>
     </>

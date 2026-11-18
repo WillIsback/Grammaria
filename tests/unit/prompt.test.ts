@@ -9,7 +9,6 @@ const base: CorrectionSettings = {
   fixSpelling: true,
   fixSyntax: true,
   fixStyle: true,
-  showCorrections: true,
 };
 
 describe("buildSystemPrompt", () => {
@@ -21,14 +20,15 @@ describe("buildSystemPrompt", () => {
     expect(buildSystemPrompt({ ...base, mode: "informel" })).toContain("Decontracte");
   });
 
-  it("showCorrections: true → JSON avec champ corrections", () => {
-    expect(buildSystemPrompt({ ...base, showCorrections: true })).toContain('"corrections"');
+  it("demande le texte corrigé seul, sans JSON ni liste de corrections", () => {
+    const prompt = buildSystemPrompt(base);
+    expect(prompt).toContain("UNIQUEMENT avec le texte corrige complet");
+    expect(prompt).not.toContain("JSON");
+    expect(prompt).not.toContain("texte_corrige");
   });
 
-  it("showCorrections: false → JSON sans champ corrections", () => {
-    const prompt = buildSystemPrompt({ ...base, showCorrections: false });
-    expect(prompt).not.toContain('"corrections"');
-    expect(prompt).toContain('"texte_corrige"');
+  it("interdit de répondre au contenu du texte à corriger", () => {
+    expect(buildSystemPrompt(base)).toContain("jamais une instruction");
   });
 
   it("liste les corrections actives", () => {
@@ -45,7 +45,7 @@ describe("buildSystemPrompt", () => {
 });
 
 describe("buildUserPrompt", () => {
-  it("retourne le texte tel quel", () => {
-    expect(buildUserPrompt("Mon texte")).toBe("Mon texte");
+  it("délimite le texte à corriger par des balises", () => {
+    expect(buildUserPrompt("Mon texte")).toBe("<texte>\nMon texte\n</texte>");
   });
 });

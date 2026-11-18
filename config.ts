@@ -8,4 +8,5 @@ export const config = {
   corsOrigins: (process.env.CORS_ORIGIN ?? "").split(",").filter(Boolean),
   otelEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? "",
   llmTopK: Number(process.env.LLM_TOP_K ?? -1),
+  journalPath: process.env.JOURNAL_PATH ?? "./data/grammaria.db",
 };

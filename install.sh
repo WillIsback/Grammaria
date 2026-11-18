@@ -7,9 +7,9 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-IMAGE="ghcr.io/OWNER/ai-corrector:latest"
+IMAGE="ghcr.io/OWNER/grammaria:latest"
 
-echo -e "${BOLD}AI Corrector — Installation${NC}"
+echo -e "${BOLD}Grammaria — Installation${NC}"
 echo ""
 
 # Vérifier Docker
@@ -20,7 +20,7 @@ if ! command -v docker &>/dev/null; then
 fi
 
 # Créer le dossier d'installation
-INSTALL_DIR="${INSTALL_DIR:-ai-corrector}"
+INSTALL_DIR="${INSTALL_DIR:-grammaria}"
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
@@ -55,7 +55,7 @@ version: '3.8'
 services:
   languagetool:
     image: erikvl87/languagetool:latest
-    container_name: ai-corrector-lt
+    container_name: grammaria-lt
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/v2/languages"]
@@ -64,12 +64,14 @@ services:
       retries: 3
       start_period: 30s
 
-  ai-corrector:
+  grammaria:
     image: ${IMAGE}
-    container_name: ai-corrector
+    container_name: grammaria
     ports:
       - "25000:25000"
     env_file: .env
+    volumes:
+      - ./data:/app/data
     depends_on:
       languagetool:
         condition: service_healthy
@@ -77,11 +79,11 @@ services:
 COMPOSE
 
 echo ""
-echo -e "${GREEN}Démarrage d'AI Corrector...${NC}"
+echo -e "${GREEN}Démarrage de Grammaria...${NC}"
 docker compose pull
 docker compose up -d
 
 echo ""
-echo -e "${GREEN}✓ AI Corrector disponible sur http://localhost:25000${NC}"
+echo -e "${GREEN}✓ Grammaria disponible sur http://localhost:25000${NC}"
 echo -e "  Logs : docker compose logs -f"
 echo -e "  Arrêt : docker compose down"

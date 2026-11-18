@@ -1,6 +1,6 @@
 {
-  "name": "ai-corrector",
-  "version": "1.5.4",
+  "name": "grammaria",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
-    "serve": "bun run server.ts"
+    "serve": "bun run server.ts",
+    "test:journal": "bun test tests-bun"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

@@ -6,14 +6,23 @@ import { join, resolve } from "node:path";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import OpenAI from "openai";
 import { config } from "./config.ts";
-import { parseLlmJson } from "./src/utils/llmJson.ts";
+import { Journal } from "./journal.ts";
+import { analyze } from "./src/analysis/analyze.ts";
+import { cleanLlmOutput } from "./src/utils/llmText.ts";
 import { isStreamTeardownError } from "./src/utils/streamErrors.ts";
 
-const tracer = trace.getTracer("ai-corrector");
+const tracer = trace.getTracer("grammaria");
 
 const PORT = config.port;
 const DIST_DIR = join(import.meta.dir, "dist");
 const VALID_WORDS_PATH = join(import.meta.dir, "public", "data", "valid-words.json");
+
+const journal = new Journal(config.journalPath);
+
+/** Taille maximale d'un texte accepté par /api/analyze (caractères). */
+const MAX_ANALYZE_LENGTH = 20_000;
+/** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
+const SCORE_WINDOW_DAYS = 7;
 
 const llmClient = new OpenAI({
   baseURL: `${config.llmTarget}/v1`,
@@ -102,6 +111,68 @@ Bun.serve({
       }
     }
 
+    // === API: Analyse (diff + croisement LanguageTool) et journal ===
+    if (path === "/api/analyze" || path === "/api/journal") {
+      const headers = getCorsHeaders(req);
+
+      if (req.method === "OPTIONS") {
+        headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Content-Type");
+        return new Response(null, { headers });
+      }
+
+      if (path === "/api/analyze" && req.method === "POST") {
+        // biome-ignore lint/suspicious/noExplicitAny: corps JSON non typé, validé ci-dessous
+        let body: any;
+        try {
+          body = await req.json();
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
+        }
+        const { original, corrected, matches } = body ?? {};
+        if (
+          typeof original !== "string" ||
+          typeof corrected !== "string" ||
+          !Array.isArray(matches) ||
+          original.length > MAX_ANALYZE_LENGTH ||
+          corrected.length > MAX_ANALYZE_LENGTH
+        ) {
+          return new Response(JSON.stringify({ error: "Invalid payload" }), {
+            status: 400,
+            headers,
+          });
+        }
+        const validMatches = matches.filter(
+          (m) =>
+            m &&
+            typeof m.offset === "number" &&
+            typeof m.length === "number" &&
+            typeof m.rule?.id === "string",
+        );
+        const analysis = analyze(original, corrected, validMatches);
+        journal.record(analysis);
+        return new Response(
+          JSON.stringify({ ...analysis, week: journal.period(SCORE_WINDOW_DAYS) }),
+          { headers },
+        );
+      }
+
+      if (path === "/api/journal" && req.method === "GET") {
+        const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 1), 365);
+        return new Response(JSON.stringify(journal.summary(days)), { headers });
+      }
+
+      if (path === "/api/journal" && req.method === "DELETE") {
+        journal.purge();
+        return new Response(JSON.stringify({ purged: true }), { headers });
+      }
+
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers,
+      });
+    }
+
     // === API: LanguageTool Proxy ===
     if (path.startsWith("/api/lt/")) {
       const ltPath = path.replace("/api/lt", "");
@@ -180,10 +251,6 @@ Bun.serve({
           model: resolvedModel,
           stream: true,
           top_k: config.llmTopK,
-          // Let vLLM constrain decoding to a JSON object: a prompt instruction
-          // alone is not enough (Nemotron 3.5 emitted unbalanced braces).
-          // Streaming stays token-by-token on current vLLM (see 609a0b0).
-          response_format: { type: "json_object" },
           ...extraParams,
         };
         // biome-ignore lint/suspicious/noExplicitAny: OpenAI SDK requires escape hatch for spread params
@@ -194,13 +261,9 @@ Bun.serve({
         }>;
 
         const encoder = new TextEncoder();
-        // Regex to detect when texte_corrige is complete (closing quote present)
-        const reFull = /"texte_corrige"\s*:\s*"((?:[^"\\]|\\.)*)"/;
-
         const readable = new ReadableStream({
           async start(controller) {
             let fullContent = "";
-            let textDoneSent = false;
             // Must stay below Bun.serve's idle timeout (10s default) so the
             // keepalive actually prevents idle disconnects (issue #17).
             const keepaliveIntervalMs = 5_000;
@@ -240,31 +303,16 @@ Bun.serve({
                   const delta: string = chunk.choices?.[0]?.delta?.content ?? "";
                   if (!delta) continue;
                   fullContent += delta;
-
-                  if (!textDoneSent) {
-                    const fullMatch = reFull.exec(fullContent);
-                    if (fullMatch) {
-                      const extracted = fullMatch[1]
-                        .replace(/\\n/g, "\n")
-                        .replace(/\\"/g, '"')
-                        .replace(/\\\\/g, "\\");
-                      const textDuration = Date.now() - startTime;
-                      safeEnqueue(
-                        encoder.encode(
-                          `data: ${JSON.stringify({ text_done: true, text: extracted, duration: textDuration })}\n\n`,
-                        ),
-                      );
-                      textDoneSent = true;
-                    }
-                  }
-                  // After text_done: silently accumulate remaining JSON for corrections
+                  // The model answers with the corrected text only: forward each
+                  // fragment so the client can display it as it arrives.
+                  safeEnqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
                 }
               } catch (loopErr) {
                 // Issue #14: at the end of a successful stream, Bun/Node can
                 // double-close the response-body ReadableStream controller and
                 // surface "Controller is already closed" from the SDK iterator.
                 // The stream has already delivered all its data (fullContent is
-                // complete), so fall through to the normal parse + `done` event
+                // complete), so fall through to the normal `done` event
                 // instead of turning a completed ~12s stream into an error. Any
                 // other error is rethrown to the outer catch (→ SSE error event).
                 if (isStreamTeardownError(loopErr)) {
@@ -274,39 +322,22 @@ Bun.serve({
                 }
               }
 
-              // Parse complete JSON for corrections
               const totalDuration = Date.now() - startTime;
-              let outputText = "";
-              let corrections: unknown[] = [];
-              const parsed = parseLlmJson(fullContent);
-              if (parsed) {
-                if (parsed.repaired) {
-                  console.warn(`[LLM] JSON malformé réparé (${resolvedModel})`);
-                }
-                outputText =
-                  parsed.value.texte_corrige ?? parsed.value.corrected_text ?? fullContent;
-                corrections = Array.isArray(parsed.value.corrections)
-                  ? parsed.value.corrections
-                  : [];
-              } else {
-                outputText = fullContent;
-                console.warn(
-                  `[LLM] JSON invalide, corrections perdues (${resolvedModel}): ${fullContent.slice(-200)}`,
-                );
-                span.setAttribute("llm.output.json_invalid", true);
-              }
+              const outputText = cleanLlmOutput(fullContent);
 
               console.log(`[LLM] Stream terminé en ${totalDuration}ms`);
               span.setAttributes({
                 "output.text": outputText.slice(0, 2000),
                 "output.value": fullContent.slice(0, 2000),
-                "output.mime_type": "application/json",
+                "output.mime_type": "text/plain",
               });
               span.setStatus({ code: SpanStatusCode.OK });
               span.end();
 
               safeEnqueue(
-                encoder.encode(`data: ${JSON.stringify({ done: true, corrections })}\n\n`),
+                encoder.encode(
+                  `data: ${JSON.stringify({ done: true, text: outputText, duration: totalDuration })}\n\n`,
+                ),
               );
             } catch (err) {
               span.setStatus({ code: SpanStatusCode.ERROR, message: String(err) });
@@ -401,4 +432,4 @@ Bun.serve({
   },
 });
 
-console.log(`🚀 AI Corrector server running on http://localhost:${config.port}`);
+console.log(`🚀 Grammaria server running on http://localhost:${config.port}`);

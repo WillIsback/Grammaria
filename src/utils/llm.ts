@@ -1,6 +1,7 @@
-import type { CorrectionEntry, CorrectionSettings, StreamCallbacks } from "../types";
+import type { CorrectionSettings, LlmResult, StreamCallbacks } from "../types";
+import { cleanLlmOutput } from "./llmText";
 import { getCurrentModel } from "./models";
-import { buildSystemPrompt } from "./prompt";
+import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { sanitizeInput } from "./sanitize";
 
 let currentAbortController: AbortController | null = null;
@@ -10,33 +11,13 @@ export function abortOngoingRequest(): void {
   currentAbortController = null;
 }
 
-function parseCorrections(raw: unknown[]): CorrectionEntry[] {
-  return raw.map((c) => {
-    if (typeof c === "object" && c !== null) {
-      const e = c as Record<string, unknown>;
-      return {
-        avant: String(e.avant ?? ""),
-        apres: String(e.apres ?? ""),
-        regle: String(e.regle ?? ""),
-      };
-    }
-    const str = String(c);
-    const idx = str.indexOf(" -> ");
-    return {
-      avant: idx >= 0 ? str.slice(0, idx) : str,
-      apres: idx >= 0 ? str.slice(idx + 4) : "",
-      regle: "",
-    };
-  });
-}
-
 export async function correctText(
   text: string,
   settings: CorrectionSettings,
   callbacks?: StreamCallbacks,
-): Promise<CorrectionEntry[]> {
+): Promise<LlmResult> {
   const systemPrompt = buildSystemPrompt(settings);
-  const userPrompt = sanitizeInput(text);
+  const userPrompt = buildUserPrompt(sanitizeInput(text));
 
   const request = {
     model: getCurrentModel(),
@@ -78,6 +59,7 @@ export async function correctText(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
+    let received = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -94,14 +76,17 @@ export async function correctText(
 
         if (payload.error) throw new Error(payload.error);
 
-        if (payload.text_done) {
-          clearStreamTimeout();
-          callbacks?.onTextDone?.(payload.text ?? "", payload.duration ?? 0);
+        if (typeof payload.delta === "string") {
+          received += payload.delta;
+          callbacks?.onText?.(cleanLlmOutput(received));
         }
 
         if (payload.done) {
           clearStreamTimeout();
-          return parseCorrections(Array.isArray(payload.corrections) ? payload.corrections : []);
+          return {
+            text: typeof payload.text === "string" ? payload.text : cleanLlmOutput(received),
+            duration: payload.duration ?? 0,
+          };
         }
       }
     }

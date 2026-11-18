@@ -29,3 +29,9 @@ jobs:
 
       - name: Run tests
         run: npm run test:run
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Run journal tests (bun:sqlite)
+        run: npm run test:journal

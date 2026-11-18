@@ -43,8 +43,8 @@ describe("useCorrector", () => {
         (_text, _settings, callbacks) =>
           new Promise((resolve) => {
             resolveFirstCall = () => {
-              callbacks?.onTextDone?.("First result", 100);
-              resolve([]);
+              callbacks?.onText?.("First result");
+              resolve({ text: "First result", duration: 100 });
             };
           }),
       );
@@ -88,8 +88,8 @@ describe("useCorrector", () => {
     it("isRunning_flag - Allow new calls after previous completes", async () => {
       const { correctText } = await import("../../src/utils/llm");
       vi.mocked(correctText).mockImplementation((_text, _settings, callbacks) => {
-        callbacks?.onTextDone?.("Corrected text", 100);
-        return Promise.resolve([]);
+        callbacks?.onText?.("Corrected text");
+        return Promise.resolve({ text: "Corrected text", duration: 100 });
       });
 
       const { result } = renderHook(() => useCorrector());
@@ -130,7 +130,7 @@ describe("useCorrector", () => {
       globalThis.fetch = ltFetch as unknown as typeof fetch;
 
       const { correctText } = await import("../../src/utils/llm");
-      vi.mocked(correctText).mockResolvedValue([]);
+      vi.mocked(correctText).mockResolvedValue({ text: "Texte corrigé", duration: 1 });
 
       const { result } = renderHook(() => useCorrector());
 
@@ -173,7 +173,7 @@ describe("useCorrector", () => {
       vi.mocked(correctText).mockImplementation(
         () =>
           new Promise((resolve) => {
-            resolve([]);
+            resolve({ text: "Texte corrigé", duration: 1 });
           }),
       );
 
@@ -254,7 +254,7 @@ describe("useCorrector", () => {
       });
       expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "ai-corrector:settings",
+        "grammaria:settings",
         expect.stringContaining('"mode":"formel"'),
       );
     });
@@ -298,7 +298,7 @@ describe("useCorrector", () => {
       // Seulement UN appel setItem (pour le dernier changement)
       expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "ai-corrector:settings",
+        "grammaria:settings",
         expect.stringContaining('"mode":"informel"'),
       );
     });

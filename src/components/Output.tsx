@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CorrectionEntry } from "../types";
+import type { CorrectionEntry, WeekSummary } from "../types";
 
 interface Props {
   outputText: string;
@@ -12,6 +12,14 @@ interface Props {
   onReset: () => void;
   isLoading: boolean;
   isLoadingCorrections?: boolean;
+  /** Note sur 20 du texte courant (null tant que l'analyse n'est pas faite). */
+  score?: number | null;
+  week?: WeekSummary | null;
+  analysisNotice?: string | null;
+}
+
+function formatScore(score: number): string {
+  return score.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 }
 
 export function Output({
@@ -22,8 +30,11 @@ export function Output({
   onReset,
   isLoading,
   isLoadingCorrections,
+  score,
+  week,
+  analysisNotice,
 }: Props) {
-  const [correctionsOpen, setCorrectionsOpen] = useState(false);
+  const [correctionsOpen, setCorrectionsOpen] = useState(true);
   return (
     <div className="flex-1 flex flex-col min-w-0 md:border-l border-gray-200/60 dark:border-gray-800/60">
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
@@ -225,28 +236,37 @@ export function Output({
                         <div
                           // biome-ignore lint/suspicious/noArrayIndexKey: corrections list is static per render
                           key={i}
-                          className="flex flex-col gap-1 px-4 py-3 text-[13px] min-w-0
-                            sm:grid sm:grid-cols-[1fr_auto_1fr_1fr] sm:items-center sm:gap-2 sm:py-2.5"
+                          className="px-4 py-3 sm:py-2.5 min-w-0"
                         >
-                          <span
-                            className="text-red-500 dark:text-red-400 line-through font-mono truncate"
-                            title={c.avant}
+                          <div
+                            className="flex flex-col gap-1 text-[13px] min-w-0
+                              sm:grid sm:grid-cols-[1fr_auto_1fr_1fr] sm:items-center sm:gap-2"
                           >
-                            {c.avant}
-                          </span>
-                          <span className="hidden sm:inline text-gray-400 shrink-0">→</span>
-                          <span
-                            className="text-emerald-700 dark:text-emerald-400 font-mono truncate"
-                            title={c.apres}
-                          >
-                            {c.apres}
-                          </span>
-                          <span
-                            className="text-[11px] text-gray-400 dark:text-gray-500 italic truncate sm:text-right"
-                            title={c.regle}
-                          >
-                            {c.regle}
-                          </span>
+                            <span
+                              className="text-red-500 dark:text-red-400 line-through font-mono truncate"
+                              title={c.avant}
+                            >
+                              {c.avant}
+                            </span>
+                            <span className="hidden sm:inline text-gray-400 shrink-0">→</span>
+                            <span
+                              className="text-emerald-700 dark:text-emerald-400 font-mono truncate"
+                              title={c.apres}
+                            >
+                              {c.apres}
+                            </span>
+                            <span
+                              className="text-[11px] text-gray-400 dark:text-gray-500 italic truncate sm:text-right"
+                              title={c.regle}
+                            >
+                              {c.regle}
+                            </span>
+                          </div>
+                          {c.astuce && (
+                            <p className="mt-1.5 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                              {c.astuce}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -254,7 +274,32 @@ export function Output({
                 </div>
               )}
 
-              <div className="mt-5 flex gap-3">
+              {analysisNotice && (
+                <p className="mt-4 text-xs text-amber-700 dark:text-amber-400">{analysisNotice}</p>
+              )}
+
+              {typeof score === "number" && (
+                <p
+                  className="mt-5 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+                  data-testid="score-line"
+                >
+                  Note de ce texte :{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {formatScore(score)}/20
+                  </span>
+                  {week && typeof week.score === "number" && (
+                    <>
+                      {" · "}Moyenne sur 7 jours :{" "}
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {formatScore(week.score)}/20
+                      </span>{" "}
+                      ({week.texts} {week.texts > 1 ? "textes" : "texte"})
+                    </>
+                  )}
+                </p>
+              )}
+
+              <div className="mt-3 flex gap-3">
                 <button
                   type="button"
                   onClick={() => onCopy(outputText)}

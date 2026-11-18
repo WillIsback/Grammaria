@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI Corrector — Development startup (Vite + Bun)
+# Grammaria — Development startup (Vite + Bun)
 
 set -e
 

@@ -51,7 +51,7 @@ jobs:
 
       - name: Patch install.sh with actual image name
         run: |
-          sed -i "s|ghcr.io/OWNER/ai-corrector:latest|ghcr.io/${{ github.repository }}:latest|g" install.sh
+          sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${{ github.repository }}:latest|g" install.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
