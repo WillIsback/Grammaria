@@ -1,0 +1,52 @@
+---
+title: "Corrections et fiches de règles"
+description: "Lire la liste des corrections et utiliser les fiches « remplacez par X, car Y »."
+---
+
+## La liste des corrections
+
+Sous le texte corrigé, chaque modification apparaît sur une ligne :
+
+```
+avant (barré)   →   après   règle
+```
+
+La colonne « règle » contient, selon le cas :
+
+- le **titre d'une fiche**, pour une confusion reconnue (par exemple « on / ont ») ;
+- le **message de LanguageTool**, pour une faute qu'il a détectée ;
+- **Non classé**, pour une modification du modèle qu'aucune détection n'explique. C'est souvent une reformulation.
+
+Deux compteurs résument le traitement : la durée de génération et le nombre de corrections.
+
+## Les fiches
+
+Une fiche donne un test à appliquer soi-même, à la première occurrence de la règle dans le texte.
+
+| Fiche | Test |
+|---|---|
+| a / à | Remplacez par « avait ». Si la phrase tient, c'est « a » (verbe avoir) ; sinon « à ». |
+| ou / où | Remplacez par « ou bien ». Si la phrase tient, c'est « ou » ; sinon « où » (lieu ou moment). |
+| et / est | Remplacez par « était ». Si la phrase tient, c'est « est » (verbe être) ; sinon « et ». |
+| on / ont | Remplacez par « avaient ». Si la phrase tient, c'est « ont » ; sinon « on », remplaçable par « il ». |
+| son / sont | Remplacez par « étaient ». Si la phrase tient, c'est « sont » ; sinon « son », remplaçable par « mon ». |
+| ces / ses | Mettez au singulier. « son » ou « sa » donne « ses » ; « ce » ou « cette » donne « ces ». |
+| ce / se | Passez à « je » et remplacez par « me ». Si la phrase tient, c'est « se » ; sinon « ce ». |
+| c'est / s'est | Remplacez par « cela est ». Si la phrase tient, c'est « c'est » ; sinon « s'est ». |
+| la / là | Remplacez par « là-bas ». Si la phrase tient, c'est « là » ; sinon « la ». |
+| sa / ça | Remplacez par « cela ». Si la phrase tient, c'est « ça » ; sinon « sa », remplaçable par « ma ». |
+| peu / peut / peux | Remplacez par « pouvait ». Si la phrase tient, c'est le verbe : « peut » (il, elle) ou « peux » (je, tu). Sinon « peu ». |
+| -er / -é / -ez | Remplacez par « vendre » ou « vendu ». « vendre » donne -er ; « vendu » donne -é. La terminaison -ez va avec « vous ». |
+
+## Ce qui est compté comme une faute
+
+| Type | Affiché | Compté dans la note |
+|---|---|---|
+| Confusion d'une fiche | oui | oui |
+| Grammaire, conjugaison, orthographe (LanguageTool) | oui | oui |
+| Typographie, ponctuation, style | oui | non |
+| Modification non classée | oui | non |
+
+:::note
+Le tri entre fautes comptées et fautes de typographie ou de style s'appuie sur les catégories renvoyées par LanguageTool. Il reste à affiner sur un usage réel.
+:::

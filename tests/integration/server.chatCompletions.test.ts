@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for issue #1 (incident inc-1790288620):
 // a reversible e2e test fault ("E2E-DEV-TEST forced handler failure") was

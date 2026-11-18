@@ -1,0 +1,42 @@
+---
+title: "Pour qui, pourquoi, comment"
+description: "Grammaria corrige vos textes en français aussi vite qu'un correcteur classique, et vous aide à ne plus refaire les mêmes fautes."
+---
+
+## Pour qui
+
+Grammaria s'adresse aux **adultes qui écrivent en français tous les jours** — messages, courriels, comptes rendus — et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
+
+Ce n'est pas un outil scolaire. Il ne propose ni cours à suivre ni séries d'exercices. Il part d'un constat : quand on est pressé, on veut un texte propre tout de suite, pas une leçon.
+
+## Pourquoi
+
+Un correcteur automatique rend service, mais il a un effet pervers : on colle son texte, on copie le résultat, et **on n'apprend jamais rien**. Les mêmes fautes reviennent pendant des mois.
+
+Les méthodes d'apprentissage classiques échouent pour la raison inverse : elles demandent du temps et de l'attention au moment précis où l'on n'en a pas.
+
+Grammaria cherche le point d'équilibre :
+
+- la correction reste **instantanée**, sans étape imposée ;
+- l'application **observe** les fautes qui reviennent, sur vos vrais textes ;
+- elle n'intervient que rarement, sur une seule règle à la fois, avec une explication courte du type « remplacez par X, car Y ».
+
+## Comment
+
+1. Vous collez votre texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie immédiatement.
+2. En parallèle, Grammaria compare votre texte au texte corrigé et classe chaque faute par règle.
+3. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
+4. Une **note sur 20** suit votre progression, texte par texte et sur sept jours.
+5. Les confusions les plus courantes (a/à, on/ont, ces/ses, -er/-é…) sont accompagnées d'une **fiche** qui donne le test à appliquer.
+
+Le détail du mécanisme est décrit dans [Fonctionnement](/docs/decouvrir/fonctionnement/). Les interventions pédagogiques sur les fautes récurrentes sont décrites dans la [feuille de route](/docs/decouvrir/feuille-de-route/) : elles ne sont pas encore disponibles.
+
+## Ce qu'il faut pour l'utiliser
+
+Grammaria s'héberge soi-même. Vos textes ne quittent pas votre infrastructure.
+
+- un modèle de langage accessible par une API compatible OpenAI (vLLM, SGLang, Ollama, ou un fournisseur en ligne) ;
+- [LanguageTool](https://languagetool.org), lancé en conteneur ;
+- Docker, ou Bun et Node.js.
+
+Poursuivez avec l'[installation](/docs/demarrer/installation/).

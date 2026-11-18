@@ -29,7 +29,7 @@ export function Header({ theme, onToggleTheme, onOpenSettings }: Props) {
           </div>
           <div className="min-w-0">
             <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white tracking-tight leading-tight truncate">
-              AI Corrector
+              Grammaria
             </h1>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium tracking-wide truncate">
               Correcteur intelligent

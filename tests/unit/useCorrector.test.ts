@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useCorrector } from "../../src/hooks/useCorrector";
 
 // Mock correctText at module level
@@ -43,8 +43,8 @@ describe("useCorrector", () => {
         (_text, _settings, callbacks) =>
           new Promise((resolve) => {
             resolveFirstCall = () => {
-              callbacks?.onTextDone?.("First result", 100);
-              resolve([]);
+              callbacks?.onText?.("First result");
+              resolve({ text: "First result", duration: 100 });
             };
           }),
       );
@@ -58,7 +58,7 @@ describe("useCorrector", () => {
 
       // Démarre première correction
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // Vérifie que isLoading est à true (la correction est en cours)
@@ -67,7 +67,7 @@ describe("useCorrector", () => {
       // Tente une deuxième correction pendant que la première est en cours
       // Cette deuxième appel ne devrait PAS démarrer
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // isLoading devrait toujours être true (première correction pas terminée)
@@ -88,8 +88,8 @@ describe("useCorrector", () => {
     it("isRunning_flag - Allow new calls after previous completes", async () => {
       const { correctText } = await import("../../src/utils/llm");
       vi.mocked(correctText).mockImplementation((_text, _settings, callbacks) => {
-        callbacks?.onTextDone?.("Corrected text", 100);
-        return Promise.resolve([]);
+        callbacks?.onText?.("Corrected text");
+        return Promise.resolve({ text: "Corrected text", duration: 100 });
       });
 
       const { result } = renderHook(() => useCorrector());
@@ -100,7 +100,7 @@ describe("useCorrector", () => {
 
       // Première correction
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
         await new Promise((r) => setTimeout(r, 10));
       });
 
@@ -109,7 +109,7 @@ describe("useCorrector", () => {
 
       // Deuxième correction devrait être possible
       await act(async () => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
         await new Promise((r) => setTimeout(r, 10));
       });
 
@@ -130,7 +130,7 @@ describe("useCorrector", () => {
       globalThis.fetch = ltFetch as unknown as typeof fetch;
 
       const { correctText } = await import("../../src/utils/llm");
-      vi.mocked(correctText).mockResolvedValue([]);
+      vi.mocked(correctText).mockResolvedValue({ text: "Texte corrigé", duration: 1 });
 
       const { result } = renderHook(() => useCorrector());
 
@@ -141,7 +141,7 @@ describe("useCorrector", () => {
 
       // Démarre première correction - LT va être appelé
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       // Attend que le fetch LT soit appelé
@@ -173,7 +173,7 @@ describe("useCorrector", () => {
       vi.mocked(correctText).mockImplementation(
         () =>
           new Promise((resolve) => {
-            resolve([]);
+            resolve({ text: "Texte corrigé", duration: 1 });
           }),
       );
 
@@ -192,7 +192,7 @@ describe("useCorrector", () => {
 
       // Démarre correction
       act(() => {
-        result.current.handleCorrect();
+        void result.current.handleCorrect();
       });
 
       await act(async () => {
@@ -204,7 +204,7 @@ describe("useCorrector", () => {
 
       // Résout le fetch LT après unmount
       await act(async () => {
-        // biome-ignore lint/style/noNonNullAssertion: set in mock before unmount
+        // set in mock before unmount
         resolveFetch!({ ok: true, json: async () => ({ matches: [] }) });
         await new Promise((r) => setTimeout(r, 50));
       });
@@ -254,7 +254,7 @@ describe("useCorrector", () => {
       });
       expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "ai-corrector:settings",
+        "grammaria:settings",
         expect.stringContaining('"mode":"formel"'),
       );
     });
@@ -298,7 +298,7 @@ describe("useCorrector", () => {
       // Seulement UN appel setItem (pour le dernier changement)
       expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "ai-corrector:settings",
+        "grammaria:settings",
         expect.stringContaining('"mode":"informel"'),
       );
     });

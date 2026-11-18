@@ -25,7 +25,7 @@ export function useLanguageTool() {
         }
       }
     }
-    check();
+    void check();
 
     return () => {
       cancelled = true;

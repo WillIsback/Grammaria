@@ -36,6 +36,7 @@ export function LTSetupBanner({ onDismiss }: Props) {
         {onDismiss && (
           <button
             type="button"
+            aria-label="Fermer"
             onClick={onDismiss}
             className="w-7 h-7 rounded-lg flex items-center justify-center
               text-amber-500 dark:text-amber-400

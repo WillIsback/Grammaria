@@ -1,0 +1,76 @@
+---
+title: "API"
+description: "Routes HTTP exposées par le serveur Grammaria."
+---
+
+Toutes les routes sont servies par le serveur Bun, sur le port `PORT`.
+
+## Correction
+
+### `POST /v1/chat/completions`
+
+Corps au format OpenAI (`model`, `messages`, `temperature`), plus un champ `correction_mode` utilisé pour la télémétrie. La réponse est un flux SSE :
+
+```
+data: {"delta":"Bonjour "}
+data: {"delta":"à tous."}
+data: {"done":true,"text":"Bonjour à tous.","duration":412}
+```
+
+En cas d'erreur pendant le flux : `data: {"error":"…"}`. Des lignes `: keepalive` sont émises toutes les cinq secondes.
+
+### `/v1/*`
+
+Les autres routes, dont `GET /v1/models`, sont relayées telles quelles au serveur du modèle.
+
+### `/api/lt/*`
+
+Relais vers LanguageTool. L'interface appelle `POST /api/lt/v2/check` et `GET /api/lt/v2/languages`.
+
+## Analyse et journal
+
+### `POST /api/analyze`
+
+Calcule le diff, le croise avec les détections, enregistre le résultat dans le journal et le renvoie.
+
+```json
+{
+  "original": "Ils on vu le film.",
+  "corrected": "Ils ont vu le film.",
+  "matches": []
+}
+```
+
+`matches` est le tableau renvoyé par LanguageTool. `original` et `corrected` sont limités à 20 000 caractères.
+
+Réponse :
+
+```json
+{
+  "corrections": [
+    {
+      "avant": "on",
+      "apres": "ont",
+      "faults": [{ "ruleKey": "PAIRE:on/ont", "source": "fiche", "counted": true }],
+      "fiche": { "titre": "on / ont", "astuce": "Remplacez par « avaient »…" }
+    }
+  ],
+  "wordCount": 5,
+  "faultCount": 1,
+  "unclassifiedCount": 0,
+  "score": 0,
+  "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 }
+}
+```
+
+### `GET /api/journal?days=7`
+
+Bilan de la période (1 à 365 jours, 7 par défaut) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
+
+### `DELETE /api/journal`
+
+Efface tout le journal. Réponse : `{"purged": true}`.
+
+## Mots valides
+
+`GET` et `POST /api/valid-words` lisent et complètent `public/data/valid-words.json`. Ces routes sont héritées d'ai_corrector ; l'interface actuelle ne les utilise pas.

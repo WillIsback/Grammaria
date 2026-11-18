@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for the v1.5.14 incident (2026-10-23): server.ts imported a
 // new ./src/utils/llmJson.ts, but the runtime stage of the Dockerfile copies
@@ -22,7 +22,11 @@ describe("Dockerfile runtime stage", () => {
     (m) => m[1] ?? m[2],
   );
 
+  // A file is covered when it is copied by name or when its directory is.
+  const isCopied = (file: string) =>
+    copied.some((entry) => entry === file || file.startsWith(`${entry.replace(/\/$/, "")}/`));
+
   it.each(localImports)("copies %s imported by server.ts", (file) => {
-    expect(copied).toContain(file);
+    expect(isCopied(file), `${file} is missing from the runtime image`).toBe(true);
   });
 });

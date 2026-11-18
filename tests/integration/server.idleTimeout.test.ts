@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 // Regression test for issue #17 (Bug 1):
 // Bun.serve's default 10s idleTimeout aborted any /v1/chat/completions request

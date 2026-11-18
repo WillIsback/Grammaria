@@ -17,6 +17,8 @@ function App() {
     setTextContent,
     outputText,
     corrections,
+    analysis,
+    analysisNotice,
     settings,
     setSettings,
     isLoading,
@@ -27,10 +29,10 @@ function App() {
     handleReset,
   } = useCorrector();
 
-  const { isAvailable: ltAvailable } = useLanguageTool();
+  const { isAvailable: ltAvailable, isChecking: ltChecking } = useLanguageTool();
 
   useEffect(() => {
-    initModel();
+    void initModel();
   }, []);
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -57,7 +59,7 @@ function App() {
   }, []);
 
   const handleCopySuccess = (text: string) => {
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setToast({
       id: `copy-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       message: "Texte copié dans le presse-papier",
@@ -69,7 +71,7 @@ function App() {
     <div className="min-h-screen flex flex-col bg-[#f7f9fc] dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <div className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(70%_45%_at_50%_0%,rgba(59,130,246,0.07),transparent_70%)] dark:bg-[radial-gradient(70%_45%_at_50%_0%,rgba(37,99,235,0.14),transparent_70%)]" />
 
-      {settings.engine === "lt" && !ltAvailable && <LTSetupBanner />}
+      {!ltAvailable && !ltChecking && <LTSetupBanner />}
       <Header
         theme={theme}
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
@@ -131,6 +133,9 @@ function App() {
               onReset={handleReset}
               isLoading={isLoading}
               isLoadingCorrections={isLoadingCorrections}
+              score={analysis?.score}
+              week={analysis?.week}
+              analysisNotice={analysisNotice}
             />
           </div>
         </main>

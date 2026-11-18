@@ -1,0 +1,126 @@
+/**
+ * Fiches de règles au format « remplacez par X, car Y ».
+ *
+ * Les confusions les plus courantes (homophones, terminaisons -er/-é) sont
+ * reconnues directement dans le diff, sans dépendre de LanguageTool : la clé
+ * est donc stable quel que soit le moteur.
+ */
+
+export interface Fiche {
+  titre: string;
+  astuce: string;
+}
+
+export const FICHES: Record<string, Fiche> = {
+  "PAIRE:a/à": {
+    titre: "a / à",
+    astuce:
+      "Remplacez par « avait ». Si la phrase reste correcte, écrivez « a », car c'est le verbe avoir ; sinon écrivez « à », la préposition.",
+  },
+  "PAIRE:ou/où": {
+    titre: "ou / où",
+    astuce:
+      "Remplacez par « ou bien ». Si la phrase reste correcte, écrivez « ou », car il exprime un choix ; sinon écrivez « où », qui indique un lieu ou un moment.",
+  },
+  "PAIRE:et/est": {
+    titre: "et / est",
+    astuce:
+      "Remplacez par « était ». Si la phrase reste correcte, écrivez « est », car c'est le verbe être ; sinon écrivez « et », qui relie deux éléments.",
+  },
+  "PAIRE:on/ont": {
+    titre: "on / ont",
+    astuce:
+      "Remplacez par « avaient ». Si la phrase reste correcte, écrivez « ont », car c'est le verbe avoir ; sinon écrivez « on », le pronom, remplaçable par « il ».",
+  },
+  "PAIRE:son/sont": {
+    titre: "son / sont",
+    astuce:
+      "Remplacez par « étaient ». Si la phrase reste correcte, écrivez « sont », car c'est le verbe être ; sinon écrivez « son », le possessif, remplaçable par « mon ».",
+  },
+  "PAIRE:ces/ses": {
+    titre: "ces / ses",
+    astuce:
+      "Mettez le groupe au singulier. Si vous obtenez « son » ou « sa », écrivez « ses », car c'est un possessif ; si vous obtenez « ce » ou « cette », écrivez « ces ».",
+  },
+  "PAIRE:ce/se": {
+    titre: "ce / se",
+    astuce:
+      "Remplacez par « me » en changeant le sujet en « je ». Si la phrase reste correcte, écrivez « se », car c'est un pronom placé devant un verbe ; sinon écrivez « ce ».",
+  },
+  "PAIRE:c'est/s'est": {
+    titre: "c'est / s'est",
+    astuce:
+      "Remplacez par « cela est ». Si la phrase reste correcte, écrivez « c'est » ; sinon écrivez « s'est », car il s'agit d'un verbe pronominal (« il s'est levé », « je me suis levé »).",
+  },
+  "PAIRE:la/là": {
+    titre: "la / là",
+    astuce:
+      "Remplacez par « là-bas ». Si la phrase reste correcte, écrivez « là », car il indique un lieu ; sinon écrivez « la », l'article ou le pronom.",
+  },
+  "PAIRE:sa/ça": {
+    titre: "sa / ça",
+    astuce:
+      "Remplacez par « cela ». Si la phrase reste correcte, écrivez « ça » ; sinon écrivez « sa », car c'est un possessif, remplaçable par « ma ».",
+  },
+  "PAIRE:peu/peut/peux": {
+    titre: "peu / peut / peux",
+    astuce:
+      "Remplacez par « pouvait ». Si la phrase reste correcte, c'est le verbe pouvoir : « peut » avec il ou elle, « peux » avec je ou tu. Sinon écrivez « peu », le contraire de « beaucoup ».",
+  },
+  "TERMINAISON:er/é": {
+    titre: "Terminaison -er, -é ou -ez",
+    astuce:
+      "Remplacez le verbe par « vendre » ou « vendu ». Si « vendre » convient, écrivez -er, car c'est un infinitif ; si « vendu » convient, écrivez -é, car c'est un participe passé. La terminaison -ez est réservée au sujet « vous ».",
+  },
+};
+
+const GROUPES: string[][] = [
+  ["a", "à"],
+  ["ou", "où"],
+  ["et", "est"],
+  ["on", "ont"],
+  ["son", "sont"],
+  ["ces", "ses"],
+  ["ce", "se"],
+  ["c'est", "s'est"],
+  ["la", "là"],
+  ["sa", "ça"],
+  ["peu", "peut", "peux"],
+];
+
+const TERMINAISONS = ["ées", "ée", "és", "er", "ez", "é"];
+
+function normaliser(mot: string): string {
+  return mot.trim().toLowerCase().replace(/’/g, "'");
+}
+
+function decouper(mot: string): { radical: string; terminaison: string } | null {
+  for (const terminaison of TERMINAISONS) {
+    if (mot.endsWith(terminaison) && mot.length - terminaison.length >= 2) {
+      return { radical: mot.slice(0, -terminaison.length), terminaison };
+    }
+  }
+  return null;
+}
+
+/** Clé de fiche si le remplacement « avant → après » est une confusion connue. */
+export function detecterConfusion(avant: string, apres: string): string | null {
+  const a = normaliser(avant);
+  const b = normaliser(apres);
+  if (!a || !b || a === b) return null;
+
+  for (const groupe of GROUPES) {
+    if (groupe.includes(a) && groupe.includes(b)) return `PAIRE:${groupe.join("/")}`;
+  }
+
+  const da = decouper(a);
+  const db = decouper(b);
+  if (da && db && da.radical === db.radical) {
+    // « mangé → mangée » est un accord, pas une confusion infinitif/participe.
+    const infinitifOuVous = (t: string) => t === "er" || t === "ez";
+    if (infinitifOuVous(da.terminaison) || infinitifOuVous(db.terminaison)) {
+      return "TERMINAISON:er/é";
+    }
+  }
+  return null;
+}

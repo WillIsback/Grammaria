@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AnalyzedCorrection } from "../analysis/analyze";
+import { type AnalysisResponse, analyzeCorrection } from "../services/journal";
 import { applyLTCorrections, runLanguageTool } from "../services/languagetool";
-import type { CorrectionEntry, CorrectionSettings, CorrectionStats } from "../types";
+import type { CorrectionEntry, CorrectionSettings, CorrectionStats, LTMatch } from "../types";
 import { correctText } from "../utils/llm";
+
+const SETTINGS_KEY = "grammaria:settings";
+
+/** Libellé de règle affiché pour une modification analysée. */
+function describeCorrection(c: AnalyzedCorrection): CorrectionEntry {
+  const fault = c.faults[0];
+  let regle = "Non classé";
+  if (c.fiche) regle = c.fiche.titre;
+  else if (fault) regle = fault.message || fault.categoryName || fault.ruleKey;
+  return { avant: c.avant, apres: c.apres, regle, astuce: c.fiche?.astuce };
+}
 
 export function useCorrector() {
   const [textContent, setTextContent] = useState("");
@@ -9,6 +22,8 @@ export function useCorrector() {
   const [corrections, setCorrections] = useState<CorrectionEntry[]>([]);
   const [isLoadingText, setIsLoadingText] = useState(false);
   const [isLoadingCorrections, setIsLoadingCorrections] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [settings, setSettings] = useState<CorrectionSettings>({
     engine: "llm",
     mode: "formel",
@@ -16,7 +31,6 @@ export function useCorrector() {
     fixSpelling: true,
     fixSyntax: true,
     fixStyle: true,
-    showCorrections: true,
   });
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<CorrectionStats>({
@@ -30,7 +44,7 @@ export function useCorrector() {
   // Charger les settings sauvegardés
   useEffect(() => {
     try {
-      const savedSettings = localStorage.getItem("ai-corrector:settings");
+      const savedSettings = localStorage.getItem(SETTINGS_KEY);
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         setSettings((prev) => ({ ...prev, ...parsed }));
@@ -40,6 +54,8 @@ export function useCorrector() {
     }
   }, []);
 
+  const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cleanup à l'unmount
   useEffect(() => {
     return () => {
@@ -48,14 +64,12 @@ export function useCorrector() {
     };
   }, []);
 
-  const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Debounce de la sauvegarde des settings (500ms)
   useEffect(() => {
     if (localStorageTimeoutRef.current) clearTimeout(localStorageTimeoutRef.current);
     localStorageTimeoutRef.current = setTimeout(() => {
       try {
-        localStorage.setItem("ai-corrector:settings", JSON.stringify(settings));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       } catch {
         /* ignore */
       }
@@ -78,6 +92,8 @@ export function useCorrector() {
     setError(null);
     setOutputText("");
     setCorrections([]);
+    setAnalysis(null);
+    setAnalysisNotice(null);
     setStats({ processingTime: 0, modificationCount: 0 });
 
     abortControllerRef.current = new AbortController();
@@ -99,16 +115,18 @@ export function useCorrector() {
         });
         setIsLoadingText(false);
       } else {
-        // Moteur LLM
-        let finalText = "";
+        // Moteur LLM : le correcteur ne renvoie que le texte. LanguageTool
+        // tourne en parallèle sur le texte d'origine pour classer les fautes.
+        const signal = abortControllerRef.current.signal;
+        const ltPromise: Promise<LTMatch[] | null> = runLanguageTool(textContent, signal).catch(
+          () => null,
+        );
 
-        const llmCorrections = await correctText(textContent, settings, {
-          onTextDone: (text, duration) => {
-            finalText = text;
+        const { text: finalText, duration } = await correctText(textContent, settings, {
+          onText: (text) => {
+            if (!text) return;
             setOutputText(text);
             setIsLoadingText(false);
-            if (settings.showCorrections) setIsLoadingCorrections(true);
-            setStats((prev) => ({ ...prev, processingTime: duration }));
           },
         });
 
@@ -116,9 +134,36 @@ export function useCorrector() {
           throw new Error("LLM returned empty response");
         }
 
-        setCorrections(llmCorrections);
-        setIsLoadingCorrections(false);
-        setStats((prev) => ({ ...prev, modificationCount: llmCorrections.length }));
+        setOutputText(finalText);
+        setIsLoadingText(false);
+        setIsLoadingCorrections(true);
+        setStats((prev) => ({ ...prev, processingTime: duration }));
+
+        // Le texte corrigé est déjà affiché : un échec de l'analyse ne doit
+        // jamais bloquer la copie.
+        try {
+          const matches = await ltPromise;
+          if (matches === null) {
+            setAnalysisNotice(
+              "LanguageTool est indisponible : l'analyse des fautes est partielle.",
+            );
+          }
+          const result = await analyzeCorrection(textContent, finalText, matches ?? [], signal);
+          // L'astuce d'une règle n'est affichée qu'à sa première occurrence.
+          const seenTips = new Set<string>();
+          const entries = result.corrections.map((c) => {
+            const entry = describeCorrection(c);
+            if (entry.astuce && seenTips.has(entry.astuce)) entry.astuce = undefined;
+            else if (entry.astuce) seenTips.add(entry.astuce);
+            return entry;
+          });
+          setAnalysis(result);
+          setCorrections(entries);
+          setStats((prev) => ({ ...prev, modificationCount: entries.length }));
+        } catch (analysisError) {
+          if (analysisError instanceof Error && analysisError.name === "AbortError") return;
+          setAnalysisNotice("L'analyse des fautes est indisponible pour ce texte.");
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -135,6 +180,8 @@ export function useCorrector() {
     setTextContent("");
     setOutputText("");
     setCorrections([]);
+    setAnalysis(null);
+    setAnalysisNotice(null);
     setStats({ processingTime: 0, modificationCount: 0 });
     setError(null);
   }, []);
@@ -144,6 +191,8 @@ export function useCorrector() {
     setTextContent,
     outputText,
     corrections,
+    analysis,
+    analysisNotice,
     settings,
     setSettings,
     isLoading: isLoadingText,
