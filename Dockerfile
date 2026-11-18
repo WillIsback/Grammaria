@@ -17,7 +17,6 @@ WORKDIR /app
 
 # Copier les artefacts du build
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
 
 # Copier les fichiers serveur
 COPY server.ts journal.ts telemetry.ts config.ts package.json bun.lock ./
@@ -28,10 +27,6 @@ COPY src/types.ts ./src/
 # Installer uniquement les dépendances de production
 # --ignore-scripts : le script "prepare" appelle vp, absent des dépendances de production
 RUN bun install --production --frozen-lockfile --ignore-scripts
-
-# Créer le fichier valid-words.json vide si absent
-RUN mkdir -p public/data && \
-    [ -f public/data/valid-words.json ] || echo '{"words":[]}' > public/data/valid-words.json
 
 # Journal des fautes (SQLite) : monter un volume pour le conserver
 RUN mkdir -p data

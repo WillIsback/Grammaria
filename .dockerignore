@@ -5,7 +5,6 @@ dist/
 .env.local
 *.log
 docs/
-evals/
 tests/
 .vscode/
 .idea/

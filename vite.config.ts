@@ -9,13 +9,13 @@ export default defineConfig({
   },
   fmt: {
     printWidth: 100,
-    // Projets annexes (site Astro, évaluations Python) et données générées.
-    ignorePatterns: ["docs/**", "eval/**", "benchmark/**", "public/**"],
+    // Le site Astro de documentation a son propre outillage.
+    ignorePatterns: ["docs/**"],
   },
   lint: {
     plugins: ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    ignorePatterns: ["docs/**", "eval/**", "public/**"],
+    ignorePatterns: ["docs/**"],
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
       // Exceptions reprises de l'ancienne configuration Biome.

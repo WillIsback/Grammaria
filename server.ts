@@ -1,7 +1,7 @@
 // Telemetry MUST be imported first — instruments OpenAI SDK before it loads
 import "./telemetry.ts";
 
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import OpenAI from "openai";
@@ -15,8 +15,6 @@ const tracer = trace.getTracer("grammaria");
 
 const PORT = config.port;
 const DIST_DIR = join(import.meta.dir, "dist");
-const VALID_WORDS_PATH = join(import.meta.dir, "public", "data", "valid-words.json");
-
 const journal = new Journal(config.journalPath);
 
 /** Taille maximale d'un texte accepté par /api/analyze (caractères). */
@@ -41,75 +39,11 @@ function getCorsHeaders(req: Request): Headers {
   return headers;
 }
 
-function readValidWords(): string[] {
-  try {
-    const data = JSON.parse(readFileSync(VALID_WORDS_PATH, "utf-8"));
-    return data.words || [];
-  } catch {
-    return [];
-  }
-}
-
-function writeValidWords(words: string[]): void {
-  const tmpPath = `${VALID_WORDS_PATH}.tmp`;
-  writeFileSync(tmpPath, `${JSON.stringify({ words }, null, 2)}\n`);
-  renameSync(tmpPath, VALID_WORDS_PATH);
-}
-
 Bun.serve({
   port: PORT,
   async fetch(req: Request, server: Bun.Server<undefined>): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
-
-    // === API: Valid Words ===
-    if (path === "/api/valid-words") {
-      const headers = getCorsHeaders(req);
-
-      if (req.method === "OPTIONS") {
-        const corsHeaders = getCorsHeaders(req);
-        corsHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        corsHeaders.set("Access-Control-Allow-Headers", "Content-Type");
-        return new Response(null, { headers: corsHeaders });
-      }
-
-      if (req.method === "GET") {
-        return new Response(JSON.stringify({ words: readValidWords() }), { headers });
-      }
-
-      if (req.method === "POST") {
-        try {
-          const body = await req.json();
-          const word = typeof body.word === "string" ? body.word.trim() : "";
-          if (!word || word.length > 100 || !/^[\p{L}''\-\s]+$/u.test(word)) {
-            return new Response(JSON.stringify({ error: "Invalid word" }), {
-              status: 400,
-              headers,
-            });
-          }
-
-          const words = readValidWords();
-          if (!words.includes(word)) {
-            words.push(word);
-            try {
-              writeValidWords(words);
-            } catch {
-              return new Response(JSON.stringify({ error: "Failed to save word" }), {
-                status: 500,
-                headers,
-              });
-            }
-          }
-
-          return new Response(JSON.stringify({ words }), { headers });
-        } catch {
-          return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-            status: 400,
-            headers,
-          });
-        }
-      }
-    }
 
     // === API: Analyse (diff + croisement LanguageTool) et journal ===
     if (path === "/api/analyze" || path === "/api/journal") {

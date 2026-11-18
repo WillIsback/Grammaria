@@ -30,22 +30,10 @@ temp/
 *.tmp
 .worktrees/
 
-# Python
-.venv/
-evals/.venv/
-__pycache__/
-*.pyc
-
-# Données utilisateur (générées au runtime)
-public/data/valid-words.json
-
 # Plans et specs de développement (contiennent des infos perso)
 docs/superpowers/
 .superpowers/
 
-# Expérimentations ML
-evals/
-
-# Données dupliquées (source de vérité : public/data/)
+# Journal des fautes (SQLite, généré au runtime)
 data/
 .vitest/
