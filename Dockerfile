@@ -15,6 +15,10 @@ RUN npm run build
 FROM oven/bun:alpine
 WORKDIR /app
 
+# Fuseaux horaires : sans tzdata, la variable TZ est ignorée et le « jour » des
+# sollicitations (une par règle et par jour) changerait à minuit UTC.
+RUN apk add --no-cache tzdata
+
 # Copier les artefacts du build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
