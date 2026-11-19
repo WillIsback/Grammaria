@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { BadgeAnnonce } from "../analysis/badges/vue";
 import { BadgeIcon } from "./BadgeIcon";
+import { CLOSE_PATH, Icon } from "./Icon";
 
 /** Durée d'affichage de la notification, prolongée tant qu'elle est survolée ou focalisée. */
 export const DUREE_NOTIFICATION_MS = 8000;
@@ -98,18 +99,9 @@ export function BadgeNotice({ badges, onClose, suspendue = false }: Props) {
               text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800
               transition-colors"
           >
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-            >
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon className="w-3.5 h-3.5" strokeWidth={2.5}>
+              <path d={CLOSE_PATH} />
+            </Icon>
           </button>
         </div>
       )}

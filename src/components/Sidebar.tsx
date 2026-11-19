@@ -2,6 +2,7 @@ import type React from "react";
 import { useState } from "react";
 import { purgeJournal } from "../services/journal";
 import type { CorrectionMode, CorrectionSettings } from "../types";
+import { CHECK_PATH, CloseButton, Icon } from "./Icon";
 
 interface Props {
   settings: CorrectionSettings;
@@ -21,7 +22,8 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
   technical: { label: "Technique", icon: "T" },
 };
 
-const sectionTitle =
+/** Titre de rubrique, partagé avec les rubriques du menu Paramètres. */
+export const sectionTitle =
   "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 
 export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden = false }: Props) {
@@ -82,16 +84,12 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
               : "border-gray-300 dark:border-gray-600 bg-transparent"
           }`}
       >
-        <svg
-          aria-hidden="true"
+        <Icon
           className={`w-3 h-3 text-white transition-opacity ${checked ? "opacity-100" : "opacity-0"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
           strokeWidth={3}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+          <path d={CHECK_PATH} />
+        </Icon>
       </div>
     </div>
   );
@@ -117,25 +115,7 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
       >
         <div className="lg:hidden flex items-center justify-between mb-5">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Réglages</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer les réglages"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400
-              hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200
-              transition-colors"
-          >
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton label="Fermer les réglages" onClick={onClose} />
         </div>
 
         <div className="mb-6">
