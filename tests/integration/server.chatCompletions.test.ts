@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { chatHandlerSource as handlerBody } from "./serverSource.ts";
+import { chatHandlerSource as handlerBody, serverSource } from "./serverSource.ts";
 
 // Regression test for issue #1 (incident inc-1790288620):
 // a reversible e2e test fault ("E2E-DEV-TEST forced handler failure") was
@@ -29,8 +29,12 @@ describe("POST /v1/chat/completions — no forced test fault (issue #1)", () => 
     expect(stripped).not.toMatch(/throw\s+new\s+Error/);
   });
 
+  // v0.3.0 : le gestionnaire (api/handler.ts) ouvre le flux par la dépendance
+  // « modèle », que server.ts implémente avec le SDK OpenAI.
   it("reaches the upstream OpenAI SDK call in the handler", () => {
     const handler = handlerBody();
-    expect(handler).toMatch(/llmClient\.chat\.completions\.create/);
+    expect(handler).toMatch(/await modele\.ouvrirFlux\(createParams,/);
+    const impl = serverSource.slice(serverSource.indexOf("async ouvrirFlux("));
+    expect(impl.slice(0, 400)).toMatch(/llmClient\.chat\.completions\.create/);
   });
 });

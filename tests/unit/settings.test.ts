@@ -3,6 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { config } from "../../config";
+import {
+  type LlmSettings,
+  parseSettingsFile,
+  parseUpdate,
+  publicSettingsView,
+  settingsFileContent,
+} from "../../api/reglages";
 import { normalizeTarget, SettingsStore } from "../../settings";
 
 const initial = { ...config };
@@ -133,5 +140,57 @@ describe("SettingsStore — migration du raisonnement (v1 → v2)", () => {
       settingsVersion: 2,
       llmDisableThinking: false,
     });
+  });
+});
+
+// v0.3.0 : la validation est pure (api/reglages.ts), sans fichier ni Node,
+// pour servir aussi au gestionnaire d'API dans la WebView du bureau.
+describe("api/reglages — validation pure", () => {
+  const reglages: LlmSettings = {
+    llmTarget: "http://gpu:8000",
+    llmApiKey: "sk-secret",
+    llmModelName: "m",
+    llmDisableThinking: true,
+  };
+
+  it("parseUpdate normalise et ne garde que les champs connus", () => {
+    expect(
+      parseUpdate({ llmTarget: " https://api.example.com/v1/ ", llmModelName: " m ", autre: 1 }),
+    ).toEqual({ llmTarget: "https://api.example.com", llmModelName: "m" });
+    expect(parseUpdate({})).toEqual({});
+  });
+
+  it.each([[null], ["texte"], [{ llmApiKey: 1 }], [{ llmModelName: "x".repeat(2_001) }]])(
+    "parseUpdate refuse %j",
+    (input) => {
+      expect(() => parseUpdate(input)).toThrow();
+    },
+  );
+
+  it("parseSettingsFile : migration v1 → v2 sans modifier l'objet lu", () => {
+    const v1 = { llmTarget: "http://gpu:8000", llmDisableThinking: false };
+    expect(parseSettingsFile(v1)).toEqual({ llmTarget: "http://gpu:8000" });
+    expect(v1).toEqual({ llmTarget: "http://gpu:8000", llmDisableThinking: false });
+    expect(parseSettingsFile({ settingsVersion: 2, llmDisableThinking: false })).toEqual({
+      llmDisableThinking: false,
+    });
+    expect(() => parseSettingsFile(null)).toThrow();
+  });
+
+  it("settingsFileContent ajoute la version", () => {
+    expect(settingsFileContent(reglages)).toEqual({ settingsVersion: 2, ...reglages });
+  });
+
+  it("publicSettingsView ne renvoie jamais la clé", () => {
+    const vue = publicSettingsView(reglages, { editable: true, configured: true });
+    expect(vue).toEqual({
+      editable: true,
+      configured: true,
+      llmTarget: "http://gpu:8000",
+      llmModelName: "m",
+      llmDisableThinking: true,
+      hasApiKey: true,
+    });
+    expect(JSON.stringify(vue)).not.toContain("sk-secret");
   });
 });
