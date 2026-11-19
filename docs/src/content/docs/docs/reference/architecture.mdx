@@ -23,6 +23,7 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 | `journal.ts` | Journal SQLite (`bun:sqlite`) |
 | `journal.rules.ts` | État des règles et historique dans la base du journal ; migration du schéma |
 | `journal.progress.ts` | Lecture du journal pour l'écran Progression (requêtes en lecture seule) |
+| `journal.badges.ts` | Badges obtenus dans la base du journal ; attribution rétroactive à la migration |
 | `config.ts` | Lecture des variables d'environnement |
 | `telemetry.ts` | Initialisation d'OpenTelemetry |
 | `src/analysis/diff.ts` | Diff au niveau du mot |
@@ -35,6 +36,9 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 | `src/analysis/progression/reglages.ts` | Réglages de l'écran Progression (score de maîtrise, fenêtres, minimums) |
 | `src/analysis/progression/calcul.ts` | Calcul de l'écran Progression à partir des lignes du journal (fonction pure, horloge injectée) |
 | `src/components/progression/` | Écran Progression et ses graphiques SVG |
+| `src/analysis/badges/catalogue.ts` | Catalogue des badges (données) |
+| `src/analysis/badges/evaluation.ts` | Évaluation des badges à partir des faits du journal (fonction pure) |
+| `src/components/BadgeGallery.tsx`, `BadgeNotice.tsx` | Galerie des badges (en bas de l'écran Progression) et notification d'un badge obtenu |
 | `src/hooks/useCorrector.ts` | Orchestration côté interface |
 | `src/utils/prompt.ts` | Construction du prompt |
 | `vite.config.ts` | Toute la configuration de l'outillage |

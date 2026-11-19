@@ -33,6 +33,8 @@ Pour chaque faute : la règle, la catégorie, le mot fautif, la correction et **
 
 Pour chaque règle : son état (observée, signalée, travaillée ou acquise), le nombre de fautes, les dates de la première et de la dernière faute, le nombre d'astuces et de choix affichés, vos réponses aux choix, et l'historique daté de ses changements d'état. Ces informations servent à décider de ce qui s'affiche près du bouton **Copier** (voir [Corriger un texte](/docs/utiliser/corriger/)). Elles ne contiennent aucun extrait de vos textes.
 
+Pour chaque [badge](/docs/utiliser/badges/) obtenu : son identifiant et sa date d'obtention.
+
 **Le texte entier n'est jamais enregistré.** Le journal est un fichier SQLite sur votre serveur (`JOURNAL_PATH`) ; rien n'est envoyé ailleurs.
 
 ## Effacer le journal
@@ -41,11 +43,11 @@ Dans la barre latérale, section **Journal des fautes**, le bouton **Effacer le 
 
 ## Mise à jour depuis la version 0.2
 
-Rien à faire. Au premier démarrage, le journal existant est conservé tel quel et l'état des règles est reconstruit à partir des fautes déjà enregistrées.
+Rien à faire. Au premier démarrage, le journal existant est conservé tel quel et l'état des règles est reconstruit à partir des fautes déjà enregistrées : une règle sans faute depuis longtemps est directement « acquise », à sa date réelle, sans message de réussite. Les [badges](/docs/utiliser/badges/) que le journal justifie déjà sont attribués de la même façon, sans notification.
 
 ## Consulter le bilan
 
-Le bilan s'affiche dans l'écran **Progression**, ouvert par le bouton en forme de graphique en haut à droite, à côté de **Paramètres** : score de maîtrise, note semaine après semaine, fautes pour 100 mots, règles par état, règles les plus fréquentes et mots pièges. Le mode d'emploi est dans [Progression](/docs/utiliser/progression/).
+Le bilan s'affiche dans l'écran **Progression**, ouvert par le bouton en forme de graphique en haut à droite, à côté de **Paramètres** : score de maîtrise, note semaine après semaine, fautes pour 100 mots, règles par état, règles les plus fréquentes, mots pièges et [badges](/docs/utiliser/badges/). Le mode d'emploi est dans [Progression](/docs/utiliser/progression/).
 
 Les mêmes informations sont accessibles par l'API, en une seule requête :
 
@@ -53,11 +55,12 @@ Les mêmes informations sont accessibles par l'API, en une seule requête :
 curl "http://localhost:25000/api/progress"
 ```
 
-Le bilan d'une période donnée et l'état de chaque règle se lisent ainsi :
+Le bilan d'une période donnée, l'état de chaque règle et les badges se lisent ainsi :
 
 ```bash
 curl "http://localhost:25000/api/journal?days=7"
 curl "http://localhost:25000/api/rules"
+curl "http://localhost:25000/api/badges"
 ```
 
 Voir la [référence de l'API](/docs/reference/api/).
