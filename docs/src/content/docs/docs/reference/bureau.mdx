@@ -1,6 +1,6 @@
 ---
-title: "Application de bureau : build et signature"
-description: "Comment l'application Tauri est construite, publiée et signée."
+title: "Application de bureau : build, signature et mise à jour"
+description: "Comment l'application Tauri est construite, publiée, signée et mise à jour."
 ---
 
 ## Architecture
@@ -9,7 +9,7 @@ L'application de bureau est une coquille [Tauri 2](https://tauri.app) (`src-taur
 
 1. `scripts/desktop/prepare-sidecar.ts` compile `server.ts` et le worker du correcteur en un exécutable Bun autonome (`bun build --compile`), nommé `grammaria-server-<plateforme>`, et copie à côté l'interface construite (`dist/`) et les règles de LanguageTool.
 2. Au lancement, la coquille choisit un port libre sur `127.0.0.1`, démarre ce serveur avec `GRAMMARIA_DESKTOP=1`, attend qu'il réponde, puis affiche son interface. Le serveur est arrêté à la fermeture.
-3. Aucune commande Tauri n'est exposée à la page : l'interface parle au serveur en HTTP, comme dans la version web.
+3. L'interface parle au serveur en HTTP, comme dans la version web. La page n'a accès qu'à quatre commandes Tauri, celles de la [mise à jour automatique](#mise-à-jour-automatique).
 
 En mode bureau, le serveur :
 
@@ -58,3 +58,75 @@ Secrets du dépôt à créer (les mêmes valeurs que dans Syntheo) :
 Variables facultatives (par défaut : le compte et le profil de Syntheo) : `AZURE_SIGNING_ENDPOINT` (`https://neu.codesigning.azure.net`), `AZURE_SIGNING_ACCOUNT` (`willisback-signing`), `AZURE_SIGNING_PROFILE` (`syntheo-public`).
 
 Sans ces secrets, une release publie des paquets Windows non signés et le workflow l'indique par un avertissement. Après le build, un test de fumée démarre le serveur embarqué (signé ou non) et vérifie que le correcteur grammatical répond.
+
+## Mise à jour automatique
+
+L'application se met à jour avec le plugin officiel [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/).
+
+### Fonctionnement
+
+1. Au démarrage, l'interface demande à l'application de chercher une mise à jour. L'application lit le manifeste `latest.json` de la **dernière release stable** : `https://github.com/WillIsback/Grammaria/releases/latest/download/latest.json`.
+2. Si la version annoncée est stable et plus récente, l'interface la propose (bandeau, et rubrique **Paramètres → Mises à jour**).
+3. Sur accord de l'utilisateur, l'application télécharge le paquet, vérifie sa signature avec la clé publique embarquée, l'installe et redémarre. Un paquet modifié, ou signé pour une autre version que celle annoncée, est refusé et la version en place est conservée.
+
+Toute la logique est dans `src-tauri/src/update.rs`. La page est servie par le serveur local (`http://127.0.0.1:<port>`), une origine « distante » pour Tauri : elle n'a donc aucun accès par défaut. `src-tauri/capabilities/mise-a-jour.json` lui ouvre quatre commandes, limitées à `http://127.0.0.1` :
+
+| Commande | Rôle |
+|---|---|
+| `update_status` | État courant |
+| `update_check` | Cherche une version ; ne télécharge rien |
+| `update_install` | Télécharge, vérifie, installe, redémarre |
+| `update_open_release_page` | Ouvre la page de la dernière release (adresse fixe) dans le navigateur |
+
+Les commandes de Tauri et des plugins (dont celles du plugin de mise à jour) restent fermées à la page. Les contrôles `Host` et `Origin` du serveur ne changent pas : la mise à jour ne passe pas par lui.
+
+### Paquets concernés
+
+| Paquet | Comportement |
+|---|---|
+| Installeur Windows NSIS (`-setup.exe`) | Mise à jour automatique |
+| AppImage | Mise à jour automatique |
+| MSI, `.deb` | L'application signale la nouvelle version et renvoie vers la page de téléchargement |
+
+Le manifeste ne décrit que l'installeur NSIS et l'AppImage. L'application reconnaît le paquet dont elle vient (marqueur posé par Tauri au build) : une installation MSI ou `.deb` n'installe jamais un paquet d'un autre type.
+
+### Versions stables uniquement
+
+Une pré-version (étiquette avec un tiret : `v0.4.0-rc.1`, `v0.4.0-1`) n'est jamais proposée :
+
+- GitHub ne la désigne pas comme « dernière release », donc l'adresse du manifeste ne pointe jamais dessus ;
+- `release.yml` n'écrit `latest.json` que pour une version stable ;
+- l'application elle-même refuse une version annoncée qui porte un suffixe de pré-version.
+
+### Signature des mises à jour
+
+Les mises à jour sont signées par une paire de clés propre à Tauri (minisign), **distincte de la signature Windows** : elle ne consomme aucune signature Azure.
+
+- La **clé publique** est dans `src-tauri/tauri.conf.json`, champ `plugins.updater.pubkey`. Tant qu'il est vide, l'application n'effectue aucune recherche et la rubrique indique que les mises à jour automatiques ne sont pas encore actives.
+- La **clé privée** n'existe que dans les secrets du dépôt. Elle ne doit jamais être écrite dans le dépôt, dans une issue ou dans un journal.
+
+| Secret | Valeur |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | Contenu du fichier de clé privée |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Mot de passe de la clé (ne pas créer ce secret si la clé n'en a pas) |
+
+`build-desktop.yml` ne produit les signatures (`.sig`) que pour une release, quand le secret existe et que la clé publique est renseignée. Dans les autres cas (pull request, lancement manuel, fork, secret absent), le build est identique à avant, sans artefact de mise à jour. Une release stable sans signature est publiée sans `latest.json`, avec un avertissement : elle n'est simplement pas proposée par la mise à jour automatique.
+
+### Activer les mises à jour (une seule fois)
+
+À faire par le propriétaire du dépôt, sur son ordinateur :
+
+1. Dans le dossier du projet, générer la paire de clés, en dehors du dépôt :
+
+   ```bash
+   npx tauri signer generate -w ~/.tauri/grammaria.key
+   ```
+
+   La commande demande un mot de passe (recommandé) et crée deux fichiers : `~/.tauri/grammaria.key` (clé privée) et `~/.tauri/grammaria.key.pub` (clé publique).
+
+2. Sauvegarder la clé privée et son mot de passe dans un gestionnaire de mots de passe. **Si elle est perdue, les applications déjà installées ne pourront plus être mises à jour** : il faudrait réinstaller à la main une version signée avec une nouvelle clé.
+3. Sur GitHub, dans **Settings → Secrets and variables → Actions**, créer le secret `TAURI_SIGNING_PRIVATE_KEY` avec le contenu de `~/.tauri/grammaria.key`, et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` avec le mot de passe.
+4. Copier le contenu de `~/.tauri/grammaria.key.pub` (une seule ligne) dans `src-tauri/tauri.conf.json`, champ `plugins.updater.pubkey`, puis fusionner ce changement. La clé publique n'est pas secrète.
+5. Publier une version stable : la release contient alors `latest.json` et les fichiers `.sig`. Les versions installées **à partir de celle-ci** se mettront à jour seules ; les versions plus anciennes doivent être réinstallées une dernière fois à la main.
+
+Pour vérifier une release : `latest.json` est joint, sa `version` est celle de l'étiquette, et il contient les plateformes `linux-x86_64` et `windows-x86_64`.
