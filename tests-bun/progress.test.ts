@@ -1,11 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Journal } from "../journal.ts";
 import type { Progression } from "../src/analysis/progression/calcul.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import type { LTMatch } from "../src/types.ts";
+import { lancerServeur, type ServeurDeTest } from "./serveur.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -55,46 +54,22 @@ describe("Journal.progress", () => {
 });
 
 describe("GET /api/progress (serveur)", () => {
-  const port = 26000 + Math.floor(Math.random() * 2000);
-  const base = `http://127.0.0.1:${port}`;
-  let dir: string;
-  let server: ReturnType<typeof Bun.spawn>;
+  let serveur: ServeurDeTest;
+  let base: string;
 
   beforeAll(async () => {
-    dir = mkdtempSync(join(tmpdir(), "grammaria-progress-"));
-    const journal = new Journal(join(dir, "journal.db"));
-    journal.record(FAUTE_ON(), Date.now() - DAY);
-    journal.record(fauteDeFrappe(), Date.now() - 1000);
-    journal.close();
-
-    server = Bun.spawn(["bun", "run", join(import.meta.dir, "..", "server.ts")], {
-      env: {
-        ...process.env,
-        PORT: String(port),
-        HOST: "127.0.0.1",
-        GRAMMARIA_DESKTOP: "1",
-        JOURNAL_PATH: join(dir, "journal.db"),
-        GRAMMARIA_SETTINGS_PATH: join(dir, "settings.json"),
-        OTEL_EXPORTER_OTLP_ENDPOINT: "",
+    serveur = await lancerServeur({
+      preparer: (dir) => {
+        const journal = new Journal(join(dir, "journal.db"));
+        journal.record(FAUTE_ON(), Date.now() - DAY);
+        journal.record(fauteDeFrappe(), Date.now() - 1000);
+        journal.close();
       },
-      stdout: "ignore",
-      stderr: "ignore",
     });
-    for (let i = 0; i < 100; i++) {
-      try {
-        await fetch(`${base}/api/progress`);
-        return;
-      } catch {
-        await Bun.sleep(100);
-      }
-    }
-    throw new Error("le serveur n'a pas démarré");
+    base = serveur.base;
   }, 20_000);
 
-  afterAll(() => {
-    server?.kill();
-    rmSync(dir, { recursive: true, force: true });
-  });
+  afterAll(() => serveur?.arreter());
 
   it("renvoie tout l'écran en une seule requête", async () => {
     const response = await fetch(`${base}/api/progress`);

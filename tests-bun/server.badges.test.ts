@@ -1,50 +1,21 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { BadgeAnnonce, CatalogueBadges } from "../src/analysis/badges/vue.ts";
+import { lancerServeur, type ServeurDeTest } from "./serveur.ts";
 
 /**
  * Routes des badges, sur un vrai serveur lancé dans un processus à part avec
  * un journal temporaire. Le mode bureau est activé pour vérifier que les
  * badges sont soumis aux mêmes contrôles que les autres routes du journal.
  */
-const PORT = 25_000 + Math.floor(Math.random() * 2000) + 3000;
-const BASE = `http://127.0.0.1:${PORT}`;
-let dir: string;
-let server: ReturnType<typeof Bun.spawn>;
+let serveur: ServeurDeTest;
+let BASE: string;
 
 beforeAll(async () => {
-  dir = mkdtempSync(join(tmpdir(), "grammaria-routes-"));
-  server = Bun.spawn(["bun", "run", "server.ts"], {
-    cwd: join(import.meta.dir, ".."),
-    env: {
-      ...process.env,
-      PORT: String(PORT),
-      HOST: "127.0.0.1",
-      GRAMMARIA_DESKTOP: "1",
-      JOURNAL_PATH: join(dir, "journal.db"),
-      GRAMMARIA_SETTINGS_PATH: join(dir, "settings.json"),
-      GRAMMARIA_DIST_DIR: dir,
-    },
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  for (let i = 0; i < 100; i++) {
-    try {
-      await fetch(`${BASE}/api/badges`);
-      return;
-    } catch {
-      await Bun.sleep(100);
-    }
-  }
-  throw new Error("Le serveur n'a pas démarré");
-});
+  serveur = await lancerServeur();
+  BASE = serveur.base;
+}, 20_000);
 
-afterAll(() => {
-  server.kill();
-  rmSync(dir, { recursive: true, force: true });
-});
+afterAll(() => serveur?.arreter());
 
 const analyser = async (original: string, corrected: string) =>
   (await (

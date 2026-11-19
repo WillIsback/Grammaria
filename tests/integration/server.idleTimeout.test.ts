@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { chatHandlerSource as chatSection, serverSource } from "./serverSource.ts";
 
 // Regression test for issue #17 (Bug 1):
 // Bun.serve's default 10s idleTimeout aborted any /v1/chat/completions request
@@ -8,16 +7,6 @@ import { describe, expect, it } from "vite-plus/test";
 // keepalive enqueue then threw "Controller is already closed", crashing the
 // whole Bun process. server.ts runs under Bun and cannot be imported in the
 // vitest environment, so we guard the source level.
-
-const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
-
-function chatSection(): string {
-  const start = serverSource.indexOf('path === "/v1/chat/completions"');
-  expect(start, "handler for /v1/chat/completions must exist").toBeGreaterThan(-1);
-  const end = serverSource.indexOf("// === API: LLM Proxy", start);
-  expect(end, "end of handler section must be found").toBeGreaterThan(start);
-  return serverSource.slice(start, end);
-}
 
 describe("Bun.serve idle timeout for streaming corrections (issue #17)", () => {
   it("accesses the Bun server so the SSE route can disable its idle timeout", () => {

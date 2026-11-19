@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { serverSource } from "./serverSource.ts";
 
 // Regression test for issue #12 (v1.5.9 incident, 2026-09-27):
 // commit 33140fa added `top_k: config.llmTopK` to the chat completion params
@@ -13,8 +12,6 @@ import { describe, expect, it } from "vite-plus/test";
 // server.chatCompletions.test.ts / server.llmBaseUrl.test.ts — that the
 // top_k sent to the LLM comes from config (not a hardcoded value) and that
 // the config default is SGLang-valid.
-
-const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
 
 function chatCompletionParamsBlock(): string {
   const start = serverSource.indexOf("const createParams = {");
