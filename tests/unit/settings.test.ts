@@ -96,6 +96,27 @@ describe("normalizeTarget", () => {
   ])("%s → %s", (input, expected) => {
     expect(normalizeTarget(input)).toBe(expected);
   });
+
+  // Mêmes cas que `les_parametres_et_identifiants_sont_refuses` (src-tauri/src/store.rs).
+  it.each([
+    "http://moi:secret@exemple.fr",
+    "http://moi@exemple.fr/v1",
+    "http://:secret@exemple.fr",
+    "https://api.exemple.fr/v1?cle=1",
+    "https://api.exemple.fr/?",
+    "https://api.exemple.fr/v1#ancre",
+    "https://api.exemple.fr#",
+  ])("refuse paramètres et identifiants : %s", (input) => {
+    expect(() => normalizeTarget(input)).toThrow(
+      "L'adresse du modèle ne doit contenir ni paramètres ni identifiants.",
+    );
+  });
+
+  it("garde un chemin sans paramètres", () => {
+    expect(normalizeTarget("https://api.exemple.fr/openai/v1/")).toBe(
+      "https://api.exemple.fr/openai",
+    );
+  });
 });
 
 // Issue #10 : l'application de bureau démarrait avec le raisonnement actif et

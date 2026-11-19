@@ -98,7 +98,17 @@ export function publicSettingsView(
   };
 }
 
-/** Adresse racine du serveur du modèle : http(s), sans « /v1 » final ni barre oblique. */
+/** Refus d'une adresse avec paramètres (`?…`, `#…`) ou identifiants (`utilisateur:mot-de-passe@`). */
+export const TARGET_EXTRAS_ERROR =
+  "L'adresse du modèle ne doit contenir ni paramètres ni identifiants.";
+
+/**
+ * Adresse racine du serveur du modèle : http(s), sans « /v1 » final ni barre
+ * oblique. Les chemins de l'API (`/v1/…`) y sont ajoutés à la suite : une
+ * requête (`?…`) ou un fragment (`#…`) les casserait, et des identifiants dans
+ * l'adresse partiraient en clair avec chaque requête (la clé API a son champ).
+ * Mêmes règles et mêmes messages que `normalize_target` (`src-tauri/src/store.rs`).
+ */
 export function normalizeTarget(value: string): string {
   let url: URL;
   try {
@@ -108,6 +118,11 @@ export function normalizeTarget(value: string): string {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("L'adresse du modèle doit commencer par http:// ou https://.");
+  }
+  // `url.search` et `url.hash` sont vides pour un « ? » ou un « # » seul : on
+  // regarde l'adresse entière, où ils ne peuvent marquer que la requête ou le fragment.
+  if (/[?#]/.test(url.href) || url.username !== "" || url.password !== "") {
+    throw new Error(TARGET_EXTRAS_ERROR);
   }
   return url.href.replace(/\/+$/, "").replace(/\/v1$/, "");
 }

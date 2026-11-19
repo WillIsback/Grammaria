@@ -255,17 +255,71 @@ fn word_pattern() -> &'static Regex {
     })
 }
 
-/// Adresse racine du serveur du modèle : http(s), sans « /v1 » final ni barre
-/// oblique (`normalizeTarget` de `settings.ts`, même analyse WHATWG).
-pub fn normalize_target(value: &str) -> Result<String, String> {
+/// Refus d'une adresse avec paramètres (`?…`, `#…`) ou identifiants
+/// (`utilisateur:mot-de-passe@`) ; même message que `api/reglages.ts`.
+pub const TARGET_EXTRAS_ERROR: &str =
+    "L'adresse du modèle ne doit contenir ni paramètres ni identifiants.";
+
+/// URL complète en http(s).
+fn parse_target(value: &str) -> Result<Url, String> {
     let url = Url::parse(value).map_err(|_| {
         "L'adresse du modèle doit être une URL complète (http://… ou https://…).".to_string()
     })?;
     if url.scheme() != "http" && url.scheme() != "https" {
         return Err("L'adresse du modèle doit commencer par http:// ou https://.".into());
     }
+    Ok(url)
+}
+
+/// Les chemins de l'API (`/v1/…`) sont ajoutés à l'adresse : une requête ou
+/// un fragment les casserait, et des identifiants partiraient en clair avec
+/// chaque requête (la clé API a son propre champ). Une requête vide (`?` seul)
+/// compte aussi, comme dans `normalizeTarget`.
+fn check_extras(url: &Url) -> Result<(), String> {
+    if url.query().is_some()
+        || url.fragment().is_some()
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        return Err(TARGET_EXTRAS_ERROR.into());
+    }
+    Ok(())
+}
+
+/// Sans « /v1 » final ni barre oblique.
+fn strip_root(url: &Url) -> String {
     let href = url.as_str().trim_end_matches('/');
-    Ok(href.strip_suffix("/v1").unwrap_or(href).to_string())
+    href.strip_suffix("/v1").unwrap_or(href).to_string()
+}
+
+/// Adresse racine du serveur du modèle : http(s), sans « /v1 » final ni barre
+/// oblique, sans paramètres ni identifiants (`normalizeTarget` de
+/// `api/reglages.ts`, même analyse WHATWG, mêmes messages).
+pub fn normalize_target(value: &str) -> Result<String, String> {
+    let url = parse_target(value)?;
+    check_extras(&url)?;
+    Ok(strip_root(&url))
+}
+
+/// Adresse lue dans un `settings.json` existant : les règles d'avant (http(s),
+/// normalisation). Une adresse avec paramètres ou identifiants, admise par une
+/// version antérieure, est gardée telle quelle pour que le fichier reste lisible
+/// (modèle, réglages) ; `endpoint` la refuse à la première requête, avec le
+/// message de `TARGET_EXTRAS_ERROR`, et l'utilisateur la corrige dans les réglages.
+fn normalize_stored_target(value: &str) -> Result<String, String> {
+    parse_target(value).map(|url| strip_root(&url))
+}
+
+/// URL d'un chemin de l'API sous l'adresse du modèle, par jointure de segments
+/// (`https://hôte/openai` + `["v1", "models"]` → `https://hôte/openai/v1/models`).
+pub fn endpoint(target: &str, segments: &[&str]) -> Result<Url, String> {
+    let mut url = parse_target(target)?;
+    check_extras(&url)?;
+    url.path_segments_mut()
+        .map_err(|()| TARGET_EXTRAS_ERROR.to_string())?
+        .pop_if_empty()
+        .extend(segments);
+    Ok(url)
 }
 
 /// Origine (schéma, hôte, port) d'une adresse enregistrée.
@@ -294,10 +348,12 @@ fn parse_update(input: &Value, from_file: bool) -> Result<SettingsUpdate, String
     };
     let mut update = SettingsUpdate::default();
     if let Some(target) = text("llmTarget")? {
-        update.llm_target = Some(if from_file && target.is_empty() {
+        update.llm_target = Some(if !from_file {
+            normalize_target(&target)?
+        } else if target.is_empty() {
             target
         } else {
-            normalize_target(&target)?
+            normalize_stored_target(&target)?
         });
     }
     update.llm_api_key = text("llmApiKey")?;
@@ -822,6 +878,85 @@ mod tests {
         ] {
             assert_eq!(normalize_target(entree).unwrap(), attendu, "{entree}");
         }
+    }
+
+    /// Mêmes cas que `normalizeTarget` dans `tests/unit/settings.test.ts`.
+    #[test]
+    fn les_parametres_et_identifiants_sont_refuses() {
+        for entree in [
+            "http://moi:secret@exemple.fr",
+            "http://moi@exemple.fr/v1",
+            "http://:secret@exemple.fr",
+            "https://api.exemple.fr/v1?cle=1",
+            "https://api.exemple.fr/?",
+            "https://api.exemple.fr/v1#ancre",
+            "https://api.exemple.fr#",
+        ] {
+            assert_eq!(
+                normalize_target(entree).unwrap_err(),
+                TARGET_EXTRAS_ERROR,
+                "{entree}"
+            );
+        }
+        assert_eq!(
+            TARGET_EXTRAS_ERROR,
+            "L'adresse du modèle ne doit contenir ni paramètres ni identifiants."
+        );
+        let banc = banc();
+        assert_eq!(
+            banc.store
+                .update_settings(&json!({ "llmTarget": "https://a:b@exemple.fr" }))
+                .unwrap_err(),
+            TARGET_EXTRAS_ERROR
+        );
+        assert!(!banc.settings_path().exists());
+    }
+
+    #[test]
+    fn les_chemins_de_l_api_sont_joints_a_l_adresse() {
+        for (cible, attendu) in [
+            ("http://127.0.0.1:8000", "http://127.0.0.1:8000/v1/models"),
+            (
+                "https://api.exemple.fr/openai",
+                "https://api.exemple.fr/openai/v1/models",
+            ),
+            (
+                "https://api.exemple.fr/openai/",
+                "https://api.exemple.fr/openai/v1/models",
+            ),
+        ] {
+            assert_eq!(
+                endpoint(cible, &["v1", "models"]).unwrap().as_str(),
+                attendu
+            );
+        }
+        assert_eq!(
+            endpoint("https://exemple.fr/?x=1", &["v1"]).unwrap_err(),
+            TARGET_EXTRAS_ERROR
+        );
+    }
+
+    /// Un fichier écrit par une version qui acceptait ces adresses reste
+    /// lisible ; l'erreur apparaît à la première requête du modèle.
+    #[test]
+    fn un_fichier_ancien_avec_identifiants_reste_lisible() {
+        let banc = banc();
+        banc.write_settings(json!({
+            "settingsVersion": 2,
+            "llmTarget": "https://moi:secret@api.exemple.fr/v1?version=2",
+            "llmApiKey": "k",
+            "llmModelName": "modele",
+            "llmDisableThinking": false,
+        }));
+        let settings = banc.store.settings();
+        assert!(settings.configured);
+        assert_eq!(settings.llm_model_name, "modele");
+        assert!(!settings.llm_disable_thinking);
+        let upstream = banc.store.upstream().unwrap();
+        assert_eq!(
+            endpoint(&upstream.target, &["v1", "models"]).unwrap_err(),
+            TARGET_EXTRAS_ERROR
+        );
     }
 
     #[test]

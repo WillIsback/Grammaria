@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use reqwest::{Client, Method, RequestBuilder, Response};
+use reqwest::{redirect, Client, Method, RequestBuilder, Response, Url};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
@@ -25,7 +25,7 @@ use tauri::State;
 use tokio::sync::oneshot;
 
 use crate::logs;
-use crate::store::{Store, Upstream};
+use crate::store::{endpoint, Store, Upstream};
 
 /// Établissement de la connexion (TCP et TLS).
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -38,8 +38,17 @@ const MODELS_TIMEOUT: Duration = Duration::from_secs(20);
 /// Corps d'erreur amont conservé (octets lus, puis caractères transmis).
 const ERROR_BODY_BYTES: usize = 64 * 1024;
 const ERROR_MESSAGE_CHARS: usize = 4_000;
-/// Ligne SSE maximale : au-delà, le flux est considéré comme invalide.
+/// Ligne SSE maximale, et lignes `data:` cumulées d'un même événement : au-delà,
+/// le flux est considéré comme invalide (un fragment de texte fait quelques
+/// dizaines d'octets ; un serveur qui n'envoie jamais de ligne vide ne doit pas
+/// faire grossir la mémoire sans fin).
 const MAX_LINE_BYTES: usize = 8 * 1024 * 1024;
+const MAX_EVENT_BYTES: usize = 8 * 1024 * 1024;
+/// Corps de `GET /v1/models` (les listes les plus longues, avec descriptions,
+/// font de l'ordre du mégaoctet).
+const MODELS_BODY_BYTES: usize = 8 * 1024 * 1024;
+/// Redirections suivies au plus (même origine seulement).
+const MAX_REDIRECTS: usize = 5;
 
 /// Erreur transmise à la page, lisible par `isThinkingParamRejection`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -146,7 +155,7 @@ impl Llm {
 
     /// `GET /v1/models`, avec la clé des réglages.
     pub async fn models(&self, upstream: Option<Upstream>) -> Result<Value, LlmError> {
-        let response = request(&self.client, upstream, Method::GET, "/v1/models")?
+        let mut response = request(&self.client, upstream, Method::GET, &["v1", "models"])?
             .timeout(MODELS_TIMEOUT)
             .send()
             .await
@@ -154,10 +163,31 @@ impl Llm {
         if !response.status().is_success() {
             return Err(failure(response).await);
         }
-        response
-            .json()
+        let trop_gros = || {
+            LlmError::new(format!(
+                "Liste des modèles trop volumineuse (plus de {} Mio).",
+                MODELS_BODY_BYTES / (1024 * 1024)
+            ))
+        };
+        if response
+            .content_length()
+            .is_some_and(|length| length > MODELS_BODY_BYTES as u64)
+        {
+            return Err(trop_gros());
+        }
+        let mut body = Vec::new();
+        while let Some(chunk) = response
+            .chunk()
             .await
-            .map_err(|error| LlmError::network("Liste des modèles illisible", error))
+            .map_err(|error| LlmError::network("Liste des modèles illisible", error))?
+        {
+            if body.len() + chunk.len() > MODELS_BODY_BYTES {
+                return Err(trop_gros());
+            }
+            body.extend_from_slice(&chunk);
+        }
+        serde_json::from_slice(&body)
+            .map_err(|error| LlmError::new(format!("Liste des modèles illisible : {error}")))
     }
 
     /// `POST /v1/chat/completions` en streaming. Chaque fragment de texte part
@@ -208,25 +238,56 @@ fn client_builder() -> reqwest::ClientBuilder {
         .connect_timeout(CONNECT_TIMEOUT)
         .read_timeout(READ_TIMEOUT)
         .user_agent(concat!("Grammaria/", env!("CARGO_PKG_VERSION")))
+        .redirect(redirect::Policy::custom(|attempt| {
+            match redirection(attempt.previous(), attempt.url()) {
+                Ok(()) => attempt.follow(),
+                Err(message) => attempt.error(message),
+            }
+        }))
+}
+
+/// Décision pour une redirection : suivie seulement si elle reste sur
+/// l'origine (schéma, hôte, port) de la requête d'origine, et au plus
+/// `MAX_REDIRECTS` fois. Le corps (le texte de l'utilisateur) et la clé ne
+/// doivent jamais partir vers un autre serveur que celui des réglages.
+fn redirection(previous: &[Url], next: &Url) -> Result<(), String> {
+    let Some(first) = previous.first() else {
+        return Ok(());
+    };
+    if previous.len() > MAX_REDIRECTS {
+        return Err(format!(
+            "Le serveur du modèle redirige plus de {MAX_REDIRECTS} fois."
+        ));
+    }
+    if next.origin() != first.origin() {
+        return Err(format!(
+            "Le serveur du modèle redirige vers une autre adresse ({}) : redirection refusée. Corrigez l'adresse dans les réglages.",
+            next.origin().ascii_serialization()
+        ));
+    }
+    Ok(())
 }
 
 fn elapsed_ms(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
-/// Requête vers le serveur des réglages. `Authorization` seulement s'il y a
-/// une clé. Sur une redirection vers un autre hôte, reqwest retire de
-/// lui-même l'en-tête `Authorization`.
+/// Requête vers le serveur des réglages, au chemin `segments` joint à son
+/// adresse. `Authorization` seulement s'il y a une clé ; les redirections ne
+/// sont suivies que sur la même origine (`redirections`).
 fn request(
     client: &Client,
     upstream: Option<Upstream>,
     method: Method,
-    path: &str,
+    segments: &[&str],
 ) -> Result<RequestBuilder, LlmError> {
     let upstream = upstream.ok_or_else(|| {
         LlmError::new("Aucun modèle n'est configuré : renseignez son adresse dans les réglages.")
     })?;
-    let mut builder = client.request(method, format!("{}{path}", upstream.target));
+    // Une adresse enregistrée par une version plus ancienne peut contenir des
+    // paramètres ou des identifiants : refusée ici, avec le message des réglages.
+    let url = endpoint(&upstream.target, segments).map_err(LlmError::new)?;
+    let mut builder = client.request(method, url);
     if !upstream.api_key.is_empty() {
         builder = builder.bearer_auth(upstream.api_key);
     }
@@ -237,10 +298,15 @@ fn request(
 /// reconnaisse par exemple le refus de `chat_template_kwargs`.
 async fn failure(mut response: Response) -> LlmError {
     let status = response.status();
+    // Au plus ERROR_BODY_BYTES octets gardés, même si un paquet est énorme ;
+    // le reste du corps n'est pas lu (la connexion est abandonnée).
     let mut body = Vec::new();
     while body.len() < ERROR_BODY_BYTES {
         match response.chunk().await {
-            Ok(Some(chunk)) => body.extend_from_slice(&chunk),
+            Ok(Some(chunk)) => {
+                let place = ERROR_BODY_BYTES - body.len();
+                body.extend_from_slice(&chunk[..chunk.len().min(place)]);
+            }
             _ => break,
         }
     }
@@ -270,11 +336,16 @@ async fn stream(
         ));
     };
     fields.insert("stream".into(), Value::Bool(true));
-    let mut response = request(client, upstream, Method::POST, "/v1/chat/completions")?
-        .json(&body)
-        .send()
-        .await
-        .map_err(|error| LlmError::network("Serveur du modèle injoignable", error))?;
+    let mut response = request(
+        client,
+        upstream,
+        Method::POST,
+        &["v1", "chat", "completions"],
+    )?
+    .json(&body)
+    .send()
+    .await
+    .map_err(|error| LlmError::network("Serveur du modèle injoignable", error))?;
     if !response.status().is_success() {
         return Err(failure(response).await);
     }
@@ -291,7 +362,7 @@ async fn stream(
             .map_err(|error| LlmError::network("Flux du modèle interrompu", error))?;
         let events = match &chunk {
             Some(bytes) => parser.feed(bytes)?,
-            None => parser.finish(),
+            None => parser.finish()?,
         };
         for event in events {
             if relay.event(&event, sink)? == Flow::Done {
@@ -384,8 +455,12 @@ impl Relay {
 #[derive(Default)]
 struct SseParser {
     buffer: Vec<u8>,
-    /// Lignes `data:` de l'événement en cours.
+    /// Position du tampon jusqu'où aucune fin de ligne n'a été trouvée : la
+    /// recherche reprend là, sans relire une longue ligne à chaque paquet.
+    scanned: usize,
+    /// Lignes `data:` de l'événement en cours, et leur taille cumulée.
     data: Vec<String>,
+    data_bytes: usize,
 }
 
 impl SseParser {
@@ -394,23 +469,33 @@ impl SseParser {
         self.buffer.extend_from_slice(bytes);
         let mut events = Vec::new();
         let mut start = 0;
-        while let Some(offset) = self.buffer[start..]
-            .iter()
-            .position(|byte| *byte == b'\n' || *byte == b'\r')
-        {
-            let end = start + offset;
+        let mut from = self.scanned;
+        loop {
+            let Some(offset) = self.buffer[from..]
+                .iter()
+                .position(|byte| *byte == b'\n' || *byte == b'\r')
+            else {
+                from = self.buffer.len();
+                break;
+            };
+            let end = from + offset;
             let next = match self.buffer[end] {
                 b'\n' => end + 1,
                 // CR en dernier octet : peut-être un CRLF coupé, on attend.
-                _ if end + 1 == self.buffer.len() => break,
+                _ if end + 1 == self.buffer.len() => {
+                    from = end;
+                    break;
+                }
                 _ if self.buffer[end + 1] == b'\n' => end + 2,
                 _ => end + 1,
             };
             let line = String::from_utf8_lossy(&self.buffer[start..end]).into_owned();
-            self.line(&line, &mut events);
+            self.line(&line, &mut events)?;
             start = next;
+            from = next;
         }
         self.buffer.drain(..start);
+        self.scanned = from - start;
         if self.buffer.len() > MAX_LINE_BYTES {
             return Err(LlmError::new(
                 "Flux du modèle invalide : ligne trop longue.",
@@ -420,37 +505,47 @@ impl SseParser {
     }
 
     /// Fin du corps : dernière ligne sans fin de ligne et événement en cours.
-    fn finish(&mut self) -> Vec<Vec<String>> {
+    fn finish(&mut self) -> Result<Vec<Vec<String>>, LlmError> {
         let mut events = Vec::new();
         let mut rest = std::mem::take(&mut self.buffer);
+        self.scanned = 0;
         if rest.last() == Some(&b'\r') {
             rest.pop();
         }
         if !rest.is_empty() {
             let line = String::from_utf8_lossy(&rest).into_owned();
-            self.line(&line, &mut events);
+            self.line(&line, &mut events)?;
         }
-        self.line("", &mut events);
-        events
+        self.line("", &mut events)?;
+        Ok(events)
     }
 
-    fn line(&mut self, line: &str, events: &mut Vec<Vec<String>>) {
+    fn line(&mut self, line: &str, events: &mut Vec<Vec<String>>) -> Result<(), LlmError> {
         if line.is_empty() {
             if !self.data.is_empty() {
                 events.push(std::mem::take(&mut self.data));
+                self.data_bytes = 0;
             }
-            return;
+            return Ok(());
         }
         // Commentaire (« : keepalive »).
         if line.starts_with(':') {
-            return;
+            return Ok(());
         }
         let (field, value) = line.split_once(':').unwrap_or((line, ""));
         if field == "data" {
-            self.data
-                .push(value.strip_prefix(' ').unwrap_or(value).to_owned());
+            let value = value.strip_prefix(' ').unwrap_or(value);
+            // Mémoire réelle : le texte et la `String` qui le porte.
+            self.data_bytes += value.len() + std::mem::size_of::<String>();
+            if self.data_bytes > MAX_EVENT_BYTES {
+                return Err(LlmError::new(
+                    "Flux du modèle invalide : événement trop long.",
+                ));
+            }
+            self.data.push(value.to_owned());
         }
         // `event`, `id`, `retry` : sans usage pour une API OpenAI.
+        Ok(())
     }
 }
 
@@ -492,15 +587,22 @@ fn journaliser(commande: &str, error: &LlmError, cle: Option<&str>) {
 }
 
 /// Message d'erreur amont sans la requête qu'il recopierait : une erreur de
-/// validation (FastAPI, vLLM…) cite la valeur refusée (`"input": …`), qui peut
-/// contenir le texte de l'utilisateur. Le message est coupé à cet endroit et
-/// borné à 300 caractères.
+/// validation (FastAPI, vLLM…) cite la valeur refusée (`"input": …`), un
+/// relais comme LiteLLM recopie parfois toute la requête (`'messages': […]`,
+/// `messages=[…]`) : le texte de l'utilisateur ne doit pas entrer dans le
+/// journal technique. Le message est coupé à la première clé qui peut le porter
+/// (`input`, `inputs`, `messages`, `content`, `prompt`, `text`, entre
+/// guillemets doubles, simples ou échappés, suivie de `:` ou `=`, ou nue
+/// devant `=`), puis borné à 300 caractères.
 fn message_sans_entree(message: &str) -> String {
-    let coupe = ["\"input\"", "'input'", "\"messages\"", "\"content\""]
-        .iter()
-        .filter_map(|cle| message.find(cle))
-        .min()
-        .unwrap_or(message.len());
+    static CLES: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let cles = CLES.get_or_init(|| {
+        regex::Regex::new(
+            r#"(?i)["'\\]+(?:input|inputs|messages|content|prompt|text)["'\\]+\s*[:=]|\b(?:input|inputs|messages|content|prompt|text)\s*="#,
+        )
+        .expect("motif valide")
+    });
+    let coupe = cles.find(message).map_or(message.len(), |m| m.start());
     let mut texte: String = message[..coupe].chars().take(300).collect();
     if texte.len() < message.len() {
         texte.push('…');
@@ -850,7 +952,7 @@ mod tests {
         let mut events = parser
             .feed(b"data:{\"a\":\r\rdata: {\"b\":1}\ndata: {\"c\":2}\n\nevent: x\nid: 3\n\n")
             .unwrap();
-        events.extend(parser.finish());
+        events.extend(parser.finish().unwrap());
         assert_eq!(
             events,
             vec![
@@ -861,7 +963,7 @@ mod tests {
         // Dernière ligne sans fin de ligne : relue à la fermeture.
         let mut parser = SseParser::default();
         assert!(parser.feed(b"data: [DONE]").unwrap().is_empty());
-        assert_eq!(parser.finish(), vec![vec!["[DONE]".to_owned()]]);
+        assert_eq!(parser.finish().unwrap(), vec![vec!["[DONE]".to_owned()]]);
         // Deux objets JSON sans ligne vide entre eux : relus un par un.
         let mut relay = Relay {
             stats: LlmStats::default(),
@@ -1002,5 +1104,281 @@ mod tests {
         assert!(journalise.ends_with('…'));
         assert_eq!(message_sans_entree("HTTP 503"), "HTTP 503");
         assert_eq!(message_sans_entree(&"é".repeat(400)).chars().count(), 301);
+    }
+
+    /// Formes réalistes : relais (LiteLLM) qui recopie la requête en dict
+    /// Python, JSON échappé dans une chaîne, `prompt` / `text` des API de
+    /// complétion, arguments nommés.
+    #[test]
+    fn le_message_journalise_ne_recopie_pas_la_requete_sous_aucune_forme() {
+        let prive = "Mon texte privé";
+        let cas = [
+            (
+                format!("litellm.BadRequestError: OpenAIException - Error code: 400 - {{'error': {{'message': 'context length exceeded'}}}} Received Model Group=gpt\nkwargs={{'messages': [{{'role': 'user', 'content': '{prive}'}}]}}"),
+                "context length exceeded",
+            ),
+            (
+                format!("{{'detail': 'bad request', 'input': {{'content': '{prive}'}}}}"),
+                "bad request",
+            ),
+            (
+                format!(
+                    r#"{{"error":{{"message":"upstream error: {{\"messages\":[{{\"role\":\"user\",\"content\":\"{prive}\"}}]}}"}}}}"#
+                ),
+                "upstream error",
+            ),
+            (
+                format!(r#"{{"error":"Input validation error","prompt":"{prive}"}}"#),
+                "Input validation error",
+            ),
+            (
+                format!(r#"{{"object":"error","message":"invalid request","text":"{prive}"}}"#),
+                "invalid request",
+            ),
+            (
+                format!("TypeError: create() got an unexpected keyword argument; messages=[{{'content': '{prive}'}}]"),
+                "unexpected keyword argument",
+            ),
+        ];
+        for (message, garde) in cas {
+            let journalise = message_sans_entree(&message);
+            assert!(!journalise.contains(prive), "{journalise}");
+            assert!(journalise.contains(garde), "{journalise}");
+        }
+        // Le mot seul, sans valeur, ne coupe rien.
+        let neutre =
+            r#"{"error":{"message":"content type must be text","type":"invalid_request_error"}}"#;
+        assert_eq!(message_sans_entree(neutre), neutre);
+    }
+
+    #[test]
+    fn un_evenement_sans_fin_est_refuse() {
+        // `data: x` sans jamais de ligne vide : l'événement grossirait sans fin.
+        let mut parser = SseParser::default();
+        let paquet = b"data: x\n".repeat(64 * 1024);
+        let mut resultat = Ok(Vec::new());
+        for _ in 0..1_000 {
+            resultat = parser.feed(&paquet);
+            if resultat.is_err() {
+                break;
+            }
+        }
+        assert_eq!(
+            resultat.unwrap_err().message,
+            "Flux du modèle invalide : événement trop long."
+        );
+
+        // À travers le réseau : la requête se termine en erreur, sans attendre.
+        let (address, _received) = serve(|stream| {
+            stream.write_all(SSE_HEAD).unwrap();
+            let paquet = b"data: x\n".repeat(8 * 1024);
+            while stream.write_all(&paquet).is_ok() {}
+        });
+        let (events, last) = run(&llm(), 1, upstream(&address, ""), json!({}));
+        assert!(events.is_empty());
+        let LlmEvent::Error(error) = last else {
+            panic!("erreur attendue : {last:?}")
+        };
+        assert!(
+            error.message.contains("événement trop long"),
+            "{}",
+            error.message
+        );
+    }
+
+    #[test]
+    fn une_longue_ligne_en_petits_paquets_est_lue_en_temps_lineaire() {
+        // 4 Mio en paquets de 64 octets : relire le tampon à chaque paquet
+        // coûterait de l'ordre de 10^11 comparaisons.
+        let ligne = format!("data: \"{}\"\n\n", "a".repeat(4 * 1024 * 1024));
+        let mut parser = SseParser::default();
+        let debut = Instant::now();
+        let mut events = Vec::new();
+        for paquet in ligne.as_bytes().chunks(64) {
+            events.extend(parser.feed(paquet).unwrap());
+        }
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0][0].len(), 4 * 1024 * 1024 + 2);
+        assert!(
+            debut.elapsed() < Duration::from_secs(5),
+            "{:?}",
+            debut.elapsed()
+        );
+        // La reprise de la recherche n'oublie pas un CR coupé de son LF.
+        let mut parser = SseParser::default();
+        assert!(parser.feed(b"data: a\r").unwrap().is_empty());
+        assert_eq!(parser.feed(b"\n\r\n").unwrap(), vec![vec!["a".to_owned()]]);
+    }
+
+    #[test]
+    fn la_liste_des_modeles_et_le_corps_d_erreur_sont_bornes() {
+        // Liste énorme annoncée par Content-Length : refusée sans la lire.
+        let (address, _received) = serve(|stream| {
+            let tete = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+                MODELS_BODY_BYTES + 1
+            );
+            let _ = stream.write_all(tete.as_bytes());
+        });
+        let error =
+            tauri::async_runtime::block_on(llm().models(upstream(&address, ""))).unwrap_err();
+        assert_eq!(
+            error.message,
+            "Liste des modèles trop volumineuse (plus de 8 Mio)."
+        );
+
+        // Sans longueur annoncée : coupée dès que la borne est dépassée.
+        let (address, _received) = serve(|stream| {
+            let _ = stream.write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"data\":[",
+            );
+            let paquet = b"{\"id\":\"modele\"},".repeat(4096);
+            while stream.write_all(&paquet).is_ok() {}
+        });
+        let error =
+            tauri::async_runtime::block_on(llm().models(upstream(&address, ""))).unwrap_err();
+        assert!(
+            error.message.contains("trop volumineuse"),
+            "{}",
+            error.message
+        );
+
+        // Corps d'erreur sans fin : au plus ERROR_BODY_BYTES lus, message borné.
+        let (address, _received) = serve(|stream| {
+            let _ = stream
+                .write_all(b"HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
+            let paquet = vec![b'e'; 256 * 1024];
+            while stream.write_all(&paquet).is_ok() {}
+        });
+        let (_, last) = run(&llm(), 1, upstream(&address, ""), json!({}));
+        let LlmEvent::Error(error) = last else {
+            panic!("erreur attendue : {last:?}")
+        };
+        assert_eq!(error.status, Some(500));
+        assert_eq!(error.message.chars().count(), ERROR_MESSAGE_CHARS);
+    }
+
+    /// Serveur local qui répond à `n` connexions successives.
+    fn serve_n(
+        n: usize,
+        mut respond: impl FnMut(usize, &mut TcpStream) + Send + 'static,
+    ) -> (String, mpsc::Receiver<Received>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = format!("http://{}", listener.local_addr().unwrap());
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            for index in 0..n {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
+                let received = read_request(&mut stream);
+                respond(index, &mut stream);
+                let _ = tx.send(received);
+            }
+        });
+        (address, rx)
+    }
+
+    #[test]
+    fn une_redirection_sur_la_meme_origine_est_suivie_avec_la_cle() {
+        let (address, received) = serve_n(2, |index, stream| {
+            let reponse: &[u8] = if index == 0 {
+                b"HTTP/1.1 307 Temporary Redirect\r\nLocation: /autre/v1/chat/completions\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            } else {
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n"
+            };
+            let _ = stream.write_all(reponse);
+        });
+        let (events, last) = run(
+            &llm(),
+            1,
+            upstream(&address, "cle"),
+            json!({ "messages": [] }),
+        );
+        assert_eq!(deltas(&events), "ok");
+        assert!(matches!(last, LlmEvent::Done(_)), "{last:?}");
+        let premiere = received.recv().unwrap();
+        let seconde = received.recv().unwrap();
+        assert_eq!(premiere.line, "POST /v1/chat/completions HTTP/1.1");
+        assert_eq!(seconde.line, "POST /autre/v1/chat/completions HTTP/1.1");
+        assert_eq!(seconde.header("authorization"), Some("Bearer cle"));
+    }
+
+    #[test]
+    fn une_redirection_vers_une_autre_origine_est_refusee() {
+        // L'autre origine : un second serveur, qui ne doit rien recevoir.
+        let (ailleurs, recu_ailleurs) = serve_n(1, |_, stream| {
+            let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+        });
+        let location = format!("{ailleurs}/v1/chat/completions");
+        let (address, _received) = serve_n(1, move |_, stream| {
+            let reponse = format!(
+                "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+            let _ = stream.write_all(reponse.as_bytes());
+        });
+        let (events, last) = run(&llm(), 1, upstream(&address, "cle"), json!({}));
+        assert!(events.is_empty());
+        let LlmEvent::Error(error) = last else {
+            panic!("erreur attendue : {last:?}")
+        };
+        assert!(
+            error.message.contains("redirige vers une autre adresse"),
+            "{}",
+            error.message
+        );
+        assert!(recu_ailleurs
+            .recv_timeout(Duration::from_millis(300))
+            .is_err());
+    }
+
+    #[test]
+    fn la_decision_de_redirection_compare_les_origines() {
+        let url = |texte: &str| Url::parse(texte).unwrap();
+        let origine = [url("https://api.exemple.fr/v1/models")];
+        assert!(redirection(&origine, &url("https://api.exemple.fr/autre")).is_ok());
+        assert!(redirection(&origine, &url("https://api.exemple.fr:443/x")).is_ok());
+        for autre in [
+            "http://api.exemple.fr/v1/models",
+            "https://api.exemple.fr:8443/v1/models",
+            "https://autre.exemple.fr/v1/models",
+            "https://exemple.fr/v1/models",
+        ] {
+            assert!(redirection(&origine, &url(autre)).is_err(), "{autre}");
+        }
+        let chaine = vec![url("https://api.exemple.fr/"); MAX_REDIRECTS + 1];
+        assert!(redirection(&chaine, &url("https://api.exemple.fr/x"))
+            .unwrap_err()
+            .contains("plus de 5 fois"));
+    }
+
+    #[test]
+    fn les_chemins_sont_joints_et_une_ancienne_adresse_invalide_est_signalee() {
+        let (address, received) = serve(|stream| {
+            send_parts(stream, &[SSE_HEAD, b"data: [DONE]\n\n"]);
+        });
+        let (_, last) = run(
+            &llm(),
+            1,
+            upstream(&format!("{address}/openai"), ""),
+            json!({}),
+        );
+        assert!(matches!(last, LlmEvent::Done(_)), "{last:?}");
+        assert_eq!(
+            received.recv().unwrap().line,
+            "POST /openai/v1/chat/completions HTTP/1.1"
+        );
+
+        // Adresse d'un ancien settings.json, avec identifiants : rien n'est envoyé.
+        let (_, last) = run(
+            &llm(),
+            2,
+            upstream("http://moi:secret@127.0.0.1:9", ""),
+            json!({}),
+        );
+        let LlmEvent::Error(error) = last else {
+            panic!("erreur attendue : {last:?}")
+        };
+        assert_eq!(error.message, crate::store::TARGET_EXTRAS_ERROR);
     }
 }
