@@ -25,6 +25,20 @@ tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
+# Journal : SQLite embarqué (compilé dans l'application, aucune bibliothèque
+# système). `hooks` pour l'autorisateur, `limits` pour interdire ATTACH.
+rusqlite = { version = "0.37", features = ["bundled", "hooks", "limits"] }
+# Relais du modèle : mêmes reqwest, rustls et fournisseur ring que le plugin de
+# mise à jour (déjà dans le binaire) : ni OpenSSL, ni seconde pile TLS.
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+tokio = { version = "1", features = ["macros", "sync"] }
+# Validation des réglages et des mots valides (déjà dans l'arbre de Tauri).
+regex = "1"
+url = "2"
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 codegen-units = 1
