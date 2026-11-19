@@ -44,7 +44,6 @@ LLM_TARGET=${LLM_TARGET}
 LLM_API_KEY=${LLM_API_KEY}
 LLM_MODEL_NAME=${LLM_MODEL_NAME}
 LLM_DISABLE_THINKING=${LLM_DISABLE_THINKING}
-LT_TARGET=http://languagetool:8010
 PORT=25000
 EOF
 
@@ -53,17 +52,6 @@ cat > docker-compose.yml << COMPOSE
 version: '3.8'
 
 services:
-  languagetool:
-    image: erikvl87/languagetool:latest
-    container_name: grammaria-lt
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8010/v2/languages"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
   grammaria:
     image: ${IMAGE}
     container_name: grammaria
@@ -72,9 +60,6 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
-    depends_on:
-      languagetool:
-        condition: service_healthy
     restart: unless-stopped
 COMPOSE
 

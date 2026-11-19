@@ -3,7 +3,6 @@ import type { CorrectionSettings } from "../../src/types";
 import { correctText } from "../../src/utils/llm";
 
 const defaultSettings: CorrectionSettings = {
-  engine: "llm",
   mode: "formel",
   fixGrammar: true,
   fixSpelling: true,

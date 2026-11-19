@@ -13,7 +13,6 @@ vi.mock("../../src/hooks/useCorrector", () => ({
     analysis: null,
     analysisNotice: null,
     settings: {
-      engine: "llm",
       mode: "formel",
       fixGrammar: true,
       fixSpelling: true,
@@ -28,9 +27,6 @@ vi.mock("../../src/hooks/useCorrector", () => ({
     handleCorrect,
     handleReset: vi.fn(),
   }),
-}));
-vi.mock("../../src/hooks/useLanguageTool", () => ({
-  useLanguageTool: () => ({ isAvailable: true, isChecking: false }),
 }));
 vi.mock("../../src/utils/models", () => ({
   initModel: vi.fn(),

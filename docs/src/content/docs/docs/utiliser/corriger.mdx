@@ -1,6 +1,6 @@
 ---
 title: "Corriger un texte"
-description: "Modes de correction, types de corrections, moteur et modèle."
+description: "Modes de correction, types de corrections et modèle."
 ---
 
 ## En pratique
@@ -9,6 +9,8 @@ description: "Modes de correction, types de corrections, moteur et modèle."
 2. Cliquez sur **Corriger**.
 3. Le texte corrigé s'affiche à droite au fil de la génération.
 4. Cliquez sur **Copier**. Vous n'avez pas à attendre la fin de l'analyse des fautes.
+
+Sur un écran large (768 px et plus), le bouton **Corriger** est dans l'en-tête du panneau « Texte à corriger », et les boutons **Copier** et **Réinitialiser** dans celui du panneau « Résultat corrigé », au-dessus des zones de texte. Sur mobile, ils restent sous les zones de texte.
 
 Un texte est limité à 10 000 caractères. Au-delà, il est coupé à la fin du dernier mot complet et un message indique combien de caractères ont été corrigés : la suite n'est ni corrigée, ni copiée, ni comptée dans la note.
 
@@ -33,10 +35,7 @@ Quatre cases activent ou désactivent ce que le modèle a le droit de corriger :
 
 La section **Modèle LLM** liste les modèles exposés par votre serveur. Le premier est sélectionné par défaut.
 
-## Moteur
-
-- **LLM** (par défaut) : correction par le modèle, analyse des fautes, note et journal.
-- **LanguageTool** : correction par LanguageTool seul, en appliquant sa première suggestion pour chaque détection. Ce mode est un secours quand le modèle est indisponible ; il n'alimente ni la note ni le journal.
+La correction est toujours faite par le modèle. Les règles de LanguageTool servent uniquement à classer les fautes (voir [Fonctionnement](/docs/decouvrir/fonctionnement/)).
 
 ## Votre texte n'est jamais une consigne
 

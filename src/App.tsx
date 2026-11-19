@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
-import { LTSetupBanner } from "./components/LTSetupBanner";
 import { Output } from "./components/Output";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
 import { useCorrector } from "./hooks/useCorrector";
-import { useLanguageTool } from "./hooks/useLanguageTool";
+import { useMediaQuery } from "./hooks/useMediaQuery";
 import { initModel } from "./utils/models";
 
 type Pane = "editor" | "output";
@@ -29,7 +28,9 @@ function App() {
     handleReset,
   } = useCorrector();
 
-  const { isAvailable: ltAvailable, isChecking: ltChecking } = useLanguageTool();
+  // À partir de la tablette (md), les actions passent dans l'en-tête de chaque
+  // panneau, au-dessus des zones de texte ; sur mobile elles restent en bas.
+  const actionsInHeader = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     void initModel();
@@ -79,7 +80,6 @@ function App() {
     <div className="min-h-screen flex flex-col bg-[#f7f9fc] dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <div className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(70%_45%_at_50%_0%,rgba(59,130,246,0.07),transparent_70%)] dark:bg-[radial-gradient(70%_45%_at_50%_0%,rgba(37,99,235,0.14),transparent_70%)]" />
 
-      {!ltAvailable && !ltChecking && <LTSetupBanner />}
       <Header
         theme={theme}
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
@@ -130,6 +130,7 @@ function App() {
               onChange={setTextContent}
               onCorrect={startCorrection}
               isLoading={isLoading}
+              actionsInHeader={actionsInHeader}
             />
           </div>
           <div className={`${activePane === "output" ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
@@ -144,6 +145,7 @@ function App() {
               score={analysis?.score}
               week={analysis?.week}
               analysisNotice={analysisNotice}
+              actionsInHeader={actionsInHeader}
             />
           </div>
         </main>

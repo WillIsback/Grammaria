@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import OpenAI from "openai";
 import { config } from "./config.ts";
+import { GrammarChecker } from "./grammar.ts";
 import { Journal } from "./journal.ts";
 import { analyze } from "./src/analysis/analyze.ts";
 import { parsePeriodDays } from "./src/analysis/score.ts";
@@ -26,7 +27,10 @@ const VALID_WORDS_PATH = join(import.meta.dir, "public", "data", "valid-words.js
 
 const journal = new Journal(config.journalPath);
 
-/** Taille maximale d'un texte accepté par /api/analyze (caractères). */
+const grammar = new GrammarChecker();
+grammar.warmUp();
+
+/** Taille maximale d'un texte accepté par /api/check et /api/analyze (caractères). */
 const MAX_ANALYZE_LENGTH = 20_000;
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
@@ -121,7 +125,7 @@ Bun.serve({
       }
     }
 
-    // === API: Analyse (diff + croisement LanguageTool) et journal ===
+    // === API: Analyse (diff + croisement des détections grammaticales) et journal ===
     if (path === "/api/analyze" || path === "/api/journal") {
       const headers = getCorsHeaders(req);
 
@@ -183,33 +187,44 @@ Bun.serve({
       });
     }
 
-    // === API: LanguageTool Proxy ===
-    if (path.startsWith("/api/lt/")) {
-      const ltPath = path.replace("/api/lt", "");
-      const ltUrl = `${config.ltTarget}${ltPath}${url.search}`;
+    // === API: Correcteur grammatical intégré (règles LanguageTool) ===
+    if (path === "/api/check") {
+      const headers = getCorsHeaders(req);
+
+      if (req.method === "OPTIONS") {
+        headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Content-Type");
+        return new Response(null, { headers });
+      }
+
+      if (req.method !== "POST") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), {
+          status: 405,
+          headers,
+        });
+      }
+
+      let text: unknown;
+      try {
+        ({ text } = (await req.json()) as { text?: unknown });
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
+      }
+      if (typeof text !== "string" || !text.trim() || text.length > MAX_ANALYZE_LENGTH) {
+        return new Response(JSON.stringify({ error: "Invalid payload" }), {
+          status: 400,
+          headers,
+        });
+      }
 
       try {
-        const ltResponse = await fetch(ltUrl, {
-          method: req.method,
-          headers: upstreamHeaders(req.headers),
-          body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
-          redirect: "follow",
-        });
-
-        const responseHeaders = downstreamHeaders(ltResponse.headers);
-        const origin = req.headers.get("Origin") ?? "";
-        const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
-        const allowed = isLocalhost || config.corsOrigins.some((o) => origin === o);
-        responseHeaders.set("Access-Control-Allow-Origin", allowed ? origin : "");
-
-        return new Response(ltResponse.body, {
-          status: ltResponse.status,
-          headers: responseHeaders,
-        });
-      } catch {
-        return new Response(JSON.stringify({ error: "LanguageTool unavailable" }), {
-          status: 502,
-          headers: { "Content-Type": "application/json" },
+        const matches = await grammar.check(text);
+        return new Response(JSON.stringify({ matches }), { headers });
+      } catch (error) {
+        console.error("[Grammar] Check failed:", error);
+        return new Response(JSON.stringify({ error: "Grammar checker unavailable" }), {
+          status: 503,
+          headers,
         });
       }
     }

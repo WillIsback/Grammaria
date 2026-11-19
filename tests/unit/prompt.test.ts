@@ -3,7 +3,6 @@ import type { CorrectionSettings } from "../../src/types";
 import { buildSystemPrompt, buildUserPrompt } from "../../src/utils/prompt";
 
 const base: CorrectionSettings = {
-  engine: "llm",
   mode: "formel",
   fixGrammar: true,
   fixSpelling: true,

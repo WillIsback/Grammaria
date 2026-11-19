@@ -37,7 +37,7 @@ describe("Pipeline - Integration", () => {
   it("pipeline_defaultSettings - verifie les parametres par defaut", () => {
     const { result } = renderHook(() => useCorrector());
 
-    expect(result.current.settings.engine).toBe("llm");
+    expect(result.current.settings).not.toHaveProperty("engine");
     expect(result.current.settings.fixGrammar).toBe(true);
     expect(result.current.settings.fixSpelling).toBe(true);
     expect(result.current.settings.fixSyntax).toBe(true);

@@ -5,17 +5,17 @@ description: "Questions fréquentes et dépannage."
 
 ## Mes textes sont-ils envoyés quelque part ?
 
-Ils sont envoyés au modèle que vous avez configuré dans `LLM_TARGET` et à votre instance LanguageTool. Avec un modèle local, rien ne quitte votre réseau. Le journal ne conserve que les phrases contenant une faute.
+Ils sont envoyés uniquement au modèle que vous avez configuré dans `LLM_TARGET` : l'analyse grammaticale tourne dans le serveur Grammaria. Avec un modèle local, rien ne quitte votre réseau. Le journal ne conserve que les phrases contenant une faute.
 
-## Le bandeau « LanguageTool n'est pas disponible » s'affiche
+## Le message « Le correcteur grammatical est indisponible » s'affiche
 
-Vérifiez que le conteneur tourne :
+Le correcteur grammatical intégré n'a pas pu analyser le texte. Consultez les journaux du serveur (lignes `[Grammar]`) et vérifiez que le serveur dispose d'environ 1 Go de mémoire vive libre pour charger les règles. Vous pouvez aussi l'interroger directement :
 
 ```bash
-curl -s http://localhost:3002/v2/languages
+curl -s -X POST http://localhost:25000/api/check -H "Content-Type: application/json" -d '{"text":"Ils on vu le film."}'
 ```
 
-Sans LanguageTool, la correction fonctionne mais seules les confusions des fiches sont classées.
+Sans correcteur grammatical, la correction fonctionne mais seules les confusions des fiches et les accords sont classés.
 
 ## La correction échoue ou ne démarre pas
 
@@ -37,7 +37,7 @@ Certains modèles produisent un bloc de réflexion avant leur réponse. Laissez 
 
 ## Pourquoi une correction est-elle « Non classé » ?
 
-Le modèle a modifié un passage que ni les fiches, ni la détection des accords, ni LanguageTool n'expliquent. C'est le plus souvent une reformulation de style. Elle n'entre pas dans la note.
+Le modèle a modifié un passage que ni les fiches, ni la détection des accords, ni les règles de LanguageTool n'expliquent. C'est le plus souvent une reformulation de style. Elle n'entre pas dans la note.
 
 ## Ma note est très basse sur un message court
 

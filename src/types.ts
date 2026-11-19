@@ -1,7 +1,6 @@
 export type CorrectionMode = "formel" | "semi-formel" | "informel" | "technical";
 
 export interface CorrectionSettings {
-  engine: "llm" | "lt";
   mode: CorrectionMode;
   fixGrammar: boolean;
   fixSpelling: boolean;
@@ -22,13 +21,13 @@ export interface Toast {
   type: ToastType;
 }
 
-// LanguageTool types
+// Détections du correcteur grammatical (format LanguageTool)
 export interface LTMatch {
   message: string;
   shortMessage: string;
   offset: number;
   length: number;
-  replacements: string[];
+  replacements: { value: string }[];
   rule: {
     id: string;
     description?: string;

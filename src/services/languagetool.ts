@@ -1,29 +1,32 @@
-import type { CorrectionEntry, LTMatch, LTResponse } from "../types";
+import type { LTMatch, LTResponse } from "../types";
 
-const LT_API_BASE = "/api/lt";
+/** Délai côté client ; le serveur borne lui-même l'analyse. */
+const CHECK_TIMEOUT_MS = 30_000;
 
+/**
+ * Détections grammaticales du texte, calculées par le correcteur intégré au
+ * serveur (règles françaises de LanguageTool, sans service externe).
+ */
 export async function runLanguageTool(text: string, signal?: AbortSignal): Promise<LTMatch[]> {
   if (!text.trim()) {
     throw new Error("Le texte ne peut pas être vide");
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort);
 
   try {
-    const response = await fetch(`${LT_API_BASE}/v2/check`, {
+    const response = await fetch("/api/check", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ text, language: "fr" }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      throw new Error(
-        `LanguageTool ne répond pas (HTTP ${response.status}). Vérifiez que son conteneur est lancé.`,
-      );
+      throw new Error(`Le correcteur grammatical a échoué (HTTP ${response.status}).`);
     }
 
     const data: LTResponse = await response.json();
@@ -31,45 +34,5 @@ export async function runLanguageTool(text: string, signal?: AbortSignal): Promi
   } finally {
     clearTimeout(timeoutId);
     signal?.removeEventListener("abort", onAbort);
-  }
-}
-
-export function applyLTCorrections(
-  text: string,
-  matches: LTMatch[],
-): { correctedText: string; corrections: CorrectionEntry[] } {
-  const validMatches = matches
-    .filter((m) => m.replacements && m.replacements.length > 0)
-    .sort((a, b) => b.offset - a.offset);
-
-  const corrections: CorrectionEntry[] = [];
-  let result = text;
-
-  for (const match of validMatches) {
-    const firstReplacement = match.replacements[0];
-    const replacementText =
-      typeof firstReplacement === "string"
-        ? firstReplacement
-        : (firstReplacement as { value: string }).value;
-
-    const avant = result.slice(match.offset, match.offset + match.length);
-    corrections.push({ avant, apres: replacementText, regle: match.rule.id });
-
-    result =
-      result.slice(0, match.offset) + replacementText + result.slice(match.offset + match.length);
-  }
-
-  return { correctedText: result, corrections: corrections.reverse() };
-}
-
-export async function checkLTAvailable(): Promise<boolean> {
-  try {
-    const response = await fetch(`${LT_API_BASE}/v2/languages`, {
-      method: "GET",
-      signal: AbortSignal.timeout(5000),
-    });
-    return response.ok;
-  } catch {
-    return false;
   }
 }
