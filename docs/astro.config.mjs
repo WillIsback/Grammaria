@@ -37,6 +37,7 @@ export default defineConfig({
             { label: "Corrections et fiches de règles", link: "/docs/utiliser/corrections/" },
             { label: "Note et journal des fautes", link: "/docs/utiliser/note-et-journal/" },
             { label: "Progression", link: "/docs/utiliser/progression/" },
+            { label: "Badges", link: "/docs/utiliser/badges/" },
           ],
         },
         {

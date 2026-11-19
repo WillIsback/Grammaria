@@ -90,7 +90,8 @@ Réponse :
   "score": 0,
   "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 },
   "intervention": null,
-  "reussites": []
+  "reussites": [],
+  "nouveauxBadges": []
 }
 ```
 
@@ -126,6 +127,8 @@ Réponse :
 `choiceId` identifie ce choix précis (c'est l'`id` de l'événement `choix` dans l'historique) : il est à renvoyer à `POST /api/rules/answer`. `avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
 
 `reussites` liste les règles devenues « acquises » avec ce texte : `[{ "ruleKey": "PAIRE:on/ont", "titre": "on / ont" }]`.
+
+`nouveauxBadges` liste les [badges](#badges) obtenus grâce à ce texte, dans l'ordre du catalogue : `[{ "id": "premier-texte", "titre": "Premier texte", "description": "Votre premier texte est corrigé : le journal de progression commence." }]`. Une erreur du calcul des badges ne fait jamais échouer l'analyse : la liste est alors vide.
 
 ## Cycle de vie des règles
 
@@ -199,7 +202,7 @@ Enregistre la forme cliquée lors d'un choix à deux formes. `choiceId` est celu
 { "choiceId": 57, "correct": true }
 ```
 
-Réponse : `{"recorded": true}`. Chaque choix ne reçoit qu'une réponse.
+Réponse : `{"recorded": true, "nouveauxBadges": []}`. Chaque choix ne reçoit qu'une réponse. `nouveauxBadges` a la même forme que dans `POST /api/analyze` (par exemple « Dix bons choix »).
 
 | Code | Cas |
 |---|---|
@@ -279,7 +282,63 @@ Score : `arrondi(100 × (0,6 × qualité + 0,4 × part des règles acquises))`, 
 
 ### `DELETE /api/journal`
 
-Efface tout le journal et remet à zéro l'état des règles et leur historique. Réponse : `{"purged": true}`.
+Efface tout le journal, remet à zéro l'état des règles et leur historique, et efface les badges obtenus. Réponse : `{"purged": true}`.
+
+## Badges
+
+Le catalogue est défini dans `src/analysis/badges/catalogue.ts`, l'évaluation dans `src/analysis/badges/evaluation.ts` (logique pure). Les badges sont réévalués après chaque `POST /api/analyze` et chaque réponse enregistrée par `POST /api/rules/answer`. Un badge obtenu est conservé avec sa date dans la table `badges` du journal et n'est jamais retiré par un recalcul ; seul `DELETE /api/journal` l'efface. Liste et critères : [Badges](/docs/utiliser/badges/).
+
+### `GET /api/badges`
+
+Catalogue complet, dans l'ordre d'affichage : chaque badge, obtenu ou non, avec sa progression.
+
+```json
+{
+  "familles": [{ "id": "premiers-pas", "titre": "Premiers pas" }, { "id": "regularite", "titre": "Régularité" }, "…"],
+  "badges": [
+    {
+      "id": "premier-texte",
+      "famille": "premiers-pas",
+      "titre": "Premier texte",
+      "description": "Votre premier texte est corrigé : le journal de progression commence.",
+      "critere": "Corriger un premier texte.",
+      "mesure": "textes",
+      "unite": { "singulier": "texte", "pluriel": "textes" },
+      "obtenu": true,
+      "obtenuLe": 1795000000000,
+      "progression": { "valeur": 7, "seuil": 1 }
+    },
+    {
+      "id": "note-18",
+      "famille": "justesse",
+      "titre": "Plume sûre",
+      "…": "…",
+      "obtenu": false,
+      "obtenuLe": null,
+      "progression": {
+        "valeur": 16.4,
+        "seuil": 18,
+        "detail": "7 textes corrigés sur les 30 derniers jours (10 au minimum)."
+      }
+    }
+  ],
+  "obtenus": 3,
+  "total": 18
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `id` | identifiant stable du badge |
+| `famille` | `premiers-pas`, `regularite`, `justesse`, `maitrise` ou `perseverance` |
+| `critere` | critère en clair, affiché tant que le badge est à venir |
+| `mesure` | ce qui est compté : `textes`, `jours`, `semaines`, `textesSansFaute`, `noteMoyenne`, `reglesAcquises`, `homophonesAcquis`, `rechutesSurmontees` ou `reponsesJustes` |
+| `obtenuLe` | date d'obtention (date du fait qui a rempli le critère) ; `null` si le badge est à venir |
+| `progression.valeur` | valeur actuelle de la mesure ; pour `noteMoyenne`, note moyenne des 30 derniers jours (0 sans texte) |
+| `progression.seuil` | valeur à atteindre ; pour `noteMoyenne`, une note sur 20 |
+| `progression.detail` | précision éventuelle, en clair |
+
+Cette route est soumise aux mêmes contrôles que les autres routes du journal (en mode bureau : en-tête `Host` local obligatoire). 405 pour une autre méthode que `GET`.
 
 ## Mots valides
 

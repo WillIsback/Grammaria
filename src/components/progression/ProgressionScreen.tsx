@@ -329,12 +329,9 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
       </div>
 
       {badges && (
-        <section aria-labelledby="progression-badges" className={card}>
-          <h3 id="progression-badges" className={cardTitle}>
-            Badges
-          </h3>
-          <div className="mt-3">{badges}</div>
-        </section>
+        <div data-testid="progression-badges" className={card}>
+          {badges}
+        </div>
       )}
     </div>
   );

@@ -116,7 +116,7 @@ describe("ProgressionScreen", () => {
         badges={<p>Galerie</p>}
       />,
     );
-    const badges = await screen.findByRole("region", { name: "Badges" });
+    const badges = await screen.findByTestId("progression-badges");
     expect(within(badges).getByText("Galerie")).toBeTruthy();
   });
 

@@ -25,10 +25,12 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
   const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
 
   const handlePurge = async () => {
-    if (!window.confirm("Effacer définitivement tout le journal des fautes ?")) return;
+    const message =
+      "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.";
+    if (!window.confirm(message)) return;
     try {
       await purgeJournal();
-      setPurgeStatus("Journal effacé.");
+      setPurgeStatus("Journal et badges effacés.");
     } catch {
       setPurgeStatus("Le journal n'a pas pu être effacé.");
     }

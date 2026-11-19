@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
+import { BadgeStore } from "./journal.badges.ts";
 import {
   calculerProgression,
   debutPremiereSemaine,
@@ -58,6 +59,8 @@ export interface JournalSummary {
 export class Journal {
   private db: Database;
   private ruleStore: RuleStore;
+  /** Badges de progression (voir `journal.badges.ts`). */
+  readonly badges: BadgeStore;
 
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
@@ -96,6 +99,8 @@ export class Journal {
     `);
     this.ruleStore = new RuleStore(this.db);
     this.ruleStore.migrate();
+    this.badges = new BadgeStore(this.db);
+    this.badges.migrate();
   }
 
   /**
@@ -212,11 +217,12 @@ export class Journal {
     );
   }
 
-  /** Efface le journal et remet à zéro l'état des règles. */
+  /** Efface le journal, remet à zéro l'état des règles et retire les badges. */
   purge(): void {
     this.db.transaction(() => {
       this.db.exec("DELETE FROM faults; DELETE FROM texts;");
       this.ruleStore.purge();
+      this.badges.purge();
     })();
   }
 
