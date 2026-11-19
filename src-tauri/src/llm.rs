@@ -458,22 +458,24 @@ impl SseParser {
 #[tauri::command]
 pub async fn llm_models(store: State<'_, Store>, llm: State<'_, Llm>) -> Result<Value, LlmError> {
     let upstream = store.upstream();
-    let cle = upstream
-        .as_ref()
-        .map(|u| u.api_key.clone())
-        .unwrap_or_default();
+    let cle = upstream.as_ref().map(|u| u.api_key.clone());
     llm.models(upstream)
         .await
-        .inspect_err(|error| journaliser("llm_models", error, &cle))
+        .inspect_err(|error| journaliser("llm_models", error, cle.as_deref()))
 }
 
 /// Erreur du relais dans le journal technique : statut et message (corps de la
 /// réponse amont, tronqué et masqué), jamais la clé ni le texte envoyé. Une
 /// annulation (bouton « Arrêter ») n'est pas une erreur.
-fn journaliser(commande: &str, error: &LlmError, cle: &str) {
+fn journaliser(commande: &str, error: &LlmError, cle: Option<&str>) {
     if error.cancelled {
         return;
     }
+    // Aucun modèle configuré (premier lancement) : un état, pas une panne.
+    let Some(cle) = cle else {
+        logs::ecrire(logs::Niveau::Info, commande, "Aucun modèle configuré.");
+        return;
+    };
     let statut = error.status.map_or_else(
         || "sans réponse".to_string(),
         |status| format!("HTTP {status}"),
@@ -516,17 +518,14 @@ pub async fn llm_chat(
     on_event: Channel<LlmEvent>,
 ) -> Result<(), String> {
     let upstream = store.upstream();
-    let cle = upstream
-        .as_ref()
-        .map(|u| u.api_key.clone())
-        .unwrap_or_default();
+    let cle = upstream.as_ref().map(|u| u.api_key.clone());
     let last = llm
         .chat(request_id, upstream, body, |event| {
             on_event.send(event).is_ok()
         })
         .await;
     if let LlmEvent::Error(error) = &last {
-        journaliser("llm_chat", error, &cle);
+        journaliser("llm_chat", error, cle.as_deref());
     }
     on_event.send(last).map_err(|error| error.to_string())
 }
