@@ -8,18 +8,25 @@ export const DUREE_NOTIFICATION_MS = 8000;
 interface Props {
   badges: BadgeAnnonce[];
   onClose: () => void;
+  /**
+   * Vrai tant qu'une fenêtre (menu Paramètres, barre des réglages en tiroir)
+   * recouvre la page : la notification attend sa fermeture pour s'afficher,
+   * avec son délai complet.
+   */
+  suspendue?: boolean;
 }
 
 /**
  * Notification discrète des badges obtenus : jamais modale, une seule à la
- * fois (plusieurs badges sont regroupés), placée loin du bouton Copier (en
- * haut sur mobile, où Copier est en bas ; en bas à gauche sur grand écran, où
- * Copier est dans l'en-tête du résultat). La zone `role="status"` reste
+ * fois (plusieurs badges sont regroupés), placée loin du bouton Copier (sous
+ * l'en-tête sur mobile, où Copier est en bas et où le message « Texte copié »
+ * occupe le haut de l'écran ; en bas à gauche sur grand écran, où Copier est
+ * dans l'en-tête du résultat). La zone `role="status"` reste
  * toujours présente pour que les lecteurs d'écran annoncent son contenu.
  */
-export function BadgeNotice({ badges, onClose }: Props) {
+export function BadgeNotice({ badges, onClose, suspendue = false }: Props) {
   const [enPause, setEnPause] = useState(false);
-  const visible = badges.length > 0;
+  const visible = badges.length > 0 && !suspendue;
   const fermer = useCallback(() => {
     setEnPause(false);
     onClose();
@@ -34,8 +41,12 @@ export function BadgeNotice({ badges, onClose }: Props) {
 
   useEffect(() => {
     if (!visible) return;
+    // Échap ne ferme qu'un élément à la fois : la notification d'abord, l'écran
+    // « Progression » éventuellement ouvert derrière elle ensuite.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") fermer();
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      fermer();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -48,7 +59,7 @@ export function BadgeNotice({ badges, onClose }: Props) {
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      className="fixed z-40 inset-x-4 top-3 md:inset-x-auto md:top-auto md:left-6 md:bottom-6 md:w-[22rem] pointer-events-none"
+      className="fixed z-40 inset-x-4 top-[4.5rem] md:inset-x-auto md:top-auto md:left-6 md:bottom-6 md:w-[22rem] pointer-events-none"
     >
       {visible && (
         <div

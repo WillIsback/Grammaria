@@ -8,6 +8,10 @@ interface Props {
   setSettings: (settings: CorrectionSettings) => void;
   open: boolean;
   onClose: () => void;
+  /** Appelé après l'effacement du journal, pour recharger ce qui en dépend. */
+  onPurged?: () => void;
+  /** Vrai quand la barre est cachée sous un autre écran : elle devient inerte. */
+  hidden?: boolean;
 }
 
 const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
@@ -20,7 +24,7 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
 const sectionTitle =
   "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 
-export function Sidebar({ settings, setSettings, open, onClose }: Props) {
+export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden = false }: Props) {
   const modeKeys = Object.keys(modeLabels) as CorrectionMode[];
   const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
 
@@ -31,6 +35,7 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
     try {
       await purgeJournal();
       setPurgeStatus("Journal et badges effacés.");
+      onPurged?.();
     } catch {
       setPurgeStatus("Le journal n'a pas pu être effacé.");
     }
@@ -102,6 +107,7 @@ export function Sidebar({ settings, setSettings, open, onClose }: Props) {
 
       <aside
         aria-label="Réglages de correction"
+        {...(hidden ? { inert: "" } : {})}
         className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] shrink-0 overflow-y-auto
           bg-white dark:bg-gray-900 border-r border-gray-200/70 dark:border-gray-800/70
           p-5 shadow-2xl shadow-gray-900/10 transition-transform duration-300 ease-out

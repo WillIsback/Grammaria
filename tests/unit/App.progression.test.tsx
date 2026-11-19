@@ -65,12 +65,21 @@ describe("App — écran Progression", () => {
     expect(bouton.getAttribute("aria-pressed")).toBe("true");
     await screen.findByText("Aucun texte corrigé pour l'instant");
 
+    // L'écran de correction, caché dessous, n'est plus atteignable au clavier.
+    const zoneTexte = screen.getByDisplayValue("Mon texte en cours");
+    const barre = screen.getByRole("complementary", { name: "Réglages de correction" });
+    expect(zoneTexte.closest("[inert]")?.tagName).toBe("MAIN");
+    expect(barre.hasAttribute("inert")).toBe(true);
+    expect(bouton.closest("[inert]")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Ma progression" }).closest("[inert]")).toBeNull();
+
     fireEvent.click(screen.getByRole("button", { name: /Retour à la correction/ }));
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "Ma progression" })).toBeNull(),
     );
-    // Le texte en cours de correction est toujours là.
+    // Le texte en cours de correction est toujours là, et de nouveau atteignable.
     expect(screen.getByDisplayValue("Mon texte en cours")).toBeTruthy();
+    expect(document.querySelector("[inert]")).toBeNull();
     expect(document.activeElement).toBe(bouton);
   });
 });

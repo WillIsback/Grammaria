@@ -13,6 +13,10 @@ interface Props {
    * « Badges » n'apparaît que si ce contenu est fourni.
    */
   badges?: React.ReactNode;
+  /** Hauteur de l'en-tête (et du bandeau éventuel) sous lequel l'écran commence, en pixels. */
+  top?: number;
+  /** Le journal a changé quand cette valeur change (comparée par identité) : les données sont rechargées. */
+  reloadKey?: unknown;
   /** Chargement des données ; injectable pour les tests. */
   load?: (signal?: AbortSignal) => Promise<Progression>;
 }
@@ -80,7 +84,13 @@ const depuis = (total: number, periode: number, semaines: number) =>
 
 const note = (score: number | null) => (score === null ? "–" : `${nombre(score)}/20`);
 
-export function ProgressionScreen({ onClose, badges, load = fetchProgress }: Props) {
+export function ProgressionScreen({
+  onClose,
+  badges,
+  top = 64,
+  reloadKey,
+  load = fetchProgress,
+}: Props) {
   const [data, setData] = useState<Progression | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -94,7 +104,8 @@ export function ProgressionScreen({ onClose, badges, load = fetchProgress }: Pro
         if (!controller.signal.aborted) setError(true);
       });
     return () => controller.abort();
-  }, [load, attempt]);
+    // `reloadKey` : rechargement demandé par l'appelant, l'affichage reste en place.
+  }, [load, attempt, reloadKey]);
 
   // Le focus va au titre de l'écran, puis revient au bouton d'ouverture à la fermeture.
   useEffect(() => {
@@ -120,7 +131,10 @@ export function ProgressionScreen({ onClose, badges, load = fetchProgress }: Pro
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-16 bottom-0 z-30 overflow-y-auto overscroll-contain bg-[#f7f9fc] dark:bg-gray-950">
+    <div
+      style={{ top }}
+      className="fixed inset-x-0 bottom-0 z-30 overflow-y-auto overscroll-contain bg-[#f7f9fc] dark:bg-gray-950"
+    >
       <section
         aria-labelledby="progression-titre"
         className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8"
@@ -328,8 +342,9 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
         <MotsPieges data={data} />
       </div>
 
+      {/* Pas de cadre autour de la galerie : chaque badge est déjà une carte. */}
       {badges && (
-        <div data-testid="progression-badges" className={card}>
+        <div data-testid="progression-badges" className="pt-3 sm:pt-4">
           {badges}
         </div>
       )}

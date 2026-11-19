@@ -22,7 +22,7 @@ export function Header({
   const isDark = theme === "dark";
 
   return (
-    <header className="border-b border-gray-200/70 dark:border-gray-800/70 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl sticky top-0 z-40">
+    <header className="border-b border-gray-200/70 dark:border-gray-800/70 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
       <div className="flex justify-between items-center gap-3 px-4 sm:px-6 h-16">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-sm shadow-brand-500/25 shrink-0">

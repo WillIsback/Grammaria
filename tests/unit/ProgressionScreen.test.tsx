@@ -118,6 +118,26 @@ describe("ProgressionScreen", () => {
     );
     const badges = await screen.findByTestId("progression-badges");
     expect(within(badges).getByText("Galerie")).toBeTruthy();
+    // Pas de cadre autour de la galerie : chaque badge est déjà une carte.
+    expect(badges.className).not.toContain("border");
+  });
+
+  it("se recharge quand le journal change, sans repasser par « Chargement »", async () => {
+    const load = vi.fn().mockResolvedValueOnce(rempli()).mockResolvedValueOnce(vide());
+    const { rerender } = render(<ProgressionScreen onClose={vi.fn()} load={load} reloadKey={0} />);
+    await screen.findByText("Score de maîtrise");
+    rerender(<ProgressionScreen onClose={vi.fn()} load={load} reloadKey={1} />);
+    expect(screen.queryByText("Chargement de votre progression…")).toBeNull();
+    await screen.findByText("Aucun texte corrigé pour l'instant");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("commence sous l'en-tête, à la hauteur indiquée", async () => {
+    const { container } = render(
+      <ProgressionScreen onClose={vi.fn()} load={() => Promise.resolve(vide())} top={110} />,
+    );
+    await screen.findByText("Aucun texte corrigé pour l'instant");
+    expect((container.firstElementChild as HTMLElement).style.top).toBe("110px");
   });
 
   it("revient à la correction par le bouton Retour ou la touche Échap", async () => {

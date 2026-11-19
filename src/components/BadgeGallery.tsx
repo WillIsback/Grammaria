@@ -134,9 +134,10 @@ function CarteBadge({ badge }: { badge: BadgeVue }) {
 /**
  * Galerie des badges de progression, regroupés par famille : badges obtenus
  * avec leur date, badges à venir avec leur critère et leur progression.
- * Charge elle-même le catalogue (`GET /api/badges`).
+ * Charge elle-même le catalogue (`GET /api/badges`), et le recharge quand
+ * `reloadKey` change (badge obtenu ou journal effacé pendant qu'elle est affichée).
  */
-export function BadgeGallery() {
+export function BadgeGallery({ reloadKey }: { reloadKey?: unknown }) {
   const [catalogue, setCatalogue] = useState<CatalogueBadges | null>(null);
   const [erreur, setErreur] = useState(false);
   const titreId = useId();
@@ -153,7 +154,8 @@ export function BadgeGallery() {
         setErreur(true);
       });
     return () => controller.abort();
-  }, [essai]);
+    // `reloadKey` : le journal a changé, le catalogue affiché reste en place pendant le rechargement.
+  }, [essai, reloadKey]);
 
   const reessayer = useCallback(() => {
     setErreur(false);

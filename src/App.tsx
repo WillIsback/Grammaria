@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BadgeGallery } from "./components/BadgeGallery";
 import { BadgeNotice } from "./components/BadgeNotice";
 import { Editor } from "./components/Editor";
@@ -19,6 +19,12 @@ import type { ServerSettings } from "./services/settings";
 import { initModel, setCurrentModel } from "./utils/models";
 
 type Pane = "editor" | "output";
+
+/**
+ * Attribut `inert` : ce qui est caché sous un autre écran n'est atteignable ni
+ * au clavier ni par un lecteur d'écran. (Absent des types de React 18.)
+ */
+const inertSi = (condition: boolean): object => (condition ? { inert: "" } : {});
 
 function App() {
   const {
@@ -44,14 +50,23 @@ function App() {
   useEffect(() => {
     annoncerBadges(analysis?.nouveauxBadges);
   }, [analysis, annoncerBadges]);
+  // Quand le journal change (texte corrigé, réponse au choix, effacement),
+  // l'écran « Progression » et la galerie des badges, s'ils sont ouverts, se
+  // rechargent : cette valeur change alors d'identité.
+  const [journalVersion, setJournalVersion] = useState(0);
+  const journalChanged = useCallback(() => setJournalVersion((v) => v + 1), []);
+  const journalKey = useMemo(() => ({ analysis, journalVersion }), [analysis, journalVersion]);
   /** La copie a déjà eu lieu : un échec d'enregistrement de la réponse est sans conséquence. */
   const recordChoiceAnswer = useCallback(
     (choiceId: number, correct: boolean) => {
       answerChoice(choiceId, correct)
-        .then(annoncerBadges)
+        .then((badges) => {
+          annoncerBadges(badges);
+          journalChanged();
+        })
         .catch(() => {});
     },
-    [annoncerBadges],
+    [annoncerBadges, journalChanged],
   );
 
   // À partir de la tablette (md), les actions passent dans l'en-tête de chaque
@@ -69,6 +84,17 @@ function App() {
   // Écran « Progression » : affiché par-dessus la correction, qui garde son état.
   const [progressOpen, setProgressOpen] = useState(false);
   const closeProgress = useCallback(() => setProgressOpen(false), []);
+  // L'écran « Progression » commence sous l'en-tête et, dans l'application de
+  // bureau, sous le bandeau de mise à jour, qui reste donc visible.
+  const topRef = useRef<HTMLDivElement>(null);
+  const [topHeight, setTopHeight] = useState(64);
+  useEffect(() => {
+    const top = topRef.current;
+    if (!top || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setTopHeight(top.offsetHeight));
+    observer.observe(top);
+    return () => observer.disconnect();
+  }, []);
 
   // Application de bureau : tant qu'aucun modèle n'est configuré, ouvrir les
   // réglages pour que l'utilisateur sache par où commencer.
@@ -126,6 +152,19 @@ function App() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  // Barre des réglages ouverte en tiroir (mobile, tablette) : Échap la ferme,
+  // elle seule, même par-dessus l'écran « Progression ».
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [sidebarOpen]);
+
   const handleCopySuccess = (text: string) => {
     void navigator.clipboard.writeText(text);
     setToast({
@@ -139,17 +178,26 @@ function App() {
     <div className="min-h-screen flex flex-col bg-[#f7f9fc] dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <div className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(70%_45%_at_50%_0%,rgba(59,130,246,0.07),transparent_70%)] dark:bg-[radial-gradient(70%_45%_at_50%_0%,rgba(37,99,235,0.14),transparent_70%)]" />
 
-      <Header
-        theme={theme}
-        onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
-        onOpenSettings={() => setSidebarOpen(true)}
-        onOpenPreferences={() => setPreferencesOpen(true)}
-        onOpenProgress={() => setProgressOpen(true)}
-        progressOpen={progressOpen}
-      />
+      <div ref={topRef} className="sticky top-0 z-40">
+        <Header
+          theme={theme}
+          onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
+          onOpenSettings={() => setSidebarOpen(true)}
+          onOpenPreferences={() => setPreferencesOpen(true)}
+          onOpenProgress={() => setProgressOpen(true)}
+          progressOpen={progressOpen}
+        />
+        <UpdateBanner update={appUpdate} />
+      </div>
 
-      <UpdateBanner update={appUpdate} />
-      {progressOpen && <ProgressionScreen onClose={closeProgress} badges={<BadgeGallery />} />}
+      {progressOpen && (
+        <ProgressionScreen
+          onClose={closeProgress}
+          top={topHeight}
+          reloadKey={journalKey}
+          badges={<BadgeGallery reloadKey={journalKey} />}
+        />
+      )}
 
       <SettingsDialog
         open={showPreferences}
@@ -160,7 +208,7 @@ function App() {
         appUpdate={appUpdate}
       />
 
-      <div className="md:hidden px-4 pt-3">
+      <div className="md:hidden px-4 pt-3" {...inertSi(progressOpen)}>
         <div className="flex gap-1 p-1 rounded-xl bg-gray-100/80 dark:bg-gray-800/60 border border-gray-200/70 dark:border-gray-700/60 max-w-md mx-auto">
           {(
             [
@@ -195,9 +243,11 @@ function App() {
           setSettings={setSettings}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onPurged={journalChanged}
+          hidden={progressOpen && !sidebarOpen}
         />
 
-        <main className="flex flex-1 min-w-0 overflow-hidden">
+        <main className="flex flex-1 min-w-0 overflow-hidden" {...inertSi(progressOpen)}>
           <div className={`${activePane === "editor" ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
             <Editor
               text={textContent}
@@ -229,10 +279,17 @@ function App() {
       </div>
 
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
-      <BadgeNotice badges={badgeNotices.annonces} onClose={badgeNotices.fermer} />
+      <BadgeNotice
+        badges={badgeNotices.annonces}
+        onClose={badgeNotices.fermer}
+        suspendue={showPreferences || sidebarOpen}
+      />
 
       {error && (
-        <div className="bg-red-50/90 dark:bg-red-950/40 border-t border-red-200/70 dark:border-red-800/40 backdrop-blur-sm">
+        <div
+          {...inertSi(progressOpen)}
+          className="bg-red-50/90 dark:bg-red-950/40 border-t border-red-200/70 dark:border-red-800/40 backdrop-blur-sm"
+        >
           <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto px-5 py-3.5">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">

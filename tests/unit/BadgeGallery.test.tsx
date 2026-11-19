@@ -100,6 +100,19 @@ describe("BadgeGallery", () => {
     fireEvent.click(screen.getByRole("button", { name: "Réessayer" }));
     await screen.findByText("2 obtenus sur 18");
   });
+
+  it("recharge le catalogue quand le journal change, sans vider l'affichage", async () => {
+    const { rerender } = render(<BadgeGallery reloadKey={0} />);
+    await screen.findByText("2 obtenus sur 18");
+    const vide = vueCatalogue(evaluerBadges({ textes: [], evenements: [] }, J0), new Map());
+    vi.mocked(globalThis.fetch).mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify(vide), { status: 200 })),
+    );
+    rerender(<BadgeGallery reloadKey={1} />);
+    expect(screen.queryByText("Chargement des badges…")).toBeNull();
+    await screen.findByText("0 obtenu sur 18");
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
 });
 
 const BADGE_A = {
@@ -154,6 +167,41 @@ describe("BadgeNotice", () => {
     expect(onClose).toHaveBeenCalledTimes(3);
   });
 
+  it("ne ferme qu'elle-même avec Échap : la touche est consommée", () => {
+    const onClose = vi.fn();
+    const derriere = vi.fn((e: KeyboardEvent) => e.defaultPrevented);
+    window.addEventListener("keydown", derriere);
+    render(<BadgeNotice badges={[BADGE_A]} onClose={onClose} />);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(derriere).toHaveReturnedWith(true);
+    window.removeEventListener("keydown", derriere);
+  });
+
+  it("attend la fermeture d'une fenêtre qui la recouvre, puis garde son délai complet", () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const { rerender } = render(<BadgeNotice badges={[BADGE_A]} onClose={onClose} suspendue />);
+    expect(screen.getByRole("status").textContent).toBe("");
+    act(() => {
+      vi.advanceTimersByTime(DUREE_NOTIFICATION_MS * 2);
+    });
+    // Échap ferme la fenêtre, pas la notification en attente.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+
+    rerender(<BadgeNotice badges={[BADGE_A]} onClose={onClose} suspendue={false} />);
+    expect(screen.getByRole("status").textContent).toContain("Badge obtenu : Premier texte");
+    act(() => {
+      vi.advanceTimersByTime(DUREE_NOTIFICATION_MS - 1);
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("reste affichée tant qu'elle est survolée", () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
@@ -201,6 +249,34 @@ describe("Effacement du journal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Effacer le journal" }));
     await waitFor(() => expect(confirm).toHaveBeenCalled());
     expect(confirm.mock.calls[0][0]).toContain("badges obtenus seront aussi effacés");
+    confirm.mockRestore();
+  });
+
+  it("prévient l'application une fois le journal effacé, pour recharger Progression et les badges", async () => {
+    const { Sidebar } = await import("../../src/components/Sidebar");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ purged: true }), { status: 200 })),
+    ) as unknown as typeof fetch;
+    const onPurged = vi.fn();
+    render(
+      <Sidebar
+        settings={{
+          mode: "formel",
+          fixGrammar: true,
+          fixSpelling: true,
+          fixSyntax: true,
+          fixStyle: true,
+        }}
+        setSettings={() => {}}
+        open
+        onClose={() => {}}
+        onPurged={onPurged}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Effacer le journal" }));
+    await screen.findByText("Journal et badges effacés.");
+    expect(onPurged).toHaveBeenCalledTimes(1);
     confirm.mockRestore();
   });
 });
