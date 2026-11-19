@@ -22,6 +22,20 @@ La configuration se fait par variables d'environnement, lues dans le fichier `.e
 
 Le navigateur n'a jamais accès à `LLM_API_KEY`. Il appelle le serveur Grammaria, qui ajoute la clé avant de relayer la requête au modèle.
 
+## Serveur local d'un seul utilisateur
+
+Pour lancer le serveur sur votre propre ordinateur, sans Docker, et régler le modèle depuis l'interface plutôt que dans `.env`, activez le mode bureau du serveur :
+
+| Variable | Rôle |
+|---|---|
+| `GRAMMARIA_DESKTOP=1` | Réglages du modèle modifiables dans **Paramètres → IA** ; requêtes venues d'un autre hôte ou d'une autre origine refusées |
+| `HOST=127.0.0.1` | Écoute sur cet ordinateur seulement |
+| `GRAMMARIA_SETTINGS_PATH` | Fichier où l'interface enregistre les réglages du modèle ; obligatoire pour qu'ils soient modifiables (la clé API y est en clair, fichier lisible par votre seul compte) |
+| `GRAMMARIA_VALID_WORDS_PATH` | Mots ajoutés au dictionnaire (défaut : `public/data/valid-words.json`) |
+| `GRAMMARIA_DIST_DIR` | Fichiers de l'interface (défaut : `dist/`) |
+
+L'[application de bureau](/docs/demarrer/application-bureau/) n'utilise pas ce serveur : elle n'a besoin d'aucune de ces variables.
+
 ## Réglages de l'interface
 
 Le mode de correction et les types de corrections choisis dans la barre latérale sont mémorisés dans le navigateur. Ils ne dépendent pas du fichier `.env`.
