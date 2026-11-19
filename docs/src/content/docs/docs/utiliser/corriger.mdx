@@ -16,6 +16,37 @@ Un texte est limité à 10 000 caractères. Au-delà, il est coupé à la fin du
 
 Les caractères typographiques sont conservés tels quels : apostrophe courbe (’), guillemets, points de suspension, tirets, €, œ, espaces insécables, lettres d'autres langues dans les noms propres.
 
+## Fautes récurrentes : ce qui s'affiche près du bouton Copier
+
+Grammaria suit chaque règle sur laquelle vous faites des fautes. Tant qu'une faute est occasionnelle, rien ne change. Quand elle revient, un message discret apparaît près du bouton **Copier** : au-dessus du texte corrigé sur un écran large, juste au-dessus du bouton sur mobile. Aucune fenêtre ne s'ouvre et la copie n'est jamais bloquée.
+
+| Situation | Ce que vous voyez |
+|---|---|
+| Première faute sur une règle | rien |
+| 3 fautes sur la même règle en 7 jours | une **astuce** d'une ligne |
+| La faute revient après 3 astuces | le bouton Copier est remplacé par **deux formes** |
+| 14 jours d'usage sans cette faute | un message **« Règle acquise »** |
+| La faute revient après ce message | de nouveau une astuce |
+
+### Le choix entre deux formes
+
+Le bouton **Copier** laisse sa place à deux boutons : la forme que vous aviez écrite et la forme corrigée, dans un ordre tiré au hasard. Au-dessus, votre phrase est affichée avec un blanc à l'endroit du mot.
+
+- Vous cliquez la **bonne** forme : le texte corrigé est copié.
+- Vous cliquez la **mauvaise** : l'explication de la règle s'affiche, et le texte corrigé est copié quand même.
+
+Dans les deux cas, un seul clic suffit et c'est toujours le texte corrigé qui est copié. Le bouton **Copier** habituel revient ensuite.
+
+### Des sollicitations limitées
+
+- Une règle vous sollicite au plus **une fois par jour** (astuce ou choix). Le reste de la journée, le bouton Copier est normal.
+- Au plus **trois règles** proposent le choix entre deux formes sur une même période. Les autres continuent d'afficher une astuce en attendant qu'une place se libère.
+- Un texte n'affiche jamais plus d'une astuce ou d'un choix.
+
+Une règle devient « acquise » quand 14 jours ont passé depuis votre dernière faute et que vous avez corrigé au moins 5 textes, sur au moins 3 jours différents, pendant cette période.
+
+Seules les fautes d'orthographe et de grammaire reconnues entrent dans ce suivi. La ponctuation, le style, les modifications « Non classé » et les simples fautes de frappe n'en font pas partie.
+
 ## Mode de correction
 
 Le mode indique au modèle le registre à respecter.
