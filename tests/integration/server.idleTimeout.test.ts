@@ -13,8 +13,16 @@ describe("Bun.serve idle timeout for streaming corrections (issue #17)", () => {
     expect(serverSource).toMatch(/fetch\s*\(\s*req\s*:\s*Request\s*,\s*server\s*:/);
   });
 
+  // v0.3.0 : le gestionnaire d'API (api/handler.ts) n'a pas accès au serveur
+  // Bun ; server.ts coupe le délai d'inactivité de cette route avant de l'appeler.
   it("disables the per-request idle timeout on the streaming route", () => {
-    expect(chatSection()).toMatch(/server\.timeout\(\s*req\s*,\s*0\s*\)/);
+    expect(serverSource).toMatch(
+      /if \(path === "\/v1\/chat\/completions" && req\.method === "POST"\) server\.timeout\(\s*req\s*,\s*0\s*\);/,
+    );
+    const timeout = serverSource.indexOf("server.timeout(req, 0)");
+    expect(timeout).toBeLessThan(serverSource.indexOf("await gestionnaireApi(req)"));
+    // Le flux de conversation est bien celui du gestionnaire appelé ensuite.
+    expect(chatSection()).toMatch(/new ReadableStream/);
   });
 
   it("routes every controller.enqueue through a guarded helper", () => {
