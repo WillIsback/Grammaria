@@ -1,17 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchServerSettings, type ServerSettings } from "../services/settings";
 
 /** Réglages du serveur ; null tant qu'ils ne sont pas chargés (ou sur un serveur ancien). */
 export function useServerSettings() {
   const [settings, setSettings] = useState<ServerSettings | null>(null);
-
-  const reload = useCallback(async () => {
-    try {
-      setSettings(await fetchServerSettings());
-    } catch {
-      setSettings(null);
-    }
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,5 +19,5 @@ export function useServerSettings() {
     };
   }, []);
 
-  return { serverSettings: settings, setServerSettings: setSettings, reload };
+  return { serverSettings: settings, setServerSettings: setSettings };
 }

@@ -4,12 +4,8 @@ import { getCurrentModel } from "./models";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { sanitizeInput } from "./sanitize";
 
+/** Requête en cours : une nouvelle correction l'annule. */
 let currentAbortController: AbortController | null = null;
-
-export function abortOngoingRequest(): void {
-  currentAbortController?.abort();
-  currentAbortController = null;
-}
 
 export async function correctText(
   text: string,
