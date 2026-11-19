@@ -1,0 +1,47 @@
+---
+title: "Application de bureau"
+description: "Installer Grammaria sur Windows ou Linux, sans serveur à configurer."
+---
+
+L'application de bureau contient tout Grammaria : l'interface, le correcteur grammatical (règles françaises de LanguageTool) et le journal des fautes. Il n'y a ni Docker ni serveur à installer. Il vous faut seulement un **modèle de langage**, sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
+
+## Installer
+
+Téléchargez le paquet de votre système dans la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt.
+
+| Système | Fichier | Installation |
+|---|---|---|
+| Windows | `Grammaria_x.y.z_x64-setup.exe` | Double-cliquez. L'installation se fait pour votre compte, sans droits d'administrateur. |
+| Windows (parc géré) | `Grammaria_x.y.z_x64_fr-FR.msi` | Installateur MSI, déployable par les outils d'administration. |
+| Ubuntu, Debian | `Grammaria_x.y.z_amd64.deb` | Double-cliquez, ou `sudo apt install ./Grammaria_x.y.z_amd64.deb`. |
+| Autres distributions | `Grammaria_x.y.z_amd64.AppImage` | Rendez le fichier exécutable, puis lancez-le. |
+
+Les paquets Windows sont signés : Windows affiche l'éditeur au lieu d'un avertissement « éditeur inconnu ». Les sommes de contrôle SHA-256 sont publiées avec chaque version (`SHA256SUMS-windows`, `SHA256SUMS-linux`).
+
+## Premier lancement
+
+1. Au démarrage, Grammaria charge ses règles de grammaire, en quelques secondes.
+2. Les réglages s'ouvrent sur **Serveur du modèle** : indiquez l'adresse de votre modèle, puis **Enregistrer**.
+   - Ollama sur le même ordinateur : `http://localhost:11434`.
+   - API compatible OpenAI : son adresse, par exemple `https://api.mistral.ai`, et votre clé API.
+3. Choisissez le modèle dans la liste **Modèle LLM**, puis corrigez votre premier texte.
+
+Vos textes ne sont envoyés qu'au modèle que vous avez choisi. L'analyse grammaticale et le journal restent sur votre ordinateur.
+
+## Où sont mes données ?
+
+| Système | Dossier |
+|---|---|
+| Windows | `%APPDATA%\fr.willisback.grammaria\` |
+| Linux | `~/.local/share/fr.willisback.grammaria/` |
+
+Le dossier contient le journal des fautes (`grammaria.db`) et les réglages (`settings.json`). La clé API y est enregistrée en clair, dans un fichier lisible par votre seul compte. Le journal technique du moteur (`server.log`) est dans le dossier de logs de l'application : `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` sous Windows, `~/.local/share/fr.willisback.grammaria/logs/` sous Linux.
+
+## Configuration requise
+
+- Windows 10 ou 11 (64 bits), ou une distribution Linux récente (64 bits) avec WebKitGTK 4.1.
+- Environ 1 Go de mémoire vive pour le correcteur grammatical, en plus du modèle s'il tourne sur la même machine.
+
+## Code source
+
+Grammaria est distribué sous licence GPL-3.0-or-later. Le code source de chaque version est disponible sur [GitHub](https://github.com/WillIsback/Grammaria), à l'étiquette de la version.

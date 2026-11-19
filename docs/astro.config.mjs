@@ -25,6 +25,7 @@ export default defineConfig({
         {
           label: "Démarrer",
           items: [
+            { label: "Application de bureau", link: "/docs/demarrer/application-bureau/" },
             { label: "Installation", link: "/docs/demarrer/installation/" },
             { label: "Configuration", link: "/docs/demarrer/configuration/" },
           ],
@@ -50,6 +51,7 @@ export default defineConfig({
             { label: "API", link: "/docs/reference/api/" },
             { label: "Architecture", link: "/docs/reference/architecture/" },
             { label: "Développement", link: "/docs/reference/developpement/" },
+            { label: "Application de bureau (build)", link: "/docs/reference/bureau/" },
             { label: "FAQ", link: "/docs/reference/faq/" },
           ],
         },

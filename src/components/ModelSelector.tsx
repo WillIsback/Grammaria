@@ -5,9 +5,11 @@ import { fetchModels, setCurrentModel } from "../utils/models";
 interface Props {
   currentModel: string;
   onModelSelect: (model: string) => void;
+  /** Change quand le serveur du modèle change : la liste est rechargée. */
+  reloadKey?: number;
 }
 
-export function ModelSelector({ currentModel, onModelSelect }: Props) {
+export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function ModelSelector({ currentModel, onModelSelect }: Props) {
 
   useEffect(() => {
     void loadModels();
-  }, [loadModels]);
+  }, [loadModels, reloadKey]);
 
   const handleSelect = (modelId: string) => {
     setCurrentModel(modelId);

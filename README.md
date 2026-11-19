@@ -35,7 +35,11 @@ Les interventions sur les fautes récurrentes (astuce puis choix entre deux form
 
 Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vous avez configuré : l'analyse grammaticale tourne dans le serveur Grammaria. Le journal est un fichier SQLite sur votre serveur.
 
-## Démarrage rapide
+## Application de bureau
+
+Pour Windows et Linux, sans serveur à installer : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+
+## Démarrage rapide (serveur)
 
 Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`.
 

@@ -1,0 +1,60 @@
+---
+title: "Application de bureau : build et signature"
+description: "Comment l'application Tauri est construite, publiée et signée."
+---
+
+## Architecture
+
+L'application de bureau est une coquille [Tauri 2](https://tauri.app) (`src-tauri/`) autour du serveur Grammaria habituel :
+
+1. `scripts/desktop/prepare-sidecar.ts` compile `server.ts` et le worker du correcteur en un exécutable Bun autonome (`bun build --compile`), nommé `grammaria-server-<plateforme>`, et copie à côté l'interface construite (`dist/`) et les règles de LanguageTool.
+2. Au lancement, la coquille choisit un port libre sur `127.0.0.1`, démarre ce serveur avec `GRAMMARIA_DESKTOP=1`, attend qu'il réponde, puis affiche son interface. Le serveur est arrêté à la fermeture.
+3. Aucune commande Tauri n'est exposée à la page : l'interface parle au serveur en HTTP, comme dans la version web.
+
+En mode bureau, le serveur :
+
+- n'écoute que sur `127.0.0.1` ;
+- refuse un en-tête `Host` étranger (DNS rebinding) et toute requête de modification venue d'une autre origine (CSRF) ;
+- rend les réglages du LLM modifiables depuis l'interface (`GET`/`PUT /api/settings`), enregistrés dans `settings.json`. Sur un serveur web, ces réglages restent en lecture seule et viennent de l'environnement.
+
+## Variables d'environnement du serveur embarqué
+
+| Variable | Rôle |
+|---|---|
+| `GRAMMARIA_DESKTOP=1` | Active le mode bureau |
+| `HOST`, `PORT` | `127.0.0.1` et le port choisi par la coquille |
+| `GRAMMARIA_DIST_DIR` | Interface construite |
+| `GRAMMARIA_LT_RESOURCES` | Règles de LanguageTool (`core/`, `unicode/`, `fr/`) |
+| `JOURNAL_PATH`, `GRAMMARIA_SETTINGS_PATH`, `GRAMMARIA_VALID_WORDS_PATH` | Fichiers du dossier de données de l'utilisateur |
+
+## Construire en local
+
+Prérequis : Rust stable, Bun, Node.js, et sous Linux `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`.
+
+```bash
+npm ci
+```
+
+```bash
+npx tauri build --bundles deb,appimage
+```
+
+Sous Windows : `npx tauri build --bundles nsis,msi`. Les paquets sont dans `src-tauri/target/release/bundle/`.
+
+## Publication et signature
+
+Le workflow `build-desktop.yml` construit les paquets Linux (deb, AppImage) et Windows (NSIS, MSI). Il tourne sur les pull requests qui touchent l'application de bureau, et `release.yml` l'appelle pour chaque étiquette `v*` : les paquets sont joints à la release GitHub avec leurs sommes de contrôle.
+
+Les paquets Windows sont signés avec **Azure Artifact Signing**, sur le même compte que Syntheo. Le quota mensuel étant partagé, **seuls les builds de release sont signés** ; une pull request ou un lancement manuel produisent des paquets non signés.
+
+Secrets du dépôt à créer (les mêmes valeurs que dans Syntheo) :
+
+| Secret | Valeur |
+|---|---|
+| `AZURE_TENANT_ID` | Tenant du service principal |
+| `AZURE_CLIENT_ID` | Identifiant du service principal |
+| `AZURE_CLIENT_SECRET` | Secret du service principal |
+
+Variables facultatives (par défaut : le compte et le profil de Syntheo) : `AZURE_SIGNING_ENDPOINT` (`https://neu.codesigning.azure.net`), `AZURE_SIGNING_ACCOUNT` (`willisback-signing`), `AZURE_SIGNING_PROFILE` (`syntheo-public`).
+
+Sans ces secrets, une release publie des paquets Windows non signés et le workflow l'indique par un avertissement. Après le build, un test de fumée démarre le serveur embarqué (signé ou non) et vérifie que le correcteur grammatical répond.

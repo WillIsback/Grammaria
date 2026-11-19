@@ -7,6 +7,7 @@ import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import OpenAI from "openai";
 import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
+import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
 import { analyze } from "./src/analysis/analyze.ts";
 import { parsePeriodDays } from "./src/analysis/score.ts";
@@ -22,8 +23,15 @@ import {
 const tracer = trace.getTracer("grammaria");
 
 const PORT = config.port;
-const DIST_DIR = join(import.meta.dir, "dist");
-const VALID_WORDS_PATH = join(import.meta.dir, "public", "data", "valid-words.json");
+const DIST_DIR = resolve(config.distDir || join(import.meta.dir, "dist"));
+const VALID_WORDS_PATH =
+  config.validWordsPath || join(import.meta.dir, "public", "data", "valid-words.json");
+
+// En mode bureau, les réglages du LLM saisis dans l'interface remplacent ceux
+// de l'environnement (chargés ici, avant la création du client).
+const settings = new SettingsStore(
+  config.desktop && config.settingsPath ? config.settingsPath : null,
+);
 
 const journal = new Journal(config.journalPath);
 
@@ -35,13 +43,39 @@ const MAX_ANALYZE_LENGTH = 20_000;
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
 
-const llmClient = new OpenAI({
-  baseURL: `${config.llmTarget}/v1`,
-  apiKey: config.llmApiKey || "unused",
-});
-
+let llmClient: OpenAI;
 /** Modèle par défaut du serveur LLM, quand ni la config ni l'interface n'en fixent un. */
-const detectModel = createModelDetector(config.llmTarget, config.llmApiKey);
+let detectModel: () => Promise<string | null>;
+
+/** (Re)crée le client du LLM ; rappelé quand les réglages changent (mode bureau). */
+function connectLlm(): void {
+  llmClient = new OpenAI({
+    baseURL: `${config.llmTarget}/v1`,
+    apiKey: config.llmApiKey || "unused",
+  });
+  detectModel = createModelDetector(config.llmTarget, config.llmApiKey);
+}
+connectLlm();
+
+/**
+ * Mode bureau : le serveur n'écoute qu'en local, mais une page web ouverte
+ * dans le navigateur peut quand même l'appeler. On refuse donc un en-tête
+ * Host étranger (DNS rebinding) et toute requête de modification venue d'une
+ * autre origine (CSRF), par exemple pour rediriger les textes vers un autre LLM.
+ */
+function rejectForeignRequest(req: Request, url: URL): Response | null {
+  if (!config.desktop) return null;
+  const allowedHosts = [`127.0.0.1:${config.port}`, `localhost:${config.port}`];
+  if (!allowedHosts.includes(req.headers.get("Host") ?? "")) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  const origin = req.headers.get("Origin");
+  const safe = req.method === "GET" || req.method === "HEAD";
+  if (!safe && origin !== null && origin !== url.origin) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  return null;
+}
 
 function getCorsHeaders(req: Request): Headers {
   const origin = req.headers.get("Origin") ?? "";
@@ -72,9 +106,43 @@ function writeValidWords(words: string[]): void {
 
 Bun.serve({
   port: PORT,
+  hostname: config.host,
   async fetch(req: Request, server: Bun.Server<undefined>): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
+
+    const forbidden = rejectForeignRequest(req, url);
+    if (forbidden) return forbidden;
+
+    // === API: Réglages du LLM (modifiables en mode bureau uniquement) ===
+    if (path === "/api/settings") {
+      const headers = getCorsHeaders(req);
+      if (req.method === "GET") {
+        return new Response(JSON.stringify(settings.publicView()), { headers });
+      }
+      if (req.method === "PUT") {
+        if (!settings.editable) {
+          return new Response(JSON.stringify({ error: "Settings are read-only" }), {
+            status: 403,
+            headers,
+          });
+        }
+        try {
+          const view = settings.update(await req.json());
+          connectLlm();
+          return new Response(JSON.stringify(view), { headers });
+        } catch (error) {
+          return new Response(
+            JSON.stringify({ error: error instanceof Error ? error.message : "Invalid settings" }),
+            { status: 400, headers },
+          );
+        }
+      }
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers,
+      });
+    }
 
     // === API: Valid Words ===
     if (path === "/api/valid-words") {
@@ -275,7 +343,9 @@ Bun.serve({
           ...llmBody,
           model: resolvedModel,
           stream: true,
-          top_k: config.llmTopK,
+          // -1 désactive top_k pour SGLang, comme son absence : on ne l'envoie
+          // que s'il est fixé, car des API compatibles OpenAI refusent ce paramètre.
+          ...(config.llmTopK > 0 ? { top_k: config.llmTopK } : {}),
           ...extraParams,
         };
         // OpenAI SDK requires escape hatch for spread params
@@ -457,4 +527,18 @@ Bun.serve({
   },
 });
 
-console.log(`🚀 Grammaria server running on http://localhost:${config.port}`);
+console.log(`🚀 Grammaria server running on http://${config.host}:${config.port}`);
+
+// Application de bureau : la coquille garde un tube ouvert sur l'entrée
+// standard du serveur. S'il se ferme (fermeture, plantage ou arrêt forcé de
+// l'application), le serveur s'arrête au lieu de rester orphelin avec ~1 Go
+// de mémoire.
+if (process.env.GRAMMARIA_EXIT_WITH_PARENT === "1") {
+  const exitWithParent = () => {
+    console.log("[Desktop] Application fermée : arrêt du serveur.");
+    process.exit(0);
+  };
+  process.stdin.on("end", exitWithParent);
+  process.stdin.on("close", exitWithParent);
+  process.stdin.resume();
+}

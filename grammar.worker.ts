@@ -4,7 +4,7 @@
  * L'analyse est un calcul CPU de plusieurs centaines de millisecondes sur un
  * long texte : dans le thread principal, elle figerait les flux SSE de la
  * correction en cours. Le chargement des règles françaises (quelques
- * secondes) se fait une seule fois, au premier message.
+ * secondes) se fait une seule fois, au démarrage du worker.
  */
 
 interface CheckRequest {
@@ -12,7 +12,10 @@ interface CheckRequest {
   text: string;
 }
 
-const engine = import("@valueerror/ltjs-core");
+// Import relatif : résolu dans le code embarqué, y compris dans l'exécutable
+// compilé. Le gestionnaire ci-dessous est posé tout de suite, pendant le
+// chargement : un message reçu avant serait perdu.
+const engine = import("./grammar.engine.ts");
 
 self.onmessage = async (event: MessageEvent<CheckRequest>) => {
   const { id, text } = event.data;
