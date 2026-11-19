@@ -215,17 +215,29 @@ jobs:
         env:
           SIGN: ${{ inputs.sign == true }}
           HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          VERSION: ${{ inputs.version || '0.0.0' }}
         run: |
           pubkey=$(node -p 'require("./src-tauri/tauri.conf.json").plugins.updater.pubkey.trim()')
           if [ "$SIGN" != "true" ]; then
             echo "Build de test : pas d'artefacts de mise à jour."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-          elif [ "$HAS_UPDATER_KEY" != "true" ]; then
-            echo "::warning::Release sans secret TAURI_SIGNING_PRIVATE_KEY : pas de mise à jour automatique pour cette version."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
           elif [ -z "$pubkey" ]; then
             echo "::warning::Clé publique absente de src-tauri/tauri.conf.json (plugins.updater.pubkey) : pas de mise à jour automatique pour cette version."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_UPDATER_KEY" != "true" ]; then
+            # Mises à jour activées (clé publique renseignée) mais secret absent :
+            # une version stable publiée ainsi ne serait jamais proposée aux
+            # applications installées. On arrête avant de publier quoi que ce soit.
+            case "$VERSION" in
+              *-*)
+                echo "::warning::Pré-version sans secret TAURI_SIGNING_PRIVATE_KEY : pas de signature de mise à jour."
+                echo "enabled=false" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "::error::Version stable sans secret TAURI_SIGNING_PRIVATE_KEY alors que la clé publique est renseignée : la mise à jour automatique serait cassée pour cette version."
+                exit 1
+                ;;
+            esac
           else
             echo "Build de release : artefacts de mise à jour activés."
             echo '{ "bundle": { "createUpdaterArtifacts": true } }' > src-tauri/tauri.updater.conf.json
@@ -355,13 +367,13 @@ jobs:
             signature="$bundle"/appimage/*.AppImage.sig
             sums=SHA256SUMS-linux
           fi
-          (cd dist-desktop && sha256sum * > "$sums" && cat "$sums")
           if [ "$UPDATER" = "true" ]; then
             # Sans signature, la release n'aurait pas de mise à jour : on échoue ici.
             # shellcheck disable=SC2086
             cp $signature dist-desktop/
             ls dist-desktop/*.sig
           fi
+          (cd dist-desktop && sha256sum * > "$sums" && cat "$sums")
 
       - name: Upload
         uses: actions/upload-artifact@v4

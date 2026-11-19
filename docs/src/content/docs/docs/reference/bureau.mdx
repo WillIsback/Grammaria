@@ -110,7 +110,14 @@ Les mises à jour sont signées par une paire de clés propre à Tauri (minisign
 | `TAURI_SIGNING_PRIVATE_KEY` | Contenu du fichier de clé privée |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Mot de passe de la clé (ne pas créer ce secret si la clé n'en a pas) |
 
-`build-desktop.yml` ne produit les signatures (`.sig`) que pour une release, quand le secret existe et que la clé publique est renseignée. Dans les autres cas (pull request, lancement manuel, fork, secret absent), le build est identique à avant, sans artefact de mise à jour. Une release stable sans signature est publiée sans `latest.json`, avec un avertissement : elle n'est simplement pas proposée par la mise à jour automatique.
+`build-desktop.yml` ne produit les signatures (`.sig`) que pour une release, quand le secret existe et que la clé publique est renseignée. Dans les autres cas (pull request, lancement manuel, fork), le build est identique à avant, sans artefact de mise à jour. Les signatures sont listées dans `SHA256SUMS-windows` et `SHA256SUMS-linux`, avec les paquets.
+
+Pour une version stable, deux cas :
+
+- **clé publique vide** (mises à jour pas encore activées) : la release est publiée sans `latest.json`, avec un avertissement ;
+- **clé publique renseignée mais secret absent** : la release **échoue** avant toute publication. Sans manifeste, les applications installées ne verraient jamais cette version.
+
+Une pré-version sans secret est publiée sans signature, avec un avertissement. Côté application, un manifeste introuvable s'affiche « Aucune mise à jour disponible pour le moment », pas comme une panne de connexion.
 
 ### Activer les mises à jour (une seule fois)
 

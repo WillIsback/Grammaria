@@ -123,8 +123,15 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          pubkey=$(jq -r '.plugins.updater.pubkey' src-tauri/tauri.conf.json | tr -d '[:space:]')
           if ! ls desktop/*.sig > /dev/null 2>&1; then
-            echo "::warning::Aucune signature de mise à jour : cette version ne sera pas proposée par la mise à jour automatique (secret TAURI_SIGNING_PRIVATE_KEY ou clé publique manquants)."
+            if [ -n "$pubkey" ]; then
+              # Mises à jour activées mais aucune signature : sans manifeste, les
+              # applications installées ne verraient jamais cette version.
+              echo "::error::Version stable sans signature de mise à jour alors que la clé publique est renseignée (secret TAURI_SIGNING_PRIVATE_KEY manquant ?)."
+              exit 1
+            fi
+            echo "::warning::Mises à jour automatiques pas encore activées (clé publique vide dans src-tauri/tauri.conf.json) : release publiée sans latest.json."
             exit 0
           fi
           bun scripts/desktop/update-manifest.ts desktop "$TAG" "$REPO"
