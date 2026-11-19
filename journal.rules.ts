@@ -50,6 +50,9 @@ export interface RuleHistoryEntry {
   to: EtatCycle | null;
 }
 
+/** Issue de l'enregistrement d'une réponse à un choix à deux formes. */
+export type AnswerResult = "recorded" | "unknown" | "conflict";
+
 /** Ce que le serveur demande d'afficher près du bouton Copier pour un texte. */
 export interface Suivi {
   intervention: Intervention | null;
@@ -160,18 +163,35 @@ export class RuleStore {
     })();
   }
 
-  /** Rejoue les fautes du journal, texte par texte, dans l'ordre chronologique. */
+  /**
+   * Rejoue le journal, texte par texte, dans l'ordre chronologique et avec les
+   * dates d'origine : les fautes du texte, puis l'usage (acquisition). Une
+   * règle acquise depuis longtemps l'est donc dès la migration, à sa date
+   * historique, sans message de réussite au premier texte corrigé ensuite.
+   */
   private replay(): void {
-    const rows = this.db
+    const faults = this.db
       .query(
-        `SELECT text_id AS textId, MIN(created_at) AS at, rule_key AS ruleKey, COUNT(*) AS count
+        `SELECT text_id AS textId, rule_key AS ruleKey, COUNT(*) AS count
          FROM faults WHERE counted = 1
-         GROUP BY text_id, rule_key ORDER BY text_id`,
+         GROUP BY text_id, rule_key ORDER BY text_id, MIN(id)`,
       )
-      .all() as { textId: number; at: number; ruleKey: string; count: number }[];
-    for (const row of rows) {
-      if (!entreDansLeCycle({ ruleKey: row.ruleKey, counted: true })) continue;
-      this.applyFault(row.ruleKey, row.count, row.textId, row.at);
+      .all() as { textId: number; ruleKey: string; count: number }[];
+    const byText = new Map<number, { ruleKey: string; count: number }[]>();
+    for (const fault of faults) {
+      if (!entreDansLeCycle({ ruleKey: fault.ruleKey, counted: true })) continue;
+      const list = byText.get(fault.textId);
+      if (list) list.push(fault);
+      else byText.set(fault.textId, [fault]);
+    }
+    const texts = this.db
+      .query("SELECT id, created_at AS at FROM texts ORDER BY created_at, id")
+      .all() as { id: number; at: number }[];
+    for (const text of texts) {
+      for (const fault of byText.get(text.id) ?? []) {
+        this.applyFault(fault.ruleKey, fault.count, text.id, text.at);
+      }
+      this.checkAcquisitions(text.at);
     }
   }
 
@@ -212,13 +232,14 @@ export class RuleStore {
     type: RuleHistoryType,
     from: EtatCycle | null = null,
     to: EtatCycle | null = null,
-  ): void {
-    this.db
+  ): number {
+    const { lastInsertRowid } = this.db
       .query(
         `INSERT INTO rule_events (rule_key, created_at, type, from_state, to_state)
          VALUES (?, ?, ?, ?, ?)`,
       )
       .run(ruleKey, at, type, from, to);
+    return Number(lastInsertRowid);
   }
 
   /** Applique un événement, enregistre l'état et ses transitions. */
@@ -342,30 +363,45 @@ export class RuleStore {
 
     const reussites = this.checkAcquisitions(now);
 
-    const intervention = choisirIntervention(
+    const proposee = choisirIntervention(
       [...candidats.values()],
       options.original ?? "",
       now,
       options.random,
     );
-    if (intervention) {
-      this.apply(intervention.ruleKey, { type: intervention.type }, {}, now);
-      this.log(intervention.ruleKey, now, intervention.type);
-    }
+    if (!proposee) return { intervention: null, reussites };
+    this.apply(proposee.ruleKey, { type: proposee.type }, {}, now);
+    const eventId = this.log(proposee.ruleKey, now, proposee.type);
+    // L'événement « choix » identifie ce choix précis : la réponse s'y rattache.
+    const intervention: Intervention =
+      proposee.type === "choix" ? { ...proposee, choiceId: eventId } : proposee;
     return { intervention, reussites };
   }
 
   /**
-   * Enregistre la réponse au choix à deux formes. Renvoie false si aucun choix
-   * n'attend de réponse pour cette règle.
+   * Enregistre la réponse à un choix à deux formes précis, une seule fois.
+   * « unknown » : aucun choix ne porte cet identifiant. « conflict » : le choix
+   * a déjà reçu sa réponse, ou un choix plus récent l'a remplacé pour la règle.
    */
-  answer(ruleKey: string, correct: boolean, now: number): boolean {
-    return this.db.transaction(() => {
-      const state = this.load(ruleKey);
-      if (!state || state.choicesShown <= state.choicesCorrect + state.choicesWrong) return false;
-      this.apply(ruleKey, { type: "reponse", correct }, {}, now, state);
-      this.log(ruleKey, now, correct ? "reponse_juste" : "reponse_fausse");
-      return true;
+  answer(choiceId: number, correct: boolean, now: number): AnswerResult {
+    return this.db.transaction((): AnswerResult => {
+      const choix = this.db
+        .query("SELECT rule_key AS ruleKey FROM rule_events WHERE id = ? AND type = 'choix'")
+        .get(choiceId) as { ruleKey: string } | null;
+      if (!choix) return "unknown";
+      // Les événements d'une règle se suivent : un choix est en attente tant
+      // qu'aucun autre choix ni aucune réponse ne le suit.
+      const { n } = this.db
+        .query(
+          `SELECT COUNT(*) AS n FROM rule_events
+           WHERE rule_key = ? AND id > ? AND type IN ('choix', 'reponse_juste', 'reponse_fausse')`,
+        )
+        .get(choix.ruleKey, choiceId) as { n: number };
+      const state = this.load(choix.ruleKey);
+      if (n > 0 || !state) return "conflict";
+      this.apply(choix.ruleKey, { type: "reponse", correct }, {}, now, state);
+      this.log(choix.ruleKey, now, correct ? "reponse_juste" : "reponse_fausse");
+      return "recorded";
     })();
   }
 

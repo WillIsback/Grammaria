@@ -37,9 +37,11 @@ Le bouton **Copier** laisse sa place à deux boutons : la forme que vous aviez �
 
 Dans les deux cas, un seul clic suffit et c'est toujours le texte corrigé qui est copié. Le bouton **Copier** habituel revient ensuite.
 
+L'analyse arrive un instant après le texte corrigé. Pour que le bouton ne change pas sous votre doigt, le choix n'est pas proposé si vous avez déjà copié le texte ou si le pointeur est sur **Copier** à ce moment-là : l'explication s'affiche alors comme une simple astuce, et la règle vous sollicitera de nouveau un autre jour.
+
 ### Des sollicitations limitées
 
-- Une règle vous sollicite au plus **une fois par jour** (astuce ou choix). Le reste de la journée, le bouton Copier est normal.
+- Une règle vous sollicite au plus **une fois par jour** (astuce ou choix). Le reste de la journée, le bouton Copier est normal. Le « jour » est celui du fuseau horaire du serveur : avec Docker, réglez la variable `TZ` (voir [Configuration](/docs/demarrer/configuration/)), sinon il change à minuit UTC.
 - Au plus **trois règles** proposent le choix entre deux formes sur une même période. Les autres continuent d'afficher une astuce en attendant qu'une place se libère.
 - Un texte n'affiche jamais plus d'une astuce ou d'un choix.
 

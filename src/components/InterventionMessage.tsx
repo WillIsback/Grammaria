@@ -7,6 +7,8 @@ interface Props {
   reussites: Reussite[];
   /** Forme cliquée lors du choix à deux formes ; null tant qu'aucune ne l'est. */
   formeChoisie: FormeChoix | null;
+  /** Identifiant de la question du choix, que le groupe des deux boutons référence. */
+  questionId?: string;
 }
 
 const BOX = "mb-3 px-3.5 py-2.5 rounded-xl border text-[13px] leading-relaxed";
@@ -23,14 +25,14 @@ const LABEL = "font-semibold text-gray-900 dark:text-white";
  * pas retardée. La zone `role="status"` reste dans la page même vide, pour
  * que son contenu soit annoncé quand il apparaît.
  */
-export function InterventionMessage({ intervention, reussites, formeChoisie }: Props) {
+export function InterventionMessage({ intervention, reussites, formeChoisie, questionId }: Props) {
   const blocs: ReactNode[] = [];
 
   if (intervention?.type === "choix") {
     const bonne = intervention.formes.find((f) => f.correcte)?.texte ?? "";
     if (!formeChoisie) {
       blocs.push(
-        <p key="choix" className={NEUTRAL} data-testid="intervention-choix">
+        <p key="choix" id={questionId} className={NEUTRAL} data-testid="intervention-choix">
           <span className={LABEL}>Quelle forme est la bonne ?</span> « {intervention.avant}
           <span
             className="inline-block w-8 mx-0.5 border-b-2 border-brand-500 align-baseline"

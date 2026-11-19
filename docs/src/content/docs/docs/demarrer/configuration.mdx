@@ -14,6 +14,7 @@ La configuration se fait par variables d'environnement, lues dans le fichier `.e
 | `LLM_DISABLE_THINKING` | `true` | Désactive le mode « réflexion » (vLLM, Qwen). Mettre `false` pour OpenAI, Groq, Mistral |
 | `LLM_TOP_K` | `-1` | Paramètre `top_k` transmis au modèle ; `-1` le désactive |
 | `JOURNAL_PATH` | `./data/grammaria.db` | Fichier SQLite du journal des fautes |
+| `TZ` | fuseau du système | Fuseau horaire du serveur, par exemple `Europe/Paris`. Il fixe le « jour » des interventions sur les fautes récurrentes (une par règle et par jour). Dans l'image Docker, le fuseau est UTC si `TZ` n'est pas définie |
 | `CORS_ORIGIN` | vide | Origines autorisées, séparées par des virgules ; `localhost` est toujours autorisé |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | vide | Active la [télémétrie](/docs/exploiter/telemetrie/) |
 

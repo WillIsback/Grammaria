@@ -90,6 +90,7 @@ describe("Journal — cycle de vie des règles", () => {
     const choix = corriger(journal, FAUTE_ON, jour(3), () => 0.9);
     expect(choix.intervention).toEqual({
       type: "choix",
+      choiceId: expect.any(Number),
       ruleKey: ON,
       titre: "on / ont",
       explication: expect.stringContaining("avaient"),
@@ -107,19 +108,72 @@ describe("Journal — cycle de vie des règles", () => {
     expect(corriger(journal, FAUTE_ON, jour(4)).intervention?.type).toBe("choix");
   });
 
-  it("enregistre la réponse au choix, une seule fois par choix proposé", () => {
+  it("rattache la réponse à un choix précis, une seule fois", () => {
     const journal = new Journal(":memory:");
-    expect(journal.answerChoice(ON, true, jour(0))).toBe(false);
+    expect(journal.answerChoice(1, true, jour(0))).toBe("unknown");
     const dernier = rendreTravaillee(journal);
+    const [evenement] = journal.ruleEvents({ limit: 1 });
+    expect(evenement).toMatchObject({ ruleKey: ON, type: "choix" });
 
-    expect(journal.answerChoice(ON, false, dernier + 500)).toBe(true);
-    expect(journal.answerChoice(ON, true, dernier + 600)).toBe(false);
+    // L'identifiant d'un autre événement (ici une astuce) n'est pas un choix.
+    const astuce = journal.ruleEvents({ limit: 1000 }).find((e) => e.type === "astuce");
+    expect(journal.answerChoice(astuce?.id ?? 0, true, dernier + 400)).toBe("unknown");
+
+    expect(journal.answerChoice(evenement.id, false, dernier + 500)).toBe("recorded");
+    expect(journal.answerChoice(evenement.id, true, dernier + 600)).toBe("conflict");
     expect(regle(journal)).toMatchObject({ choicesShown: 1, choicesCorrect: 0, choicesWrong: 1 });
     expect(journal.ruleEvents({ limit: 1 })[0]).toMatchObject({
       ruleKey: ON,
       type: "reponse_fausse",
       at: dernier + 500,
     });
+  });
+
+  it("refuse la réponse à un choix remplacé par un plus récent", () => {
+    const journal = new Journal(":memory:");
+    const dernier = rendreTravaillee(journal);
+    const ancien = journal.ruleEvents({ limit: 1 })[0].id;
+    const suivant = corriger(journal, FAUTE_ON, dernier + DAY).intervention;
+    if (suivant?.type !== "choix") throw new Error("choix attendu");
+    expect(suivant.choiceId).not.toBe(ancien);
+
+    expect(journal.answerChoice(ancien, true, dernier + DAY + 100)).toBe("conflict");
+    expect(journal.answerChoice(suivant.choiceId, true, dernier + DAY + 200)).toBe("recorded");
+    expect(regle(journal)).toMatchObject({ choicesShown: 2, choicesCorrect: 1, choicesWrong: 0 });
+  });
+
+  it("garde le texte et ses fautes quand le suivi des règles échoue", () => {
+    const journal = new Journal(":memory:");
+    const dernier = rendreTravaillee(journal);
+    const avant = {
+      regle: regle(journal),
+      historique: journal.ruleEvents({ limit: 1000 }),
+      periode: journal.period(365, dernier + DAY),
+    };
+    const erreurs: unknown[][] = [];
+    const consoleError = console.error;
+    console.error = (...args: unknown[]) => void erreurs.push(args);
+    let suivi: ReturnType<Journal["record"]>;
+    try {
+      // Le tirage de l'ordre des formes échoue, après la mise à jour de l'état.
+      suivi = corriger(journal, FAUTE_ON, dernier + DAY, () => {
+        throw new Error("panne du suivi");
+      });
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(suivi).toEqual({ intervention: null, reussites: [] });
+    expect(erreurs).toHaveLength(1);
+    // Le texte et sa faute sont journalisés…
+    const apres = journal.period(365, dernier + DAY);
+    expect(apres.texts).toBe(avant.periode.texts + 1);
+    expect(apres.faults).toBe(avant.periode.faults + 1);
+    // … et le suivi est annulé en entier, sans état à moitié écrit.
+    expect(regle(journal)).toEqual(avant.regle);
+    expect(journal.ruleEvents({ limit: 1000 })).toEqual(avant.historique);
+    // Le texte suivant est suivi normalement.
+    expect(corriger(journal, FAUTE_ON, dernier + 2 * DAY).intervention?.type).toBe("choix");
   });
 
   it("plafonne à trois règles travaillées en même temps", () => {
@@ -297,7 +351,7 @@ describe("Journal — cycle de vie des règles", () => {
 
 describe("Journal — migration du schéma", () => {
   /** Base telle que la créait la v0.2.0 : tables texts et faults seulement. */
-  function baseV020(path: string): void {
+  function baseV020(path: string, textesSansFaute = 0): void {
     const db = new Database(path);
     db.exec(`
       CREATE TABLE texts (
@@ -357,6 +411,8 @@ describe("Journal — migration du schéma", () => {
       ["STYLE", "Style", 0],
       ["STYLE", "Style", 0],
     ]);
+    // Usage sans faute : un texte par jour à partir du jour 3.
+    for (let i = 0; i < textesSansFaute; i++) ajouter(jour(3 + i), []);
     db.close();
   }
 
@@ -411,6 +467,46 @@ describe("Journal — migration du schéma", () => {
       expect(apres.texts).toEqual(avant.texts);
       expect(apres.faults).toEqual(avant.faults);
       expect(apres.version).toBe(SCHEMA_VERSION);
+    });
+  });
+
+  it("retrouve à la migration les règles déjà acquises, à leur date d'origine", () => {
+    avecBase((path) => {
+      // Trois fautes de J0 à J2, puis 17 textes sans faute de J3 à J19.
+      baseV020(path, 17);
+      const journal = new Journal(path);
+      // Acquise au premier texte corrigé 14 jours après la dernière faute (J2).
+      expect(regle(journal)).toMatchObject({
+        state: "acquise",
+        acquiredAt: jour(16),
+        stateSince: jour(16),
+        occurrences: 3,
+        relapses: 0,
+      });
+      expect(journal.ruleEvents({ ruleKey: ON }).map((e) => [e.type, e.at])).toEqual([
+        ["acquise", jour(16)],
+        ["signalee", jour(2)],
+        ["observee", jour(0)],
+      ]);
+      // Pas de « Règle acquise » en rafale au premier texte après la mise à jour.
+      expect(corriger(journal, SANS_FAUTE, jour(20))).toEqual({
+        intervention: null,
+        reussites: [],
+      });
+      // Une faute ensuite est bien une rechute.
+      corriger(journal, FAUTE_ON, jour(21));
+      expect(regle(journal)).toMatchObject({ state: "signalee", relapses: 1 });
+      journal.close();
+    });
+  });
+
+  it("ne déclare pas acquise à la migration une règle sans usage suffisant", () => {
+    avecBase((path) => {
+      // Deux textes sans faute seulement : en dessous des minimums d'usage.
+      baseV020(path, 2);
+      const journal = new Journal(path);
+      expect(regle(journal)?.state).toBe("signalee");
+      journal.close();
     });
   });
 

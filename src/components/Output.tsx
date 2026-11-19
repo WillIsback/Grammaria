@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   FormeChoix,
   Intervention,
@@ -31,7 +31,7 @@ interface Props {
   /** Règles devenues « acquises » avec ce texte. */
   reussites?: Reussite[];
   /** Forme cliquée lors du choix à deux formes (le texte est déjà copié). */
-  onChoiceAnswer?: (ruleKey: string, correct: boolean) => void;
+  onChoiceAnswer?: (choiceId: number, correct: boolean) => void;
 }
 
 const COPY_ICON = (
@@ -77,12 +77,57 @@ export function Output({
   const [reponse, setReponse] = useState<{ choix: InterventionChoix; forme: FormeChoix } | null>(
     null,
   );
-  const choix = intervention?.type === "choix" ? intervention : null;
+  const choixRecu = intervention?.type === "choix" ? intervention : null;
+
+  // Clic accidentel : l'analyse arrive après le texte, donc le bouton Copier
+  // peut être remplacé sous le pointeur. Si le pointeur survole Copier, ou si
+  // le texte de cette correction a déjà été copié, le choix n'est pas proposé
+  // cette fois ; la décision est prise une fois, à l'arrivée de l'intervention.
+  const [survol, setSurvol] = useState(false);
+  const [copie, setCopie] = useState(false);
+  if (outputText === "" && (survol || copie)) {
+    // Nouvelle correction : le bouton a disparu, on repart de zéro.
+    setSurvol(false);
+    setCopie(false);
+  }
+  const [decision, setDecision] = useState<{ choix: InterventionChoix | null; proposer: boolean }>({
+    choix: null,
+    proposer: false,
+  });
+  if (decision.choix !== choixRecu) {
+    setDecision({ choix: choixRecu, proposer: choixRecu !== null && !survol && !copie });
+  }
+  const choix = decision.choix === choixRecu && decision.proposer ? choixRecu : null;
   const formeChoisie = reponse && reponse.choix === choix ? reponse.forme : null;
   const choixEnAttente = choix !== null && formeChoisie === null;
+  // Choix écarté : son explication est affichée comme une simple astuce.
+  const interventionAffichee: Intervention | null =
+    choixRecu && !choix
+      ? {
+          type: "astuce",
+          ruleKey: choixRecu.ruleKey,
+          titre: choixRecu.titre,
+          texte: choixRecu.explication,
+        }
+      : intervention;
 
-  // Les deux formes disparaissent au clic : le focus clavier revient sur Copier.
+  const copy = () => {
+    setCopie(true);
+    onCopy(outputText);
+  };
+
+  // Focus clavier. Quand les deux formes remplacent un bouton Copier qui avait
+  // le focus, il passe au groupe (pas à une forme : un appui sur Entrée ne doit
+  // pas répondre par mégarde). Quand elles disparaissent au clic, il revient
+  // sur Copier.
+  const questionId = useId();
   const copyRef = useRef<HTMLButtonElement>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const copyHadFocus = useRef(false);
+  useEffect(() => {
+    if (choixEnAttente && copyHadFocus.current) groupRef.current?.focus();
+    if (choixEnAttente) copyHadFocus.current = false;
+  }, [choixEnAttente]);
   useEffect(() => {
     if (formeChoisie) copyRef.current?.focus();
   }, [formeChoisie]);
@@ -98,9 +143,14 @@ export function Output({
     <>
       {choix && choixEnAttente ? (
         <div
+          ref={groupRef}
           role="group"
+          tabIndex={-1}
           aria-label="Copier le texte corrigé en choisissant la bonne forme"
-          className={`flex gap-2 min-w-0 ${actionsInHeader ? "" : "flex-1"}`}
+          aria-describedby={questionId}
+          className={`flex gap-2 min-w-0 rounded-xl focus-visible:outline focus-visible:outline-2
+            focus-visible:outline-offset-2 focus-visible:outline-brand-500
+            ${actionsInHeader ? "" : "flex-1"}`}
         >
           {choix.formes.map((forme) => (
             <button
@@ -110,9 +160,9 @@ export function Output({
               title={`Copier avec « ${forme.texte} »`}
               onClick={() => {
                 // Un seul clic : le texte corrigé est copié quelle que soit la forme.
-                onCopy(outputText);
+                copy();
                 setReponse({ choix, forme });
-                onChoiceAnswer?.(choix.ruleKey, forme.correcte);
+                onChoiceAnswer?.(choix.choiceId, forme.correcte);
               }}
               className={`${actionsInHeader ? "px-3.5 max-w-[11rem]" : "flex-1 px-4"} min-w-0 ${copyClass}`}
             >
@@ -125,7 +175,17 @@ export function Output({
         <button
           ref={copyRef}
           type="button"
-          onClick={() => onCopy(outputText)}
+          onClick={copy}
+          onPointerEnter={() => setSurvol(true)}
+          onPointerLeave={() => setSurvol(false)}
+          onFocus={() => {
+            copyHadFocus.current = true;
+          }}
+          onBlur={(event) => {
+            // Un bouton retiré de la page (remplacé par les deux formes) ne
+            // doit pas faire oublier qu'il avait le focus.
+            if (event.currentTarget.isConnected) copyHadFocus.current = false;
+          }}
           className={`${actionsInHeader ? "px-4" : "flex-1 px-5"} ${copyClass}`}
         >
           {COPY_ICON}
@@ -151,9 +211,10 @@ export function Output({
   // lecteurs d'écran annoncent ce qui s'y affiche.
   const message = (
     <InterventionMessage
-      intervention={intervention}
+      intervention={interventionAffichee}
       reussites={reussites}
       formeChoisie={formeChoisie}
+      questionId={questionId}
     />
   );
 
