@@ -1,9 +1,12 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { EtatCycle } from "../../analysis/regles/cycle";
+import { useEffect, useRef } from "react";
 import type { Progression, RegleResumee, Tendance } from "../../analysis/progression/calcul";
+import type { EtatCycle } from "../../analysis/regles/cycle";
+import { SEUILS } from "../../analysis/regles/seuils";
+import { useChargement } from "../../hooks/useChargement";
 import { fetchProgress } from "../../services/progress";
-import { MasteryRing, nombre, WeeklyChart } from "./charts";
+import { dateLongue, nombre } from "../../utils/format";
+import { MasteryRing, WeeklyChart } from "./charts";
 
 interface Props {
   /** Retour à l'écran de correction. */
@@ -17,48 +20,52 @@ interface Props {
   top?: number;
   /** Le journal a changé quand cette valeur change (comparée par identité) : les données sont rechargées. */
   reloadKey?: unknown;
-  /** Chargement des données ; injectable pour les tests. */
-  load?: (signal?: AbortSignal) => Promise<Progression>;
 }
 
 const card =
   "bg-white dark:bg-gray-900/70 rounded-2xl border border-gray-200/70 dark:border-gray-800 shadow-card p-4 sm:p-5 min-w-0";
 const cardTitle = "text-sm font-semibold text-gray-900 dark:text-white";
 const cardHint = "text-xs text-gray-600 dark:text-gray-400 mt-0.5";
+/** Texte d'accompagnement : explications, listes vides. */
+const discret = "text-sm text-gray-600 dark:text-gray-400";
+const boutonPrincipal =
+  "rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors";
+/** Partie remplie d'une barre de progression. */
+const remplissage = "h-full rounded-full bg-brand-500 dark:bg-brand-400";
 
 /** Libellés et sens des états du cycle de vie, avec un symbole qui ne dépend pas de la couleur. */
-const ETATS: Record<EtatCycle, { libelle: string; sens: string; symbole: string; ton: string }> = {
+const ETATS: Record<
+  EtatCycle,
+  { libelle: string; singulier: string; sens: string; symbole: string; ton: string }
+> = {
   observee: {
     libelle: "Observées",
+    singulier: "observée",
     sens: "faute vue, sans intervention",
     symbole: "○",
     ton: "bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300",
   },
   signalee: {
     libelle: "Signalées",
+    singulier: "signalée",
     sens: "faute qui revient : astuce proposée",
     symbole: "!",
     ton: "bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200",
   },
   travaillee: {
     libelle: "Travaillées",
+    singulier: "travaillée",
     sens: "faute qui persiste : choix sur le bouton Copier",
     symbole: "●",
     ton: "bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-200",
   },
   acquise: {
     libelle: "Acquises",
-    sens: "plus de faute depuis 14 jours d'usage",
+    singulier: "acquise",
+    sens: `plus de faute depuis ${SEUILS.acquisitionJoursSansFaute} jours d'usage`,
     symbole: "✓",
     ton: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
   },
-};
-
-const ETAT_SINGULIER: Record<EtatCycle, string> = {
-  observee: "observée",
-  signalee: "signalée",
-  travaillee: "travaillée",
-  acquise: "acquise",
 };
 
 const TENDANCES: Record<Tendance, { symbole: string; texte: string; ton: string }> = {
@@ -71,8 +78,6 @@ const TENDANCES: Record<Tendance, { symbole: string; texte: string; ton: string 
   stable: { symbole: "→", texte: "stable", ton: "text-gray-600 dark:text-gray-300" },
 };
 
-const formatDate = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
-
 const pluriel = (n: number, un: string, plusieurs = `${un}s`) =>
   `${nombre(n, 0)} ${n > 1 ? plusieurs : un}`;
 
@@ -84,28 +89,10 @@ const depuis = (total: number, periode: number, semaines: number) =>
 
 const note = (score: number | null) => (score === null ? "–" : `${nombre(score)}/20`);
 
-export function ProgressionScreen({
-  onClose,
-  badges,
-  top = 64,
-  reloadKey,
-  load = fetchProgress,
-}: Props) {
-  const [data, setData] = useState<Progression | null>(null);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+export function ProgressionScreen({ onClose, badges, top = 64, reloadKey }: Props) {
+  // `reloadKey` : rechargement demandé par l'appelant, l'affichage reste en place.
+  const { data, erreur, reessayer } = useChargement(fetchProgress, reloadKey);
   const titleRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    load(controller.signal)
-      .then(setData)
-      .catch(() => {
-        if (!controller.signal.aborted) setError(true);
-      });
-    return () => controller.abort();
-    // `reloadKey` : rechargement demandé par l'appelant, l'affichage reste en place.
-  }, [load, attempt, reloadKey]);
 
   // Le focus va au titre de l'écran, puis revient au bouton d'ouverture à la fermeture.
   useEffect(() => {
@@ -124,11 +111,6 @@ export function ProgressionScreen({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const retry = useCallback(() => {
-    setError(false);
-    setAttempt((a) => a + 1);
-  }, []);
 
   return (
     <div
@@ -170,27 +152,27 @@ export function ProgressionScreen({
           >
             Ma progression
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className={`${discret} mt-1`}>
             Calculée à partir de votre journal des fautes, sur les {data ? data.weeks : 12}{" "}
             dernières semaines.
           </p>
         </div>
 
-        {error ? (
+        {erreur ? (
           <div className={`${card} text-center py-10`} role="alert">
             <p className="text-sm text-gray-700 dark:text-gray-300">
               La progression n'a pas pu être chargée.
             </p>
             <button
               type="button"
-              onClick={retry}
-              className="mt-4 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors"
+              onClick={reessayer}
+              className={`mt-4 px-4 py-2 ${boutonPrincipal}`}
             >
               Réessayer
             </button>
           </div>
         ) : !data ? (
-          <p role="status" className="text-sm text-gray-600 dark:text-gray-400 py-10 text-center">
+          <p role="status" className={`${discret} py-10 text-center`}>
             Chargement de votre progression…
           </p>
         ) : data.empty ? (
@@ -224,7 +206,7 @@ function EmptyState({ onClose }: { onClose: () => void }) {
       <h3 className="text-base font-semibold text-gray-900 dark:text-white">
         Aucun texte corrigé pour l'instant
       </h3>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+      <p className={`mt-2 ${discret} max-w-md mx-auto`}>
         Chaque texte que vous corrigez est noté dans votre journal. Après quelques textes, vous
         verrez ici votre note semaine après semaine, vos fautes les plus fréquentes et les règles
         que vous maîtrisez.
@@ -232,7 +214,7 @@ function EmptyState({ onClose }: { onClose: () => void }) {
       <button
         type="button"
         onClick={onClose}
-        className="mt-6 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium shadow-sm shadow-brand-500/20 transition-colors"
+        className={`mt-6 px-5 py-2.5 ${boutonPrincipal} shadow-sm shadow-brand-500/20`}
       >
         Corriger un premier texte
       </button>
@@ -310,7 +292,7 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
               points={data.series.map((s) => ({ start: s.start, value: s.score }))}
               max={20}
               ticks={[0, 10, 20]}
-              format={(v) => nombre(v)}
+              format={nombre}
               valueLabel="Note sur 20"
             />
           </div>
@@ -328,7 +310,7 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
                 (v) => `${nombre(v)} fautes pour 100 mots`,
               )}
               points={data.series.map((s) => ({ start: s.start, value: s.faultsPer100 }))}
-              format={(v) => nombre(v)}
+              format={nombre}
               valueLabel="Fautes pour 100 mots"
             />
           </div>
@@ -401,7 +383,7 @@ function Maitrise({ data }: { data: Progression }) {
           <p className="text-lg font-semibold text-gray-900 dark:text-white">
             Pas encore assez de textes
           </p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p className={`mt-1 ${discret}`}>
             Le score apparaît dès que vous avez corrigé au moins {m.minimum.texts} textes et{" "}
             {nombre(m.minimum.words, 0)} mots sur les {m.recentWeeks} dernières semaines. Pour
             l'instant : {pluriel(m.recent.texts, "texte")} et {pluriel(m.recent.words, "mot")}.
@@ -479,10 +461,7 @@ function Jauge({
         aria-valuemax={objectif}
         aria-valuenow={Math.min(valeur, objectif)}
       >
-        <div
-          className="h-full rounded-full bg-brand-500 dark:bg-brand-400"
-          style={{ width: `${part * 100}%` }}
-        />
+        <div className={remplissage} style={{ width: `${part * 100}%` }} />
       </div>
     </div>
   );
@@ -520,15 +499,15 @@ function Regles({ data }: { data: Progression }) {
           vide="Aucune faute ne revient souvent en ce moment."
           regles={active}
           detail={(r) =>
-            `${ETAT_SINGULIER[r.state]} · ${pluriel(r.occurrences, "faute")} · dernière le ${formatDate.format(new Date(r.lastFaultAt))}`
+            `${ETATS[r.state].singulier} · ${pluriel(r.occurrences, "faute")} · dernière le ${dateLongue(r.lastFaultAt, false)}`
           }
         />
         <ListeRegles
           titre="Acquises"
-          vide="Pas encore de règle acquise : elles apparaîtront ici après 14 jours d'usage sans faute."
+          vide={`Pas encore de règle acquise : elles apparaîtront ici après ${SEUILS.acquisitionJoursSansFaute} jours d'usage sans faute.`}
           regles={acquired}
           detail={(r) =>
-            `acquise le ${formatDate.format(new Date(r.acquiredAt ?? r.stateSince))} · ${pluriel(r.occurrences, "faute")} avant`
+            `acquise le ${dateLongue(r.acquiredAt ?? r.stateSince, false)} · ${pluriel(r.occurrences, "faute")} avant`
           }
         />
       </div>
@@ -553,7 +532,7 @@ function ListeRegles({
         {titre} ({regles.length})
       </h4>
       {regles.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{vide}</p>
+        <p className={`mt-2 ${discret}`}>{vide}</p>
       ) : (
         <ul className="mt-2 divide-y divide-gray-100 dark:divide-gray-800">
           {regles.map((r) => (
@@ -587,9 +566,7 @@ function ReglesFrequentes({ data }: { data: Progression }) {
       </h3>
       <p className={cardHint}>Fautes de grammaire et de conjugaison, sur {data.weeks} semaines.</p>
       {data.frequentRules.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          Aucune faute de grammaire sur la période. Bravo !
-        </p>
+        <p className={`mt-3 ${discret}`}>Aucune faute de grammaire sur la période. Bravo !</p>
       ) : (
         <ol className="mt-3 space-y-2.5">
           {data.frequentRules.map((r) => (
@@ -599,7 +576,7 @@ function ReglesFrequentes({ data }: { data: Progression }) {
                   {r.label}
                   {r.state && (
                     <span className="ml-1.5 text-xs text-gray-600 dark:text-gray-400">
-                      ({ETAT_SINGULIER[r.state]})
+                      ({ETATS[r.state].singulier})
                     </span>
                   )}
                 </span>
@@ -611,10 +588,7 @@ function ReglesFrequentes({ data }: { data: Progression }) {
                 className="mt-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800"
                 aria-hidden="true"
               >
-                <div
-                  className="h-full rounded-full bg-brand-500 dark:bg-brand-400"
-                  style={{ width: `${(r.count / max) * 100}%` }}
-                />
+                <div className={remplissage} style={{ width: `${(r.count / max) * 100}%` }} />
               </div>
             </li>
           ))}
@@ -632,9 +606,7 @@ function MotsPieges({ data }: { data: Progression }) {
       </h3>
       <p className={cardHint}>Les mots que vous écrivez le plus souvent de travers.</p>
       {data.trapWords.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          Aucune faute d'orthographe sur la période.
-        </p>
+        <p className={`mt-3 ${discret}`}>Aucune faute d'orthographe sur la période.</p>
       ) : (
         <ul className="mt-3 divide-y divide-gray-100 dark:divide-gray-800">
           {data.trapWords.map((m) => (

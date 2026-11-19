@@ -59,10 +59,27 @@ function rempli(): Progression {
 
 const vide = () => calculerProgression({ texts: [], faults: [], rules: [] }, NOW);
 
+/**
+ * Simule `GET /api/progress` : une réponse par appel, dans l'ordre (la dernière
+ * est répétée) ; une Error fait échouer l'appel comme une coupure réseau.
+ */
+function servir(...reponses: (Progression | Error)[]) {
+  let appel = 0;
+  const mock = vi.fn((_url: string, _init?: RequestInit) => {
+    const r = reponses[Math.min(appel++, reponses.length - 1)];
+    return r instanceof Error
+      ? Promise.reject(r)
+      : Promise.resolve(new Response(JSON.stringify(r), { status: 200 }));
+  });
+  globalThis.fetch = mock as unknown as typeof fetch;
+  return mock;
+}
+
 describe("ProgressionScreen", () => {
   it("affiche le score de maîtrise, les graphiques accessibles, les règles et les mots pièges", async () => {
     const data = rempli();
-    render(<ProgressionScreen onClose={vi.fn()} load={() => Promise.resolve(data)} />);
+    servir(data);
+    render(<ProgressionScreen onClose={vi.fn()} />);
 
     const maitrise = await screen.findByRole("region", { name: "Score de maîtrise" });
     expect(data.mastery.score).not.toBeNull();
@@ -92,7 +109,8 @@ describe("ProgressionScreen", () => {
       { texts: [{ at: jour(0), words: 40, faults: 1 }], faults: [], rules: [] },
       NOW,
     );
-    render(<ProgressionScreen onClose={vi.fn()} load={() => Promise.resolve(data)} />);
+    servir(data);
+    render(<ProgressionScreen onClose={vi.fn()} />);
     const maitrise = await screen.findByRole("region", { name: "Score de maîtrise" });
     expect(within(maitrise).getByText("Pas encore assez de textes")).toBeTruthy();
     expect(within(maitrise).queryByText(/sur 100/)).toBeNull();
@@ -101,7 +119,8 @@ describe("ProgressionScreen", () => {
 
   it("journal vide : explique et invite à corriger un premier texte", async () => {
     const onClose = vi.fn();
-    render(<ProgressionScreen onClose={onClose} load={() => Promise.resolve(vide())} />);
+    servir(vide());
+    render(<ProgressionScreen onClose={onClose} />);
     expect(await screen.findByText("Aucun texte corrigé pour l'instant")).toBeTruthy();
     expect(screen.queryByRole("img")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Corriger un premier texte" }));
@@ -109,13 +128,8 @@ describe("ProgressionScreen", () => {
   });
 
   it("rend la galerie de badges dans sa propre section quand elle est fournie", async () => {
-    render(
-      <ProgressionScreen
-        onClose={vi.fn()}
-        load={() => Promise.resolve(rempli())}
-        badges={<p>Galerie</p>}
-      />,
-    );
+    servir(rempli());
+    render(<ProgressionScreen onClose={vi.fn()} badges={<p>Galerie</p>} />);
     const badges = await screen.findByTestId("progression-badges");
     expect(within(badges).getByText("Galerie")).toBeTruthy();
     // Pas de cadre autour de la galerie : chaque badge est déjà une carte.
@@ -123,26 +137,26 @@ describe("ProgressionScreen", () => {
   });
 
   it("se recharge quand le journal change, sans repasser par « Chargement »", async () => {
-    const load = vi.fn().mockResolvedValueOnce(rempli()).mockResolvedValueOnce(vide());
-    const { rerender } = render(<ProgressionScreen onClose={vi.fn()} load={load} reloadKey={0} />);
+    const fetch = servir(rempli(), vide());
+    const { rerender } = render(<ProgressionScreen onClose={vi.fn()} reloadKey={0} />);
     await screen.findByText("Score de maîtrise");
-    rerender(<ProgressionScreen onClose={vi.fn()} load={load} reloadKey={1} />);
+    rerender(<ProgressionScreen onClose={vi.fn()} reloadKey={1} />);
     expect(screen.queryByText("Chargement de votre progression…")).toBeNull();
     await screen.findByText("Aucun texte corrigé pour l'instant");
-    expect(load).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("commence sous l'en-tête, à la hauteur indiquée", async () => {
-    const { container } = render(
-      <ProgressionScreen onClose={vi.fn()} load={() => Promise.resolve(vide())} top={110} />,
-    );
+    servir(vide());
+    const { container } = render(<ProgressionScreen onClose={vi.fn()} top={110} />);
     await screen.findByText("Aucun texte corrigé pour l'instant");
     expect((container.firstElementChild as HTMLElement).style.top).toBe("110px");
   });
 
   it("revient à la correction par le bouton Retour ou la touche Échap", async () => {
     const onClose = vi.fn();
-    render(<ProgressionScreen onClose={onClose} load={() => Promise.resolve(vide())} />);
+    servir(vide());
+    render(<ProgressionScreen onClose={onClose} />);
     expect(document.activeElement?.textContent).toBe("Ma progression");
     fireEvent.click(screen.getByRole("button", { name: /Retour à la correction/ }));
     fireEvent.keyDown(window, { key: "Escape" });
@@ -150,11 +164,8 @@ describe("ProgressionScreen", () => {
   });
 
   it("propose de réessayer quand le chargement échoue", async () => {
-    const load = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("hors ligne"))
-      .mockResolvedValueOnce(vide());
-    render(<ProgressionScreen onClose={vi.fn()} load={load} />);
+    servir(new Error("hors ligne"), vide());
+    render(<ProgressionScreen onClose={vi.fn()} />);
     const alerte = await screen.findByRole("alert");
     fireEvent.click(within(alerte).getByRole("button", { name: "Réessayer" }));
     await waitFor(() =>
@@ -162,12 +173,10 @@ describe("ProgressionScreen", () => {
     );
   });
 
-  it("charge les données depuis GET /api/progress par défaut", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(vide()) }),
-    ) as unknown as typeof fetch;
+  it("charge les données depuis GET /api/progress", async () => {
+    const fetch = servir(vide());
     render(<ProgressionScreen onClose={vi.fn()} />);
     await screen.findByText("Aucun texte corrigé pour l'instant");
-    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe("/api/progress");
+    expect(fetch.mock.calls[0][0]).toBe("/api/progress");
   });
 });

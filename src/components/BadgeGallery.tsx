@@ -1,20 +1,11 @@
-import { useCallback, useEffect, useId, useState } from "react";
-import { type BadgeVue, type CatalogueBadges, fetchBadges } from "../services/badges";
+import { useId } from "react";
+import { useChargement } from "../hooks/useChargement";
+import { type BadgeVue, fetchBadges } from "../services/badges";
+import { dateLongue, nombre } from "../utils/format";
 import { BadgeIcon } from "./BadgeIcon";
 
-const nombre = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
-
-/** « 12 mars 2026 ». */
-export function formatDateBadge(at: number): string {
-  return new Date(at).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 /** Progression en clair : « 7 textes sur 10 », « 16,4 sur 20, objectif 18 ». */
-export function progressionEnClair(badge: BadgeVue): string {
+function progressionEnClair(badge: BadgeVue): string {
   const { valeur, seuil } = badge.progression;
   if (badge.mesure === "noteMoyenne") {
     return valeur > 0
@@ -93,7 +84,7 @@ function CarteBadge({ badge }: { badge: BadgeVue }) {
               {badge.description}
             </p>
             <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-              Obtenu le {formatDateBadge(badge.obtenuLe)}
+              Obtenu le {dateLongue(badge.obtenuLe)}
             </p>
           </>
         ) : (
@@ -138,29 +129,9 @@ function CarteBadge({ badge }: { badge: BadgeVue }) {
  * `reloadKey` change (badge obtenu ou journal effacé pendant qu'elle est affichée).
  */
 export function BadgeGallery({ reloadKey }: { reloadKey?: unknown }) {
-  const [catalogue, setCatalogue] = useState<CatalogueBadges | null>(null);
-  const [erreur, setErreur] = useState(false);
+  // `reloadKey` : le journal a changé, le catalogue affiché reste en place pendant le rechargement.
+  const { data: catalogue, erreur, reessayer } = useChargement(fetchBadges, reloadKey);
   const titreId = useId();
-
-  // Incrémenté par « Réessayer » pour relancer le chargement.
-  const [essai, setEssai] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchBadges(controller.signal)
-      .then(setCatalogue)
-      .catch((e: unknown) => {
-        if (e instanceof Error && e.name === "AbortError") return;
-        setErreur(true);
-      });
-    return () => controller.abort();
-    // `reloadKey` : le journal a changé, le catalogue affiché reste en place pendant le rechargement.
-  }, [essai, reloadKey]);
-
-  const reessayer = useCallback(() => {
-    setErreur(false);
-    setEssai((n) => n + 1);
-  }, []);
 
   return (
     <section aria-labelledby={titreId} className="w-full">
