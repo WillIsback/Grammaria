@@ -18,7 +18,9 @@ La colonne « règle » contient, selon le cas :
 - **Accord (nombre, genre ou personne)**, quand seule la terminaison d'un mot change (« était → étaient », « content → contents ») et que LanguageTool ne l'a pas signalé ;
 - **Non classé**, pour une modification du modèle qu'aucune détection n'explique. C'est souvent une reformulation.
 
-Une correction qui ne porte que sur des espaces les affiche sous la forme `␣` ; un passage ajouté ou supprimé est noté `∅`.
+Un passage ajouté ou supprimé est noté `∅`.
+
+Les retouches de ponctuation et d'espaces (virgule, point, guillemets…) n'apparaissent pas : elles sont appliquées dans le texte corrigé, mais ne sont ni listées, ni comptées, ni enregistrées dans le journal. L'apostrophe et le trait d'union restent visibles, car ils font partie des mots.
 
 Deux compteurs résument le traitement : la durée de génération et le nombre de corrections.
 
@@ -40,6 +42,7 @@ Une fiche donne un test à appliquer soi-même, à la première occurrence de la
 | sa / ça | Remplacez par « cela ». Si la phrase tient, c'est « ça » ; sinon « sa », remplaçable par « ma ». |
 | peu / peut / peux | Remplacez par « pouvait ». Si la phrase tient, c'est le verbe : « peut » (il, elle) ou « peux » (je, tu). Sinon « peu ». |
 | -er / -é / -ez | Remplacez par « vendre » ou « vendu ». « vendre » donne -er ; « vendu » donne -é. La terminaison -ez va avec « vous ». |
+| travail / travaille | Mettez « un » ou « le » devant. Si la phrase tient, c'est le nom en -ail, -eil, -euil ; sinon le verbe, qui double le l (« ils travaillent »). |
 
 ## Ce qui est compté comme une faute
 
@@ -48,7 +51,8 @@ Une fiche donne un test à appliquer soi-même, à la première occurrence de la
 | Confusion d'une fiche | oui | oui |
 | Grammaire, conjugaison, orthographe (LanguageTool) | oui | oui |
 | Accord déduit du diff | oui | oui |
-| Typographie, ponctuation, style | oui | non |
+| Retouche de ponctuation ou d'espaces | non | non |
+| Typographie, style | oui | non |
 | Modification non classée | oui | non |
 
 :::note

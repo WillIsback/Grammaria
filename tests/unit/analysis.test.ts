@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { analyze, isCounted, sentenceAt } from "../../src/analysis/analyze";
+import { analyze, isCounted, isPunctuationOnly, sentenceAt } from "../../src/analysis/analyze";
 import { countWords, diffHunks } from "../../src/analysis/diff";
 import { detecterConfusion, FICHES } from "../../src/analysis/fiches";
 import { detecterAccord } from "../../src/analysis/accord";
@@ -71,6 +71,12 @@ describe("detecterConfusion", () => {
     ["La-bas", "Là-bas", "PAIRE:la/là"],
     ["celle-la", "celle-là", "PAIRE:la/là"],
     ["mangez", "mangées", "TERMINAISON:er/é"],
+    // Régression test utilisateur : « avec quoi travail les équipes » restait « Non classé ».
+    ["travail", "travaillent", "NOM_VERBE:ail/aille"],
+    ["travaille", "travail", "NOM_VERBE:ail/aille"],
+    ["conseil", "conseille", "NOM_VERBE:ail/aille"],
+    ["réveil", "réveillé", "NOM_VERBE:ail/aille"],
+    ["accueil", "accueillent", "NOM_VERBE:ail/aille"],
   ])("%s → %s donne %s", (avant, apres, cle) => {
     expect(detecterConfusion(avant, apres)).toBe(cle);
     expect(FICHES[cle]).toBeDefined();
@@ -85,6 +91,10 @@ describe("detecterConfusion", () => {
     ["la-bas", "là-haut"],
     ["peu-être", "peut-être"],
     ["est-ce", "et-ce"],
+    // Adjectif : « pareil → pareille » est un accord, pas une confusion nom / verbe.
+    ["pareil", "pareille"],
+    ["travail", "travaux"],
+    ["travail", "travailleur"],
   ])("%s → %s n'est pas une confusion connue", (avant, apres) => {
     expect(detecterConfusion(avant, apres)).toBeNull();
   });
@@ -308,5 +318,68 @@ describe("parsePeriodDays", () => {
     ["400", 365],
   ])("days=%j → %i", (raw, expected) => {
     expect(parsePeriodDays(raw)).toBe(expected);
+  });
+});
+
+// Retour utilisateur : les virgules ajoutées remplissaient la liste en
+// « Non classé ». La ponctuation est désormais une correction silencieuse :
+// appliquée dans le texte, mais ni listée, ni comptée, ni journalisée.
+describe("isPunctuationOnly", () => {
+  it.each([
+    ["", ","],
+    [" ", ", "],
+    ["", "."],
+    [",", ";"],
+    ['"', "« »"],
+    ["...", "…"],
+    [" ", "  "],
+  ])("« %s » → « %s » ne touche que la ponctuation", (avant, apres) => {
+    expect(isPunctuationOnly(avant, apres)).toBe(true);
+  });
+
+  it.each([
+    ["", ""],
+    ["lequipe", "l'équipe"],
+    ["est ce", "est-ce"],
+    ["paris", "Paris"],
+    ["travail", "travaillent"],
+    ["10", "10 €"],
+    [", et", ". Et"],
+  ])("« %s » → « %s » n'est pas une simple retouche de ponctuation", (avant, apres) => {
+    expect(isPunctuationOnly(avant, apres)).toBe(false);
+  });
+});
+
+describe("analyze — ponctuation silencieuse", () => {
+  const original =
+    "J'ai transmis vos remarques au national qui leur seront très précieuses car votre besoin est clair. (Ils aiment savoir avec quoi travail les équipes)";
+  const corrected =
+    "J'ai transmis vos remarques au national, qui leur seront très précieuses, car votre besoin est clair. (Ils aiment savoir avec quoi travaillent les équipes.)";
+
+  it("ne garde que la vraie faute, classée avec sa fiche", () => {
+    const result = analyze(original, corrected, [
+      match(original, " car", {
+        id: "PLACE_DE_LA_VIRGULE",
+        issueType: "typographical",
+        category: { id: "PONCTUATION_VIRGULE", name: "Ponctuation" },
+      }),
+    ]);
+
+    expect(result.corrections).toHaveLength(1);
+    expect(result.corrections[0]).toMatchObject({ avant: "travail", apres: "travaillent" });
+    expect(result.corrections[0].faults[0]).toMatchObject({
+      ruleKey: "NOM_VERBE:ail/aille",
+      counted: true,
+    });
+    expect(result.corrections[0].fiche).toBe(FICHES["NOM_VERBE:ail/aille"]);
+    expect(result.unclassifiedCount).toBe(0);
+    expect(result.faultCount).toBe(1);
+  });
+
+  it("un texte dont seule la ponctuation change n'a aucune correction", () => {
+    const result = analyze("Bonjour je reviens vers vous", "Bonjour, je reviens vers vous.", []);
+    expect(result.corrections).toEqual([]);
+    expect(result.unclassifiedCount).toBe(0);
+    expect(result.score).toBe(20);
   });
 });

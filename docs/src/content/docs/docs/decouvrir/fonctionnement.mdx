@@ -25,9 +25,11 @@ Une modification qui ne change que la terminaison d'un mot (« était → étaie
 
 À l'inverse, une modification du LLM qu'aucune détection n'explique reste affichée, avec la mention « Non classé », et n'est pas comptée.
 
+Une modification qui ne touche que la ponctuation ou les espaces (virgule ajoutée, point final, guillemets) est une **correction silencieuse** : elle est appliquée dans le texte corrigé, mais n'apparaît pas dans la liste, n'est pas comptée et n'est pas enregistrée dans le journal. L'apostrophe et le trait d'union n'en font pas partie : ils appartiennent aux mots (« l'équipe », « est-ce »).
+
 ## 4. Les confusions courantes ont leur fiche
 
-Douze confusions sont reconnues directement dans le diff, sans dépendre de LanguageTool : a/à, ou/où, et/est, on/ont, son/sont, ces/ses, ce/se, c'est/s'est, la/là, sa/ça, peu/peut/peux, et les terminaisons -er/-é/-ez.
+Treize confusions sont reconnues directement dans le diff, sans dépendre de LanguageTool : a/à, ou/où, et/est, on/ont, son/sont, ces/ses, ce/se, c'est/s'est, la/là, sa/ça, peu/peut/peux, les terminaisons -er/-é/-ez, et le nom en -ail, -eil ou -euil confondu avec le verbe (travail/travaille, conseil/conseille).
 
 Chacune est accompagnée d'une fiche au format « remplacez par X, car Y ». Voir [Corrections et fiches de règles](/docs/utiliser/corrections/).
 

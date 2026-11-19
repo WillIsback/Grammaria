@@ -72,6 +72,11 @@ export const FICHES: Record<string, Fiche> = {
     astuce:
       "Remplacez le verbe par « vendre » ou « vendu ». Si « vendre » convient, écrivez -er, car c'est un infinitif ; si « vendu » convient, écrivez -é, car c'est un participe passé. La terminaison -ez est réservée au sujet « vous ».",
   },
+  "NOM_VERBE:ail/aille": {
+    titre: "Nom ou verbe : travail / travaille",
+    astuce:
+      "Mettez « un » ou « le » devant le mot. Si la phrase reste correcte, écrivez le nom en -ail, -eil ou -euil (« un travail », « un conseil »), car c'est une chose ; sinon écrivez le verbe, qui double le l : « je travaille », « ils travaillent », « j'ai travaillé ».",
+  },
 };
 
 const GROUPES: string[][] = [
@@ -103,6 +108,22 @@ function decouper(mot: string): { radical: string; terminaison: string } | null 
   return null;
 }
 
+/** Noms en -ail, -eil, -euil dont le verbe double le l : travail / travaille. */
+const NOM_EN_IL = /^[\p{L}]{2,}(ail|eil|euil|ueil)$/u;
+const FINALES_VERBE = new Set(["e", "es", "ent", "er", "é", "és", "ée", "ées", "ez", "ons"]);
+/** Adjectifs dont le féminin double aussi le l : « pareil → pareille » est un accord. */
+const ADJECTIFS_EN_IL = new Set(["pareil", "nonpareil", "vermeil", "vieil"]);
+
+/** Vrai si l'un des mots est le nom et l'autre le verbe : « travail / travaillent ». */
+function nomOuVerbe(a: string, b: string): boolean {
+  const verifier = (nom: string, verbe: string) =>
+    NOM_EN_IL.test(nom) &&
+    !ADJECTIFS_EN_IL.has(nom) &&
+    verbe.startsWith(`${nom}l`) &&
+    FINALES_VERBE.has(verbe.slice(nom.length + 1));
+  return verifier(a, b) || verifier(b, a);
+}
+
 /** Clé de fiche si le remplacement « avant → après » est une confusion connue. */
 export function detecterConfusion(avant: string, apres: string): string | null {
   const a = normaliser(avant);
@@ -126,6 +147,8 @@ export function detecterConfusion(avant: string, apres: string): string | null {
       return "PAIRE:la/là";
     }
   }
+
+  if (nomOuVerbe(a, b)) return "NOM_VERBE:ail/aille";
 
   const da = decouper(a);
   const db = decouper(b);
