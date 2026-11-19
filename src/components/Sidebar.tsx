@@ -2,6 +2,7 @@ import type React from "react";
 import { useState } from "react";
 import { purgeJournal } from "../services/journal";
 import type { CorrectionMode, CorrectionSettings } from "../types";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { CHECK_PATH, CloseButton, Icon } from "./Icon";
 
 interface Props {
@@ -22,6 +23,9 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
   technical: { label: "Technique", icon: "T" },
 };
 
+const PURGE_WARNING =
+  "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.";
+
 /** Titre de rubrique, partagé avec les rubriques du menu Paramètres. */
 export const sectionTitle =
   "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
@@ -30,10 +34,10 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
   const modeKeys = Object.keys(modeLabels) as CorrectionMode[];
   const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
 
+  const [confirmPurge, setConfirmPurge] = useState(false);
+
   const handlePurge = async () => {
-    const message =
-      "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.";
-    if (!window.confirm(message)) return;
+    setConfirmPurge(false);
     try {
       await purgeJournal();
       setPurgeStatus("Journal et badges effacés.");
@@ -203,13 +207,21 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
           </p>
           <button
             type="button"
-            onClick={handlePurge}
+            onClick={() => setConfirmPurge(true)}
             className="w-full px-3 py-2 rounded-xl text-sm font-medium text-red-600 dark:text-red-400
               border border-red-200/80 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40
               transition-colors"
           >
             Effacer le journal
           </button>
+          <ConfirmDialog
+            open={confirmPurge}
+            title="Effacer le journal ?"
+            message={PURGE_WARNING}
+            confirmLabel="Effacer"
+            onConfirm={handlePurge}
+            onCancel={() => setConfirmPurge(false)}
+          />
           {purgeStatus && (
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400" role="status">
               {purgeStatus}

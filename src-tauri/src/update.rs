@@ -20,6 +20,8 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
+use crate::logs::{self, Niveau};
+
 /// Page de la dernière version stable, pour un téléchargement à la main.
 const RELEASE_PAGE: &str = "https://github.com/WillIsback/Grammaria/releases/latest";
 
@@ -262,6 +264,7 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
     if !state.update(|inner| inner.status.begin_check()) {
         return Ok(state.status());
     }
+    logs::ecrire(Niveau::Info, "mise à jour", "Recherche d'une mise à jour.");
 
     // Sous Windows, l'installeur est lancé puis l'application quitte : on
     // libère d'abord ses ressources (fenêtres, plugins).
@@ -292,6 +295,7 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
             Err(error) => (CheckOutcome::Failed(error.to_string()), None),
         };
         let failed = matches!(outcome, CheckOutcome::Failed(_));
+        journaliser_recherche(&outcome);
         if inner.status.finish_check(outcome) && !failed {
             inner.pending = update;
         }
@@ -314,6 +318,11 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
         return state.status();
     };
 
+    logs::ecrire(
+        Niveau::Info,
+        "mise à jour",
+        &format!("Téléchargement de la version {}.", update.version),
+    );
     tauri::async_runtime::spawn(async move {
         let progress = app.clone();
         let finished = app.clone();
@@ -326,6 +335,11 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
                     });
                 },
                 move || {
+                    logs::ecrire(
+                        Niveau::Info,
+                        "mise à jour",
+                        "Téléchargement terminé, signature vérifiée : installation.",
+                    );
                     finished
                         .state::<UpdateState>()
                         .update(|inner| inner.status.phase = Phase::Installing);
@@ -335,10 +349,18 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
         match result {
             // Windows : l'installeur a déjà quitté l'application et la relance
             // lui-même. Linux : l'AppImage est remplacée, on redémarre dessus.
-            Ok(()) => app.request_restart(),
+            Ok(()) => {
+                logs::ecrire(Niveau::Info, "mise à jour", "Installée : redémarrage.");
+                app.request_restart();
+            }
             // Signature invalide, téléchargement coupé, dossier non modifiable… :
             // rien n'a été installé, la mise à jour reste proposée.
             Err(error) => {
+                logs::ecrire(
+                    Niveau::Erreur,
+                    "mise à jour",
+                    &format!("Installation impossible : {error}"),
+                );
                 app.state::<UpdateState>().update(|inner| {
                     inner.status.fail(
                         Step::Install,
@@ -360,6 +382,22 @@ pub fn update_open_release_page(app: AppHandle) -> Result<(), String> {
     app.opener()
         .open_url(RELEASE_PAGE, None::<&str>)
         .map_err(|error| error.to_string())
+        .inspect_err(|error| logs::echec_commande("update_open_release_page", error))
+}
+
+/// Issue d'une recherche dans le journal technique.
+fn journaliser_recherche(outcome: &CheckOutcome) {
+    let (niveau, message) = match outcome {
+        CheckOutcome::Found { version, .. } => {
+            (Niveau::Info, format!("Version {version} disponible."))
+        }
+        CheckOutcome::UpToDate => (Niveau::Info, "Application à jour.".to_string()),
+        CheckOutcome::NoRelease => (Niveau::Info, "Aucune version publiée.".to_string()),
+        CheckOutcome::Failed(detail) => {
+            (Niveau::Erreur, format!("Recherche impossible : {detail}"))
+        }
+    };
+    logs::ecrire(niveau, "mise à jour", &message);
 }
 
 #[cfg(test)]

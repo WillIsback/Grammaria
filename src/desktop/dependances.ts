@@ -12,6 +12,7 @@ import type {
   JournalDeps,
   ModeleDeps,
   MotsValidesDeps,
+  OptionsGestionnaire,
   ReglagesDeps,
 } from "../../api/deps.ts";
 import type { ServerSettings } from "../../api/reglages.ts";
@@ -172,6 +173,8 @@ export interface DependancesBureau {
   journal: JournalDeps;
   correcteur: CorrecteurDeps;
   modele?: OptionsModele;
+  /** Ligne de fin de correction du journal technique (`grammaria.log`). */
+  surFinCorrection?: OptionsGestionnaire["surFinCorrection"];
 }
 
 /** Toutes les dépendances du gestionnaire sur le bureau. */
@@ -180,6 +183,7 @@ export function dependancesBureau({
   journal,
   correcteur,
   modele,
+  surFinCorrection,
 }: DependancesBureau): DependancesApi {
   return {
     journal,
@@ -189,6 +193,12 @@ export function dependancesBureau({
     modele: creerModele(api, modele),
     // Réglages modifiables ; pas d'autre origine que la page ; `top_k` non envoyé ; l'abandon
     // d'une requête par l'interface annule la requête au modèle.
-    options: { bureau: true, originesCors: [], llmTopK: -1, suivreAbandonRequete: true },
+    options: {
+      bureau: true,
+      originesCors: [],
+      llmTopK: -1,
+      suivreAbandonRequete: true,
+      surFinCorrection,
+    },
   };
 }

@@ -11,14 +11,15 @@
 //! clé enregistrée est effacée : elle ne doit jamais partir ailleurs.
 //!
 //! Les fichiers sont relus à chaque appel (ils font quelques centaines
-//! d'octets) : tant que le serveur Bun tourne encore à côté, Rust voit
-//! toujours ce qu'il a écrit.
+//! d'octets) : un fichier modifié à la main est pris en compte sans relancer
+//! l'application.
 
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use crate::logs;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -476,7 +477,9 @@ pub async fn settings_set(
     store: State<'_, Store>,
     update: Value,
 ) -> Result<PublicSettings, String> {
-    store.update_settings(&update)
+    store
+        .update_settings(&update)
+        .inspect_err(|error| logs::echec_commande("settings_set", error))
 }
 
 /// Liste des mots valides.
@@ -491,7 +494,9 @@ pub async fn valid_words_add(
     store: State<'_, Store>,
     word: Option<Value>,
 ) -> Result<Vec<String>, String> {
-    store.add_valid_word(word.as_ref())
+    store
+        .add_valid_word(word.as_ref())
+        .inspect_err(|error| logs::echec_commande("valid_words_add", error))
 }
 
 #[cfg(test)]

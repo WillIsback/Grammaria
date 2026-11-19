@@ -164,6 +164,9 @@ export function tauriSimule(options: OptionsSimulation = {}) {
     else enregistrer();
   }
 
+  /** Lignes reçues par `log_page` (journal technique). */
+  const journalTechnique: { niveau: string; message: string }[] = [];
+
   async function invokeBrut(
     commande: string,
     args: Record<string, unknown> = {},
@@ -203,6 +206,9 @@ export function tauriSimule(options: OptionsSimulation = {}) {
         // Rust répond à la fin du flux ; ici tout de suite : la page ne doit pas s'y fier.
         return null;
       }
+      case "log_page":
+        journalTechnique.push({ niveau: args.niveau as string, message: args.message as string });
+        return null;
       case "llm_cancel": {
         const annuler = enCours.get(args.requestId as number);
         if (!annuler) return false;
@@ -229,6 +235,7 @@ export function tauriSimule(options: OptionsSimulation = {}) {
     corpsModele,
     annulees,
     enCours,
+    journalTechnique,
     commandes: () => appels.map((a) => a.commande),
     set avantLot(f: ((sqls: string[]) => void) | null) {
       avantLot = f;

@@ -15,10 +15,11 @@ import { listerModelesAmont } from "./src/utils/modeles.ts";
 import { downstreamHeaders, upstreamHeaders } from "./src/utils/upstream.ts";
 
 /**
- * Serveur Bun : fichiers de l'interface, contrôles du mode bureau, et
- * dépendances réelles (SQLite, fichiers, SDK OpenAI) du gestionnaire d'API.
- * Les routes `/api/*` et `/v1/*` sont dans `api/handler.ts`, partagé avec
- * l'application de bureau.
+ * Serveur Bun (version web, Docker ou serveur local) : fichiers de l'interface,
+ * contrôles du mode bureau, et dépendances réelles (SQLite, fichiers, SDK OpenAI)
+ * du gestionnaire d'API. Les routes `/api/*` et `/v1/*` sont dans
+ * `api/handler.ts`, partagé avec l'application de bureau (qui ne lance pas ce
+ * serveur : le gestionnaire y tourne dans la page).
  */
 
 const DIST_DIR = resolve(config.distDir || join(import.meta.dir, "dist"));
@@ -48,7 +49,8 @@ function connectLlm(): void {
 connectLlm();
 
 /**
- * Mode bureau : le serveur n'écoute qu'en local, mais une page web ouverte
+ * Mode bureau (serveur local d'un seul utilisateur, GRAMMARIA_DESKTOP=1) : le
+ * serveur n'écoute qu'en local, mais une page web ouverte
  * dans le navigateur peut quand même l'appeler. On refuse donc un en-tête
  * Host étranger (DNS rebinding) et toute requête de modification venue d'une
  * autre origine (CSRF), par exemple pour rediriger les textes vers un autre LLM.
@@ -196,17 +198,3 @@ Bun.serve({
 });
 
 console.log(`🚀 Grammaria server running on http://${config.host}:${config.port}`);
-
-// Application de bureau : la coquille garde un tube ouvert sur l'entrée
-// standard du serveur. S'il se ferme (fermeture, plantage ou arrêt forcé de
-// l'application), le serveur s'arrête au lieu de rester orphelin avec ~1 Go
-// de mémoire.
-if (process.env.GRAMMARIA_EXIT_WITH_PARENT === "1") {
-  const exitWithParent = () => {
-    console.log("[Desktop] Application fermée : arrêt du serveur.");
-    process.exit(0);
-  };
-  process.stdin.on("end", exitWithParent);
-  process.stdin.on("close", exitWithParent);
-  process.stdin.resume();
-}

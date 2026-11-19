@@ -5,22 +5,37 @@ description: "Composants, fichiers et flux de données."
 
 ## Vue d'ensemble
 
+Les routes de l'interface (`/api/*`, `/v1/*`) sont traitées par un seul gestionnaire, `api/handler.ts`, partagé entre le serveur web et l'application de bureau. Seules ses dépendances changent : elles lui sont injectées (`api/deps.ts`).
+
 ```
-Navigateur (React)
-  ├─ POST /v1/chat/completions ─► serveur Bun ─► LLM (API compatible OpenAI)
-  ├─ POST /api/check ───────────► serveur Bun : correcteur grammatical (worker)
-  └─ POST /api/analyze ─────────► serveur Bun : diff, croisement, journal SQLite
+                 Interface React : fetch("/api/…"), fetch("/v1/…")
+                                  │
+          ┌───────────────────────┴────────────────────────┐
+   Version web (Bun)                              Application de bureau (Tauri)
+   HTTP vers server.ts                            fetch intercepté dans la page
+          │                                       (src/desktop/pont.ts)
+          └──────────────► api/handler.ts ◄────────────────┘
+                    (routes, analyse, relance du modèle)
+                                  │
+          ┌───────────────────────┴────────────────────────┐
+   journal : bun:sqlite                           journal : SQLite par Rust (db.rs)
+   (journal.driver.bun.ts)                        (src/desktop/journal.driver.tauri.ts)
+   correcteur : worker Bun (grammar.ts)           correcteur : Web Worker (src/desktop/)
+   réglages, mots : fichiers (settings.ts)        réglages, clé, mots : Rust (store.rs)
+   modèle : SDK OpenAI                            modèle : relais Rust (llm.rs)
 ```
 
-Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
+Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`). L'application de bureau n'a pas de serveur : Tauri sert la page embarquée (`dist/bureau`). Voir [Application de bureau (build)](/docs/reference/bureau/).
 
 ## Fichiers
 
 | Fichier | Rôle |
 |---|---|
-| `server.ts` | Serveur Bun : fichiers statiques, relais LLM, correcteur grammatical, analyse, journal |
-| `grammar.ts`, `grammar.worker.ts` | Correcteur grammatical intégré : règles françaises de LanguageTool exécutées dans un worker |
-| `journal.ts` | Journal SQLite (`bun:sqlite`) |
+| `server.ts` | Serveur Bun : fichiers statiques et dépendances réelles du gestionnaire d'API (SQLite, fichiers, SDK OpenAI) |
+| `api/handler.ts` | Gestionnaire des routes `/api/*` et `/v1/*`, partagé par le serveur et le bureau ; `api/deps.ts` décrit ses dépendances |
+| `grammar.ts`, `grammar.worker.ts` | Correcteur grammatical du serveur : règles françaises de LanguageTool exécutées dans un worker |
+| `journal.ts` | Journal des fautes, indépendant du moteur SQLite |
+| `journal.driver.ts` | Interface des pilotes du journal ; `journal.driver.bun.ts` (serveur, `bun:sqlite`) et `src/desktop/journal.driver.tauri.ts` (bureau, commandes Rust) |
 | `journal.rules.ts` | État des règles et historique dans la base du journal ; migration du schéma |
 | `journal.badges.ts` | Badges obtenus dans la base du journal ; attribution rétroactive à la migration |
 | `config.ts` | Lecture des variables d'environnement |
@@ -40,12 +55,14 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 | `src/components/BadgeGallery.tsx`, `BadgeNotice.tsx` | Galerie des badges (en bas de l'écran Progression) et notification d'un badge obtenu |
 | `src/hooks/useCorrector.ts` | Orchestration côté interface |
 | `src/utils/prompt.ts` | Construction du prompt |
+| `src/desktop/` | Application de bureau, côté page : amorce, pont `fetch`, dépendances par les commandes Rust, Worker du correcteur, journal technique, autotest |
+| `src-tauri/` | Application de bureau, côté Rust : commandes (SQLite, réglages, relais du modèle, mise à jour, journal technique `grammaria.log`) |
 | `vite.config.ts` | Toute la configuration de l'outillage |
 
 ## Choix de conception
 
-- **Le code d'analyse est partagé.** `src/analysis` ne dépend ni du navigateur ni de Bun ; il est exécuté par le serveur et testé sous Vitest.
+- **Le code d'analyse est partagé.** `src/analysis` et `api/handler.ts` ne dépendent ni de Bun ni de Node ; ils sont exécutés par le serveur web, par la page de l'application de bureau, et testés sous Vitest.
 - **L'analyse ne bloque jamais la correction.** Si le correcteur grammatical ou le journal échoue, le texte corrigé reste affiché et copiable.
 - **Une clé stable par règle.** Les confusions des fiches ont une clé interne (`PAIRE:on/ont`) ; les autres fautes utilisent l'identifiant de règle de LanguageTool. C'est ce qui permet de compter les récurrences.
-- **Un correcteur grammatical intégré.** Les règles françaises de LanguageTool tournent dans le serveur Bun grâce à [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de LanguageTool distribué sous licence GPL-3.0-or-later. Elles s'exécutent dans un worker pour ne pas bloquer le serveur, se chargent en arrière-plan au démarrage (quelques secondes) et occupent environ 1 Go de mémoire vive.
+- **Un correcteur grammatical intégré.** Les règles françaises de LanguageTool tournent dans le serveur Bun grâce à [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de LanguageTool distribué sous licence GPL-3.0-or-later. Elles s'exécutent dans un worker pour ne pas bloquer le serveur, se chargent en arrière-plan au démarrage (quelques secondes) et occupent plusieurs centaines de Mo de mémoire vive. L'application de bureau exécute les mêmes règles dans un Web Worker de sa page ; un corpus de référence garantit des détections identiques.
 - **Mono-utilisateur.** Il n'y a pas d'authentification. Les tables portent une colonne `user_id` pour ne pas fermer la porte au multi-utilisateur.

@@ -76,9 +76,9 @@ describe("server.ts — correcteur grammatical intégré", () => {
   });
 });
 
-// Application de bureau : serveur local, réglages modifiables depuis l'interface.
+// Mode bureau du serveur (serveur local d'un seul utilisateur) : réglages modifiables depuis l'interface.
 describe("server.ts — mode bureau", () => {
-  it("écoute sur l'interface configurée (127.0.0.1 pour le bureau)", () => {
+  it("écoute sur l'interface configurée (127.0.0.1 en mode bureau)", () => {
     expect(serverSource).toMatch(/hostname:\s*config\.host/);
   });
 

@@ -452,6 +452,16 @@ export function creerGestionnaire(
                 `[LLM] Stream terminé en ${totalDuration}ms (premier mot après ${firstTokenMs ?? "—"}ms, ` +
                   `fragments de raisonnement : ${reasoningChunks}, raisonnement coupé : ${disableThinking})`,
               );
+              try {
+                options.surFinCorrection?.({
+                  dureeMs: totalDuration,
+                  premierMotMs: firstTokenMs,
+                  fragmentsRaisonnement: reasoningChunks,
+                  raisonnementCoupe: disableThinking,
+                });
+              } catch {
+                /* un journal en échec n'interrompt pas la réponse */
+              }
               span.setAttributes({
                 "llm.first_token_ms": firstTokenMs ?? -1,
                 "llm.reasoning_chunks": reasoningChunks,

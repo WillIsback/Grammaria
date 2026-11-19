@@ -2,7 +2,8 @@
 //!
 //! La logique du journal reste en TypeScript (source unique, partagée avec le
 //! serveur web) : Rust n'expose que trois commandes génériques sur le fichier
-//! `grammaria.db` du dossier de données, celui du serveur Bun, repris tel quel.
+//! `grammaria.db` du dossier de données, celui qu'écrivait la version 0.2, repris
+//! tel quel.
 //!
 //! - `db_read` : UNE requête en lecture seule, lignes en objets JSON ;
 //! - `db_read_many` : plusieurs lectures dans un même instantané ;
@@ -41,6 +42,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::logs;
 use rusqlite::config::DbConfig;
 use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::limits::Limit;
@@ -53,8 +55,8 @@ use tauri::State;
 /// Nom du fichier du journal dans le dossier de données de l'application.
 pub const JOURNAL_FILE: &str = "grammaria.db";
 
-/// Attente maximale d'un verrou tenu par une autre connexion (le serveur Bun
-/// pendant la transition, une autre écriture…).
+/// Attente maximale d'un verrou tenu par une autre connexion (un autre
+/// processus qui lit la base, une sauvegarde…).
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Une ligne de résultat : nom de colonne → valeur.
@@ -104,8 +106,7 @@ struct Guarded {
     page: Arc<AtomicBool>,
 }
 
-/// Base du journal, ouverte au premier usage : tant que l'interface passe par
-/// le serveur Bun, Rust ne touche pas au fichier.
+/// Base du journal, ouverte au premier appel d'une commande `db_*`.
 pub struct Db(Arc<DbInner>);
 
 struct DbInner {
@@ -485,12 +486,15 @@ pub async fn db_read(
         )
     })
     .await
+    .inspect_err(|error| logs::echec_commande("db_read", error))
 }
 
 /// Plusieurs lectures dans un même instantané, en un aller-retour.
 #[tauri::command]
 pub async fn db_read_many(db: State<'_, Db>, queries: Vec<Query>) -> Result<Vec<Vec<Row>>, String> {
-    db.run(move |guarded| read_many(guarded, &queries)).await
+    db.run(move |guarded| read_many(guarded, &queries))
+        .await
+        .inspect_err(|error| logs::echec_commande("db_read_many", error))
 }
 
 /// Un lot d'écritures dans une transaction : tout ou rien.
@@ -499,7 +503,9 @@ pub async fn db_batch(
     db: State<'_, Db>,
     statements: Vec<Statement>,
 ) -> Result<Vec<StatementResult>, String> {
-    db.run(move |guarded| batch(guarded, &statements)).await
+    db.run(move |guarded| batch(guarded, &statements))
+        .await
+        .inspect_err(|error| logs::echec_commande("db_batch", error))
 }
 
 #[cfg(test)]

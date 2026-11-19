@@ -143,6 +143,21 @@ export interface OptionsGestionnaire {
   suivreAbandonRequete?: boolean;
   /** Horloge en millisecondes (Date.now par défaut). */
   horloge?: () => number;
+  /**
+   * Appelée à la fin de chaque correction réussie, avec ses seules mesures (jamais le texte).
+   * Bureau : ligne de fin de correction du journal technique `grammaria.log` (le serveur
+   * l'écrit sur sa sortie standard).
+   */
+  surFinCorrection?: (mesure: MesureCorrection) => void;
+}
+
+/** Mesures d'une correction terminée. */
+export interface MesureCorrection {
+  dureeMs: number;
+  /** Délai avant le premier mot (null : aucun texte reçu). */
+  premierMotMs: number | null;
+  fragmentsRaisonnement: number;
+  raisonnementCoupe: boolean;
 }
 
 export interface DependancesApi {

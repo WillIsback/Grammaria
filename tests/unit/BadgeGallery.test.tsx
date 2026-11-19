@@ -1,12 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { evaluerBadges } from "../../src/analysis/badges/evaluation";
 import { vueCatalogue } from "../../src/analysis/badges/vue";
@@ -229,54 +221,84 @@ describe("useBadgeNotices", () => {
 });
 
 describe("Effacement du journal", () => {
-  it("prévient que les badges seront effacés", async () => {
-    const { Sidebar } = await import("../../src/components/Sidebar");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    render(
-      <Sidebar
-        settings={{
-          mode: "formel",
-          fixGrammar: true,
-          fixSpelling: true,
-          fixSyntax: true,
-          fixStyle: true,
-        }}
-        setSettings={() => {}}
-        open
-        onClose={() => {}}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Effacer le journal" }));
-    await waitFor(() => expect(confirm).toHaveBeenCalled());
-    expect(confirm.mock.calls[0][0]).toContain("badges obtenus seront aussi effacés");
-    confirm.mockRestore();
-  });
+  const reglages = {
+    mode: "formel" as const,
+    fixGrammar: true,
+    fixSpelling: true,
+    fixSyntax: true,
+    fixStyle: true,
+  };
 
-  it("prévient l'application une fois le journal effacé, pour recharger Progression et les badges", async () => {
+  async function ouvrir(onPurged?: () => void) {
     const { Sidebar } = await import("../../src/components/Sidebar");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve(new Response(JSON.stringify({ purged: true }), { status: 200 })),
-    ) as unknown as typeof fetch;
-    const onPurged = vi.fn();
     render(
       <Sidebar
-        settings={{
-          mode: "formel",
-          fixGrammar: true,
-          fixSpelling: true,
-          fixSyntax: true,
-          fixStyle: true,
-        }}
+        settings={reglages}
         setSettings={() => {}}
         open
         onClose={() => {}}
         onPurged={onPurged}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Effacer le journal" }));
-    await screen.findByText("Journal et badges effacés.");
-    expect(onPurged).toHaveBeenCalledTimes(1);
+    const bouton = screen.getByRole("button", { name: "Effacer le journal" });
+    bouton.focus();
+    fireEvent.click(bouton);
+    return { bouton, dialogue: await screen.findByRole("alertdialog") };
+  }
+
+  it("confirmation dans l'interface, en français, qui prévient que les badges seront effacés", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    const { dialogue } = await ouvrir();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(dialogue.getAttribute("aria-modal")).toBe("true");
+    expect(screen.getByRole("alertdialog", { name: "Effacer le journal ?" })).toBe(dialogue);
+    expect(document.getElementById(dialogue.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.",
+    );
+    // « Annuler » a le focus par défaut : Entrée par mégarde n'efface rien.
+    expect(document.activeElement).toBe(within(dialogue).getByRole("button", { name: "Annuler" }));
+    expect(within(dialogue).getByRole("button", { name: "Effacer" })).toBeTruthy();
     confirm.mockRestore();
+  });
+
+  it("Annuler et Échap n'effacent rien et rendent le focus au bouton", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    const { bouton, dialogue } = await ouvrir();
+    fireEvent.click(within(dialogue).getByRole("button", { name: "Annuler" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(bouton);
+
+    fireEvent.click(bouton);
+    await screen.findByRole("alertdialog");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(bouton);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("Tab reste dans la boîte de confirmation", async () => {
+    const { dialogue } = await ouvrir();
+    const annuler = within(dialogue).getByRole("button", { name: "Annuler" });
+    const effacer = within(dialogue).getByRole("button", { name: "Effacer" });
+    fireEvent.keyDown(annuler, { key: "Tab" });
+    expect(document.activeElement).toBe(effacer);
+    fireEvent.keyDown(effacer, { key: "Tab" });
+    expect(document.activeElement).toBe(annuler);
+    fireEvent.keyDown(annuler, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(effacer);
+  });
+
+  it("prévient l'application une fois le journal effacé, pour recharger Progression et les badges", async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ purged: true }), { status: 200 })),
+    ) as unknown as typeof fetch;
+    const onPurged = vi.fn();
+    const { bouton, dialogue } = await ouvrir(onPurged);
+    fireEvent.click(within(dialogue).getByRole("button", { name: "Effacer" }));
+    await screen.findByText("Journal et badges effacés.");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onPurged).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(bouton);
   });
 });
