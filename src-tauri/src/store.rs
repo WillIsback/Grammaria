@@ -11,8 +11,8 @@
 //! clé enregistrée est effacée : elle ne doit jamais partir ailleurs.
 //!
 //! Les fichiers sont relus à chaque appel (ils font quelques centaines
-//! d'octets) : tant que le serveur Bun tourne encore à côté, Rust voit
-//! toujours ce qu'il a écrit.
+//! d'octets) : un fichier modifié à la main est pris en compte sans relancer
+//! l'application.
 
 use std::fs;
 use std::io::Write;

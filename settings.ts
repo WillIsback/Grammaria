@@ -20,10 +20,12 @@ export {
 /**
  * Réglages du LLM modifiables depuis l'interface, en mode bureau uniquement.
  *
- * Sur un serveur, la configuration vient des variables d'environnement et
- * n'est jamais modifiable par un visiteur. Dans l'application de bureau,
- * l'utilisateur n'a pas de terminal : il saisit l'adresse du modèle dans les
- * réglages, enregistrés dans son dossier de données (GRAMMARIA_SETTINGS_PATH).
+ * Sur un serveur partagé, la configuration vient des variables d'environnement
+ * et n'est jamais modifiable par un visiteur. Sur un serveur local d'un seul
+ * utilisateur (GRAMMARIA_DESKTOP=1, écoute sur 127.0.0.1), l'adresse du modèle
+ * se saisit dans les réglages de l'interface, enregistrés dans
+ * GRAMMARIA_SETTINGS_PATH. L'application de bureau a son propre magasin, au même
+ * format (src-tauri/src/store.rs).
  *
  * La validation (pure, réutilisable hors de Node) est dans `api/reglages.ts` ;
  * cette classe lit et écrit le fichier et applique les réglages à `config`.
