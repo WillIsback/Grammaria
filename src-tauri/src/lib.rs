@@ -96,7 +96,20 @@ pub fn run() {
             }
             fs::create_dir_all(&data_dir)?;
             app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
-            app.manage(store::Store::new(&data_dir));
+            let store = store::Store::new(&data_dir);
+            // Un fichier de réglages abîmé est ignoré (valeurs par défaut) et
+            // remplacé au prochain enregistrement : le support doit le savoir.
+            for fichier in store.fichiers_illisibles() {
+                logs::ecrire(
+                    logs::Niveau::Avertissement,
+                    "réglages",
+                    &format!(
+                        "{fichier} est illisible ou invalide : valeurs par défaut utilisées, \
+                         le fichier sera remplacé au prochain enregistrement."
+                    ),
+                );
+            }
+            app.manage(store);
             app.manage(llm::Llm::new()?);
 
             // La fenêtre est créée ici (`create: false` dans tauri.conf.json)

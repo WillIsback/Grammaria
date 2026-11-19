@@ -181,6 +181,23 @@ impl Store {
         })
     }
 
+    /// Fichiers présents mais illisibles ou invalides (noms seuls, jamais leur
+    /// contenu : `settings.json` porte la clé API). Les valeurs par défaut
+    /// s'appliquent alors sans rien dire à l'utilisateur : `lib.rs` le note au
+    /// démarrage dans le journal technique, pour le support.
+    pub fn fichiers_illisibles(&self) -> Vec<&'static str> {
+        self.locked(|inner| {
+            let mut fichiers = Vec::new();
+            if inner.settings_path.exists() && parse_settings_file(&inner.settings_path).is_none() {
+                fichiers.push(SETTINGS_FILE);
+            }
+            if inner.words_path.exists() && parse_words_file(&inner.words_path).is_none() {
+                fichiers.push(VALID_WORDS_FILE);
+            }
+            fichiers
+        })
+    }
+
     /// Mots valides enregistrés (`GET /api/valid-words`).
     pub fn valid_words(&self) -> Vec<String> {
         self.locked(|inner| read_words(&inner.words_path))
@@ -331,6 +348,20 @@ fn older_than_current(version: Option<&Value>) -> bool {
     }
 }
 
+/// Contenu valide de `settings.json`, s'il est lisible : `None` pour un
+/// fichier illisible, qui n'est pas du JSON ou dont un réglage est invalide.
+fn parse_settings_file(path: &Path) -> Option<SettingsUpdate> {
+    let mut raw = fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())?;
+    if let Value::Object(object) = &mut raw {
+        if older_than_current(object.get("settingsVersion")) {
+            object.remove("llmDisableThinking");
+        }
+    }
+    parse_update(&raw, true).ok()
+}
+
 /// Lit `settings.json` : (fichier présent, réglages). Un fichier illisible ou
 /// invalide donne les valeurs par défaut, comme `settings.ts`.
 fn read_settings(path: &Path) -> (bool, LlmSettings) {
@@ -338,18 +369,7 @@ fn read_settings(path: &Path) -> (bool, LlmSettings) {
     if !path.exists() {
         return (false, defaults);
     }
-    let parsed = fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok());
-    let update = parsed.and_then(|mut raw| {
-        if let Value::Object(object) = &mut raw {
-            if older_than_current(object.get("settingsVersion")) {
-                object.remove("llmDisableThinking");
-            }
-        }
-        parse_update(&raw, true).ok()
-    });
-    let settings = match update {
+    let settings = match parse_settings_file(path) {
         Some(update) => apply_fields(&defaults, update),
         None => defaults,
     };
@@ -440,21 +460,26 @@ fn write_settings(path: &Path, settings: &LlmSettings) -> std::io::Result<()> {
     write_atomic(path, &content, true)
 }
 
+/// Mots de `{ "words": [...] }` ; `None` pour un fichier absent, illisible ou
+/// d'une autre forme.
+fn parse_words_file(path: &Path) -> Option<Vec<String>> {
+    let raw = fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())?;
+    match raw.get("words") {
+        Some(Value::Array(words)) => Some(
+            words
+                .iter()
+                .filter_map(|word| word.as_str().map(str::to_owned))
+                .collect(),
+        ),
+        _ => None,
+    }
+}
+
 /// `{ "words": [...] }` ; fichier absent ou invalide : liste vide.
 fn read_words(path: &Path) -> Vec<String> {
-    let Some(raw) = fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-    else {
-        return Vec::new();
-    };
-    match raw.get("words") {
-        Some(Value::Array(words)) => words
-            .iter()
-            .filter_map(|word| word.as_str().map(str::to_owned))
-            .collect(),
-        _ => Vec::new(),
-    }
+    parse_words_file(path).unwrap_or_default()
 }
 
 fn write_words(path: &Path, words: &[String]) -> std::io::Result<()> {
@@ -603,6 +628,38 @@ mod tests {
             assert_eq!(settings.llm_model_name, "", "{contenu}");
             assert!(!settings.configured, "{contenu}");
         }
+    }
+
+    #[test]
+    fn les_fichiers_illisibles_sont_signales_par_leur_nom() {
+        let banc = banc();
+        let words_path = banc.dir.path().join(VALID_WORDS_FILE);
+        // Absents : rien à signaler (premier lancement).
+        assert!(banc.store.fichiers_illisibles().is_empty());
+        // Valides : rien à signaler.
+        banc.write_settings(json!({"settingsVersion": 2, "llmTarget": "http://127.0.0.1:8000"}));
+        fs::write(&words_path, r#"{"words":["Grammaria"]}"#).unwrap();
+        assert!(banc.store.fichiers_illisibles().is_empty());
+        // Tronqués (écriture interrompue, disque plein) ou d'une autre forme.
+        fs::write(
+            banc.settings_path(),
+            r#"{"settingsVersion":2,"llmApiKey":"sk-secret","llmTar"#,
+        )
+        .unwrap();
+        assert_eq!(banc.store.fichiers_illisibles(), [SETTINGS_FILE]);
+        fs::write(&words_path, r#"{"words": ["Gramm"#).unwrap();
+        assert_eq!(
+            banc.store.fichiers_illisibles(),
+            [SETTINGS_FILE, VALID_WORDS_FILE]
+        );
+        fs::write(&words_path, r#"["Grammaria"]"#).unwrap();
+        banc.write_settings(json!({"settingsVersion": 2, "llmTarget": "ftp://x"}));
+        assert_eq!(
+            banc.store.fichiers_illisibles(),
+            [SETTINGS_FILE, VALID_WORDS_FILE]
+        );
+        // Signaler ne modifie rien : le fichier reste tel quel.
+        assert_eq!(fs::read_to_string(&words_path).unwrap(), r#"["Grammaria"]"#);
     }
 
     #[test]

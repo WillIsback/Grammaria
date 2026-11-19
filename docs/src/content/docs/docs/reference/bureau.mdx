@@ -36,7 +36,7 @@ L'application écrit `grammaria.log` dans son dossier de journaux :
 | Windows | `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` |
 | Linux | `~/.local/share/fr.willisback.grammaria/logs/` |
 
-Il contient le démarrage (version, système) et la fermeture, les erreurs des commandes (journal, réglages, relais du modèle : statut et message), les étapes de la mise à jour, le chargement du correcteur, les erreurs de la page (erreurs JavaScript non interceptées, promesses rejetées) et une ligne par correction terminée : durée totale, délai avant le premier mot, nombre de fragments de raisonnement, raisonnement coupé ou non.
+Il contient le démarrage (version, système) et la fermeture, les erreurs des commandes (journal, réglages, relais du modèle : statut et message), un fichier de réglages illisible au démarrage (`settings.json` ou `valid-words.json` : son nom seulement, les valeurs par défaut s'appliquent), les étapes de la mise à jour, le chargement du correcteur, les erreurs de la page (erreurs JavaScript non interceptées, promesses rejetées) et une ligne par correction terminée : durée totale, délai avant le premier mot, nombre de fragments de raisonnement, raisonnement coupé ou non.
 
 Il ne contient jamais la clé API, les en-têtes d'authentification, le texte de l'utilisateur ni le contenu des corrections : chaque ligne est en plus filtrée pour masquer tout ce qui ressemble à un secret. Au-delà de 1 Mio, le fichier devient `grammaria.log.1` et un nouveau commence. La page n'écrit que par une seule commande, `log_page`, dont le débit et la taille des messages sont limités.
 
