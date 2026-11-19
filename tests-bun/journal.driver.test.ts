@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { BunJournalDriver, ouvrirPiloteBun } from "../journal.driver.bun.ts";
-import { estConflit, ExpectChangesError } from "../journal.driver.ts";
+import { estConflit, ExpectChangesError, USER_VERSION_MAX } from "../journal.driver.ts";
+import { SCHEMA_VERSION } from "../journal.ts";
 import { avecBase } from "./helpers.ts";
 
 function piloteAvecTables(path = ":memory:"): BunJournalDriver {
@@ -211,8 +212,8 @@ describe("Pilote bun:sqlite — mêmes refus que le pilote Rust du bureau", () =
 
   it("n'écrit que le pragma user_version ; refuse ATTACH, VACUUM, tables virtuelles, sqlite_master", async () => {
     const pilote = piloteAvecTables();
-    expect(await refus(pilote, "PRAGMA user_version = 7")).toBeNull();
-    expect(await pilote.read("PRAGMA user_version")).toEqual([{ user_version: 7 }]);
+    expect(await refus(pilote, `PRAGMA user_version = ${USER_VERSION_MAX}`)).toBeNull();
+    expect(await pilote.read("PRAGMA user_version")).toEqual([{ user_version: USER_VERSION_MAX }]);
     for (const sql of [
       "PRAGMA foreign_keys = OFF",
       "PRAGMA journal_mode = DELETE",
@@ -254,6 +255,52 @@ describe("Pilote bun:sqlite — mêmes refus que le pilote Rust du bureau", () =
     expect(
       String(await echec(pilote.readMany([{ sql: "SELECT 1" }, { sql: "SELECT * FROM absente" }]))),
     ).toContain("Instruction 1 : ");
+  });
+
+  it("borne PRAGMA user_version aux versions connues, comme le pilote Rust", async () => {
+    // Même plage des deux côtés : un test Rust compare USER_VERSION_MAX de db.rs à SCHEMA_VERSION.
+    expect(USER_VERSION_MAX).toBe(SCHEMA_VERSION);
+    const pilote = piloteAvecTables();
+    for (let version = 0; version <= USER_VERSION_MAX; version++) {
+      expect(await refus(pilote, `PRAGMA user_version = ${version}`)).toBeNull();
+    }
+    for (const sql of [
+      `PRAGMA user_version = ${USER_VERSION_MAX + 1}`,
+      "PRAGMA user_version = 99",
+      "PRAGMA user_version = -1",
+    ]) {
+      expect(await refus(pilote, sql)).toStartWith("Instruction 0 : ");
+    }
+    expect(await pilote.read("PRAGMA user_version")).toEqual([{ user_version: USER_VERSION_MAX }]);
+  });
+
+  it("refuse déclencheurs, vues, DROP et ALTER dans un lot, comme le pilote Rust", async () => {
+    const pilote = piloteAvecTables();
+    for (const sql of [
+      "CREATE TRIGGER t AFTER INSERT ON parents BEGIN DELETE FROM enfants; END",
+      "CREATE TEMP TRIGGER t AFTER INSERT ON parents BEGIN DELETE FROM enfants; END",
+      "CREATE TRIGGER IF NOT EXISTS t AFTER INSERT ON parents BEGIN SELECT 1; END",
+      "CREATE VIEW v AS SELECT nom FROM parents",
+      "CREATE TEMPORARY VIEW v AS SELECT nom FROM parents",
+      "DROP TABLE enfants",
+      "DROP TABLE IF EXISTS parents",
+      "DROP INDEX IF EXISTS idx",
+      "DROP TRIGGER t",
+      "DROP VIEW v",
+      "ALTER TABLE parents ADD COLUMN age INTEGER",
+      "ALTER TABLE parents RENAME TO anciens",
+      "/* migration */ drop table parents",
+    ]) {
+      expect(await refus(pilote, sql)).toStartWith("Instruction 0 : ");
+    }
+    // Rien n'a changé ; les créations du journal restent permises.
+    expect(
+      await pilote.read("SELECT name FROM sqlite_master WHERE type <> 'index' ORDER BY name"),
+    ).toEqual([{ name: "enfants" }, { name: "parents" }]);
+    expect(await refus(pilote, "CREATE TABLE IF NOT EXISTS autres (id INTEGER)")).toBeNull();
+    expect(await refus(pilote, "CREATE INDEX IF NOT EXISTS idx_autres ON autres (id)")).toBeNull();
+    // Le mot DROP dans une valeur n'est pas une instruction.
+    expect(await refus(pilote, "INSERT INTO parents (nom) VALUES ('DROP TABLE x')")).toBeNull();
   });
 
   it("accepte null, entiers, réels, texte et booléens (0/1) ; refuse les BLOB", async () => {

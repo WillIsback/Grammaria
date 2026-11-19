@@ -107,6 +107,14 @@ export function resoudreParametre(
  * reproduites par le pilote Bun, pour qu'un écart se voie dans les tests.
  */
 
+/**
+ * Plus haute `PRAGMA user_version` qu'un lot peut écrire : la version du schéma
+ * connue de cette version de Grammaria. À tenir égale à `SCHEMA_VERSION` de
+ * `journal.ts` et à `USER_VERSION_MAX` du pilote Rust (`src-tauri/src/db.rs`) ;
+ * un test de chaque côté vérifie l'égalité.
+ */
+export const USER_VERSION_MAX = 2;
+
 /** Pragmas lisibles par `read` et `readMany`. */
 export const PRAGMAS_LISIBLES: readonly string[] = [
   "user_version",
@@ -182,10 +190,23 @@ export function verifierEcriture(sql: string): void {
   if (INTERDITES.test(s)) {
     throw new Error("le lot est la transaction : BEGIN, SAVEPOINT, ATTACH… sont refusés");
   }
-  if (/^PRAGMA\b/.test(s) && !/^PRAGMA\s+USER_VERSION\s*=\s*\d+$/.test(s)) {
-    throw new Error("seul PRAGMA user_version peut être écrit");
+  if (/^PRAGMA\b/.test(s)) {
+    const version = s.match(/^PRAGMA\s+USER_VERSION\s*=\s*(\d+)$/);
+    if (!version) throw new Error("seul PRAGMA user_version peut être écrit");
+    // Dans la plage des versions connues : un lot ne fait jamais passer le
+    // journal pour celui d'une version future.
+    if (Number(version[1]) > USER_VERSION_MAX) {
+      throw new Error(`PRAGMA user_version doit rester entre 0 et ${USER_VERSION_MAX}`);
+    }
   }
   if (/^CREATE\s+VIRTUAL\b/.test(s)) throw new Error("tables virtuelles refusées");
+  // Jamais envoyés par le journal (CREATE TABLE et CREATE INDEX IF NOT EXISTS
+  // seulement) : un déclencheur ou une vue ferait exécuter du SQL caché aux
+  // écritures et lectures suivantes, un DROP ou un ALTER détruirait le journal.
+  if (/^CREATE\s+(TEMP\s+|TEMPORARY\s+)?(TRIGGER|VIEW)\b/.test(s)) {
+    throw new Error("déclencheurs et vues refusés");
+  }
+  if (/^(DROP|ALTER)\b/.test(s)) throw new Error("DROP et ALTER sont refusés");
   if (/\bSQLITE_(MASTER|SCHEMA)\b/.test(s) && !/^(SELECT|WITH)\b/.test(s)) {
     throw new Error("sqlite_master est protégé en écriture");
   }
