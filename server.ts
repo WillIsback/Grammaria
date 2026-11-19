@@ -9,6 +9,8 @@ import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
+import { ETATS_CYCLE } from "./src/analysis/regles/cycle.ts";
+import { SEUILS } from "./src/analysis/regles/seuils.ts";
 import { analyze } from "./src/analysis/analyze.ts";
 import { parsePeriodDays } from "./src/analysis/score.ts";
 import { cleanLlmOutput } from "./src/utils/llmText.ts";
@@ -41,6 +43,8 @@ grammar.warmUp();
 
 /** Taille maximale d'un texte accepté par /api/check et /api/analyze (caractères). */
 const MAX_ANALYZE_LENGTH = 20_000;
+/** Routes du cycle de vie des règles. */
+const RULE_PATHS = new Set(["/api/rules", "/api/rules/events", "/api/rules/answer"]);
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
 
@@ -203,7 +207,7 @@ Bun.serve({
     }
 
     // === API: Analyse (diff + croisement des détections grammaticales) et journal ===
-    if (path === "/api/analyze" || path === "/api/journal") {
+    if (path === "/api/analyze" || path === "/api/journal" || RULE_PATHS.has(path)) {
       const headers = getCorsHeaders(req);
 
       if (req.method === "OPTIONS") {
@@ -241,11 +245,50 @@ Bun.serve({
             typeof m.rule?.id === "string",
         );
         const analysis = analyze(original, corrected, validMatches);
-        journal.record(analysis);
+        // L'état des règles est mis à jour ici ; le serveur décide de ce qui
+        // s'affiche près du bouton Copier (astuce, choix à deux formes, réussite).
+        const suivi = journal.record(analysis, Date.now(), { original });
         return new Response(
-          JSON.stringify({ ...analysis, week: journal.period(SCORE_WINDOW_DAYS) }),
+          JSON.stringify({ ...analysis, week: journal.period(SCORE_WINDOW_DAYS), ...suivi }),
           { headers },
         );
+      }
+
+      // Cycle de vie des règles : lecture pour le tableau de bord et les badges.
+      if (path === "/api/rules" && req.method === "GET") {
+        const rules = journal.rules();
+        const counts = Object.fromEntries(
+          ETATS_CYCLE.map((etat) => [etat, rules.filter((r) => r.state === etat).length]),
+        );
+        return new Response(JSON.stringify({ rules, counts, thresholds: SEUILS }), { headers });
+      }
+
+      if (path === "/api/rules/events" && req.method === "GET") {
+        const limit = Number(url.searchParams.get("limit") ?? 200);
+        const events = journal.ruleEvents({
+          limit: Number.isFinite(limit) ? limit : 200,
+          ruleKey: url.searchParams.get("ruleKey") ?? undefined,
+        });
+        return new Response(JSON.stringify({ events }), { headers });
+      }
+
+      // Réponse au choix à deux formes du bouton Copier.
+      if (path === "/api/rules/answer" && req.method === "POST") {
+        // corps JSON non typé, validé ci-dessous
+        let body: any;
+        try {
+          body = await req.json();
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
+        }
+        if (typeof body?.ruleKey !== "string" || typeof body?.correct !== "boolean") {
+          return new Response(JSON.stringify({ error: "Invalid payload" }), {
+            status: 400,
+            headers,
+          });
+        }
+        const recorded = journal.answerChoice(body.ruleKey, body.correct);
+        return new Response(JSON.stringify({ recorded }), { headers });
       }
 
       if (path === "/api/journal" && req.method === "GET") {

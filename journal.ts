@@ -3,6 +3,15 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
+import {
+  type FollowOptions,
+  type RuleHistoryEntry,
+  RuleStore,
+  type RuleView,
+  type Suivi,
+} from "./journal.rules.ts";
+
+export type { RuleHistoryEntry, RuleHistoryType, RuleView, Suivi } from "./journal.rules.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -35,11 +44,13 @@ export interface JournalSummary {
 }
 
 /**
- * Journal des fautes : une ligne par texte corrigé, une ligne par faute.
+ * Journal des fautes : une ligne par texte corrigé, une ligne par faute, et
+ * l'état de chaque règle dans son cycle de vie (voir `journal.rules.ts`).
  * Le texte complet n'est jamais conservé, seulement la phrase contenant la faute.
  */
 export class Journal {
   private db: Database;
+  private ruleStore: RuleStore;
 
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
@@ -76,9 +87,15 @@ export class Journal {
       CREATE INDEX IF NOT EXISTS idx_faults_rule ON faults(rule_key, created_at);
       CREATE INDEX IF NOT EXISTS idx_faults_word ON faults(word, created_at);
     `);
+    this.ruleStore = new RuleStore(this.db);
+    this.ruleStore.migrate();
   }
 
-  record(analysis: Analysis, now: number = Date.now()): void {
+  /**
+   * Journalise un texte corrigé, met à jour l'état des règles et renvoie
+   * l'intervention à afficher près du bouton Copier.
+   */
+  record(analysis: Analysis, now: number = Date.now(), options: FollowOptions = {}): Suivi {
     const insertText = this.db.prepare(
       `INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score)
        VALUES (?, ?, ?, ?, ?)`,
@@ -88,7 +105,7 @@ export class Journal {
          issue_type, message, word, replacement, sentence, counted)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    this.db.transaction(() => {
+    return this.db.transaction(() => {
       const { lastInsertRowid } = insertText.run(
         now,
         analysis.wordCount,
@@ -114,7 +131,23 @@ export class Journal {
           );
         }
       }
+      return this.ruleStore.follow(analysis, Number(lastInsertRowid), now, options);
     })();
+  }
+
+  /** État de chaque règle suivie dans son cycle de vie. */
+  rules(): RuleView[] {
+    return this.ruleStore.list();
+  }
+
+  /** Historique daté des transitions et des sollicitations. */
+  ruleEvents(options: { limit?: number; ruleKey?: string } = {}): RuleHistoryEntry[] {
+    return this.ruleStore.events(options);
+  }
+
+  /** Réponse de l'utilisateur au choix à deux formes du bouton Copier. */
+  answerChoice(ruleKey: string, correct: boolean, now: number = Date.now()): boolean {
+    return this.ruleStore.answer(ruleKey, correct, now);
   }
 
   period(days: number, now: number = Date.now()): PeriodSummary {
@@ -151,8 +184,12 @@ export class Journal {
     return { days, period: this.period(days, now), unclassified: unclassified.n, rules, words };
   }
 
+  /** Efface le journal et remet à zéro l'état des règles. */
   purge(): void {
-    this.db.exec("DELETE FROM faults; DELETE FROM texts;");
+    this.db.transaction(() => {
+      this.db.exec("DELETE FROM faults; DELETE FROM texts;");
+      this.ruleStore.purge();
+    })();
   }
 
   close(): void {
