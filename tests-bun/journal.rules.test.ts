@@ -1,40 +1,44 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
-import { Journal, SCHEMA_VERSION } from "../journal.ts";
+import { type Journal, SCHEMA_VERSION } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
-import { avecBase, corriger, DAY, FAUTE_ON, jour, SANS_FAUTE } from "./helpers.ts";
+import { avecBase, corriger, DAY, FAUTE_ON, jour, ouvrirJournal, SANS_FAUTE } from "./helpers.ts";
 
 const ON = "PAIRE:on/ont";
 
-const regle = (journal: Journal, ruleKey = ON) =>
-  journal.rules().find((r) => r.ruleKey === ruleKey);
+const regle = async (journal: Journal, ruleKey = ON) =>
+  (await journal.rules()).find((r) => r.ruleKey === ruleKey);
 
 /** Amène « on / ont » à l'état travaillée ; renvoie le jour de la dernière faute. */
-function rendreTravaillee(journal: Journal): number {
-  corriger(journal, FAUTE_ON, jour(0));
-  corriger(journal, FAUTE_ON, jour(0) + 1000);
+async function rendreTravaillee(journal: Journal): Promise<number> {
+  await corriger(journal, FAUTE_ON, jour(0));
+  await corriger(journal, FAUTE_ON, jour(0) + 1000);
   // Troisième faute : signalée, première astuce. Puis une astuce par jour.
-  for (let i = 0; i < SEUILS.astucesAvantTravail; i++) corriger(journal, FAUTE_ON, jour(i) + 2000);
+  for (let i = 0; i < SEUILS.astucesAvantTravail; i++)
+    await corriger(journal, FAUTE_ON, jour(i) + 2000);
   const dernier = jour(SEUILS.astucesAvantTravail);
-  corriger(journal, FAUTE_ON, dernier);
+  await corriger(journal, FAUTE_ON, dernier);
   return dernier;
 }
 
 describe("Journal — cycle de vie des règles", () => {
-  it("n'intervient pas avant la troisième faute en sept jours", () => {
-    const journal = new Journal(":memory:");
-    expect(corriger(journal, FAUTE_ON, jour(0))).toEqual({ intervention: null, reussites: [] });
-    expect(regle(journal)).toMatchObject({ state: "observee", occurrences: 1 });
-    expect(corriger(journal, FAUTE_ON, jour(1)).intervention).toBeNull();
+  it("n'intervient pas avant la troisième faute en sept jours", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    expect(await corriger(journal, FAUTE_ON, jour(0))).toEqual({
+      intervention: null,
+      reussites: [],
+    });
+    expect(await regle(journal)).toMatchObject({ state: "observee", occurrences: 1 });
+    expect((await corriger(journal, FAUTE_ON, jour(1))).intervention).toBeNull();
 
-    const troisieme = corriger(journal, FAUTE_ON, jour(2));
+    const troisieme = await corriger(journal, FAUTE_ON, jour(2));
     expect(troisieme.intervention).toMatchObject({
       type: "astuce",
       ruleKey: ON,
       titre: "on / ont",
     });
-    expect(regle(journal)).toMatchObject({
+    expect(await regle(journal)).toMatchObject({
       state: "signalee",
       occurrences: 3,
       tipsShown: 1,
@@ -43,37 +47,37 @@ describe("Journal — cycle de vie des règles", () => {
       label: "on / ont",
       categoryName: "Confusion de mots",
     });
-    expect(regle(journal)?.fiche?.astuce).toContain("avaient");
+    expect((await regle(journal))?.fiche?.astuce).toContain("avaient");
   });
 
-  it("ne signale pas trois fautes étalées sur plus de sept jours", () => {
-    const journal = new Journal(":memory:");
-    corriger(journal, FAUTE_ON, jour(0));
-    corriger(journal, FAUTE_ON, jour(4));
-    expect(corriger(journal, FAUTE_ON, jour(8)).intervention).toBeNull();
-    expect(regle(journal)?.state).toBe("observee");
+  it("ne signale pas trois fautes étalées sur plus de sept jours", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await corriger(journal, FAUTE_ON, jour(0));
+    await corriger(journal, FAUTE_ON, jour(4));
+    expect((await corriger(journal, FAUTE_ON, jour(8))).intervention).toBeNull();
+    expect((await regle(journal))?.state).toBe("observee");
   });
 
-  it("n'affiche qu'une astuce par règle et par jour", () => {
-    const journal = new Journal(":memory:");
-    corriger(journal, FAUTE_ON, jour(0));
-    corriger(journal, FAUTE_ON, jour(0) + 1000);
-    expect(corriger(journal, FAUTE_ON, jour(0) + 2000).intervention?.type).toBe("astuce");
-    expect(corriger(journal, FAUTE_ON, jour(0) + 3000).intervention).toBeNull();
-    expect(regle(journal)).toMatchObject({ tipsShown: 1, occurrences: 4 });
-    expect(corriger(journal, FAUTE_ON, jour(1)).intervention?.type).toBe("astuce");
+  it("n'affiche qu'une astuce par règle et par jour", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await corriger(journal, FAUTE_ON, jour(0));
+    await corriger(journal, FAUTE_ON, jour(0) + 1000);
+    expect((await corriger(journal, FAUTE_ON, jour(0) + 2000)).intervention?.type).toBe("astuce");
+    expect((await corriger(journal, FAUTE_ON, jour(0) + 3000)).intervention).toBeNull();
+    expect(await regle(journal)).toMatchObject({ tipsShown: 1, occurrences: 4 });
+    expect((await corriger(journal, FAUTE_ON, jour(1))).intervention?.type).toBe("astuce");
   });
 
-  it("propose les deux formes quand la faute persiste après les astuces", () => {
-    const journal = new Journal(":memory:");
-    corriger(journal, FAUTE_ON, jour(0));
-    corriger(journal, FAUTE_ON, jour(0) + 1000);
+  it("propose les deux formes quand la faute persiste après les astuces", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await corriger(journal, FAUTE_ON, jour(0));
+    await corriger(journal, FAUTE_ON, jour(0) + 1000);
     for (let i = 0; i < SEUILS.astucesAvantTravail; i++) {
-      expect(corriger(journal, FAUTE_ON, jour(i) + 2000).intervention?.type).toBe("astuce");
+      expect((await corriger(journal, FAUTE_ON, jour(i) + 2000)).intervention?.type).toBe("astuce");
     }
-    expect(regle(journal)).toMatchObject({ state: "signalee", tipsShown: 3 });
+    expect(await regle(journal)).toMatchObject({ state: "signalee", tipsShown: 3 });
 
-    const choix = corriger(journal, FAUTE_ON, jour(3), () => 0.9);
+    const choix = await corriger(journal, FAUTE_ON, jour(3), () => 0.9);
     expect(choix.intervention).toEqual({
       type: "choix",
       choiceId: expect.any(Number),
@@ -87,62 +91,72 @@ describe("Journal — cycle de vie des règles", () => {
         { texte: "ont", correcte: true },
       ],
     });
-    expect(regle(journal)).toMatchObject({ state: "travaillee", choicesShown: 1 });
+    expect(await regle(journal)).toMatchObject({ state: "travaillee", choicesShown: 1 });
 
     // Une seule sollicitation par jour : bouton Copier normal ensuite.
-    expect(corriger(journal, FAUTE_ON, jour(3) + 1000).intervention).toBeNull();
-    expect(corriger(journal, FAUTE_ON, jour(4)).intervention?.type).toBe("choix");
+    expect((await corriger(journal, FAUTE_ON, jour(3) + 1000)).intervention).toBeNull();
+    expect((await corriger(journal, FAUTE_ON, jour(4))).intervention?.type).toBe("choix");
   });
 
-  it("rattache la réponse à un choix précis, une seule fois", () => {
-    const journal = new Journal(":memory:");
-    expect(journal.answerChoice(1, true, jour(0))).toBe("unknown");
-    const dernier = rendreTravaillee(journal);
-    const [evenement] = journal.ruleEvents({ limit: 1 });
+  it("rattache la réponse à un choix précis, une seule fois", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    expect(await journal.answerChoice(1, true, jour(0))).toBe("unknown");
+    const dernier = await rendreTravaillee(journal);
+    const [evenement] = await journal.ruleEvents({ limit: 1 });
     expect(evenement).toMatchObject({ ruleKey: ON, type: "choix" });
 
     // L'identifiant d'un autre événement (ici une astuce) n'est pas un choix.
-    const astuce = journal.ruleEvents({ limit: 1000 }).find((e) => e.type === "astuce");
-    expect(journal.answerChoice(astuce?.id ?? 0, true, dernier + 400)).toBe("unknown");
+    const astuce = (await journal.ruleEvents({ limit: 1000 })).find((e) => e.type === "astuce");
+    expect(await journal.answerChoice(astuce?.id ?? 0, true, dernier + 400)).toBe("unknown");
 
-    expect(journal.answerChoice(evenement.id, false, dernier + 500)).toBe("recorded");
-    expect(journal.answerChoice(evenement.id, true, dernier + 600)).toBe("conflict");
-    expect(regle(journal)).toMatchObject({ choicesShown: 1, choicesCorrect: 0, choicesWrong: 1 });
-    expect(journal.ruleEvents({ limit: 1 })[0]).toMatchObject({
+    expect(await journal.answerChoice(evenement.id, false, dernier + 500)).toBe("recorded");
+    expect(await journal.answerChoice(evenement.id, true, dernier + 600)).toBe("conflict");
+    expect(await regle(journal)).toMatchObject({
+      choicesShown: 1,
+      choicesCorrect: 0,
+      choicesWrong: 1,
+    });
+    expect((await journal.ruleEvents({ limit: 1 }))[0]).toMatchObject({
       ruleKey: ON,
       type: "reponse_fausse",
       at: dernier + 500,
     });
   });
 
-  it("refuse la réponse à un choix remplacé par un plus récent", () => {
-    const journal = new Journal(":memory:");
-    const dernier = rendreTravaillee(journal);
-    const ancien = journal.ruleEvents({ limit: 1 })[0].id;
-    const suivant = corriger(journal, FAUTE_ON, dernier + DAY).intervention;
+  it("refuse la réponse à un choix remplacé par un plus récent", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    const dernier = await rendreTravaillee(journal);
+    const ancien = (await journal.ruleEvents({ limit: 1 }))[0].id;
+    const suivant = (await corriger(journal, FAUTE_ON, dernier + DAY)).intervention;
     if (suivant?.type !== "choix") throw new Error("choix attendu");
     expect(suivant.choiceId).not.toBe(ancien);
 
-    expect(journal.answerChoice(ancien, true, dernier + DAY + 100)).toBe("conflict");
-    expect(journal.answerChoice(suivant.choiceId, true, dernier + DAY + 200)).toBe("recorded");
-    expect(regle(journal)).toMatchObject({ choicesShown: 2, choicesCorrect: 1, choicesWrong: 0 });
+    expect(await journal.answerChoice(ancien, true, dernier + DAY + 100)).toBe("conflict");
+    expect(await journal.answerChoice(suivant.choiceId, true, dernier + DAY + 200)).toBe(
+      "recorded",
+    );
+    expect(await regle(journal)).toMatchObject({
+      choicesShown: 2,
+      choicesCorrect: 1,
+      choicesWrong: 0,
+    });
   });
 
-  it("garde le texte et ses fautes quand le suivi des règles échoue", () => {
-    const journal = new Journal(":memory:");
-    const dernier = rendreTravaillee(journal);
+  it("garde le texte et ses fautes quand le suivi des règles échoue", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    const dernier = await rendreTravaillee(journal);
     const avant = {
-      regle: regle(journal),
-      historique: journal.ruleEvents({ limit: 1000 }),
-      periode: journal.period(365, dernier + DAY),
+      regle: await regle(journal),
+      historique: await journal.ruleEvents({ limit: 1000 }),
+      periode: await journal.period(365, dernier + DAY),
     };
     const erreurs: unknown[][] = [];
     const consoleError = console.error;
     console.error = (...args: unknown[]) => void erreurs.push(args);
-    let suivi: ReturnType<Journal["record"]>;
+    let suivi: Awaited<ReturnType<Journal["record"]>>;
     try {
       // Le tirage de l'ordre des formes échoue, après la mise à jour de l'état.
-      suivi = corriger(journal, FAUTE_ON, dernier + DAY, () => {
+      suivi = await corriger(journal, FAUTE_ON, dernier + DAY, () => {
         throw new Error("panne du suivi");
       });
     } finally {
@@ -152,18 +166,18 @@ describe("Journal — cycle de vie des règles", () => {
     expect(suivi).toEqual({ intervention: null, reussites: [] });
     expect(erreurs).toHaveLength(1);
     // Le texte et sa faute sont journalisés…
-    const apres = journal.period(365, dernier + DAY);
+    const apres = await journal.period(365, dernier + DAY);
     expect(apres.texts).toBe(avant.periode.texts + 1);
     expect(apres.faults).toBe(avant.periode.faults + 1);
     // … et le suivi est annulé en entier, sans état à moitié écrit.
-    expect(regle(journal)).toEqual(avant.regle);
-    expect(journal.ruleEvents({ limit: 1000 })).toEqual(avant.historique);
+    expect(await regle(journal)).toEqual(avant.regle);
+    expect(await journal.ruleEvents({ limit: 1000 })).toEqual(avant.historique);
     // Le texte suivant est suivi normalement.
-    expect(corriger(journal, FAUTE_ON, dernier + 2 * DAY).intervention?.type).toBe("choix");
+    expect((await corriger(journal, FAUTE_ON, dernier + 2 * DAY)).intervention?.type).toBe("choix");
   });
 
-  it("plafonne à trois règles travaillées en même temps", () => {
-    const journal = new Journal(":memory:");
+  it("plafonne à trois règles travaillées en même temps", async () => {
+    const journal = await ouvrirJournal(":memory:");
     const textes = [
       ["Ils on vu.", "Ils ont vu."],
       ["Il va a Paris.", "Il va à Paris."],
@@ -173,51 +187,54 @@ describe("Journal — cycle de vie des règles", () => {
     expect(textes).toHaveLength(SEUILS.travailleesMax + 1);
     // Chaque jour, les quatre règles fautent dans quatre textes distincts.
     for (const t of textes) {
-      corriger(journal, t, jour(0));
-      corriger(journal, t, jour(0) + 1000);
+      await corriger(journal, t, jour(0));
+      await corriger(journal, t, jour(0) + 1000);
     }
     for (let i = 0; i <= SEUILS.astucesAvantTravail; i++) {
-      for (const [n, t] of textes.entries()) corriger(journal, t, jour(i) + 2000 + n);
+      for (const [n, t] of textes.entries()) await corriger(journal, t, jour(i) + 2000 + n);
     }
-    const etats = journal.rules().map((r) => r.state);
+    const etats = (await journal.rules()).map((r) => r.state);
     expect(etats.filter((s) => s === "travaillee")).toHaveLength(SEUILS.travailleesMax);
     expect(etats.filter((s) => s === "signalee")).toHaveLength(1);
 
     // La quatrième règle continue de recevoir des astuces.
-    const quatrieme = corriger(journal, textes[3], jour(10));
+    const quatrieme = await corriger(journal, textes[3], jour(10));
     expect(quatrieme.intervention).toMatchObject({ type: "astuce", ruleKey: "PAIRE:son/sont" });
   });
 
-  it("déclare la règle acquise après 14 jours d'usage sans faute, puis gère la rechute", () => {
-    const journal = new Journal(":memory:");
-    const dernier = rendreTravaillee(journal);
+  it("déclare la règle acquise après 14 jours d'usage sans faute, puis gère la rechute", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    const dernier = await rendreTravaillee(journal);
 
     // Usage réel, mais 14 jours pas encore écoulés.
     for (let i = 1; i <= 5; i++) {
-      expect(corriger(journal, SANS_FAUTE, dernier + i * DAY).reussites).toEqual([]);
+      expect((await corriger(journal, SANS_FAUTE, dernier + i * DAY)).reussites).toEqual([]);
     }
-    expect(corriger(journal, SANS_FAUTE, dernier + 13 * DAY).reussites).toEqual([]);
+    expect((await corriger(journal, SANS_FAUTE, dernier + 13 * DAY)).reussites).toEqual([]);
 
     const acquis = dernier + SEUILS.acquisitionJoursSansFaute * DAY;
-    expect(corriger(journal, SANS_FAUTE, acquis)).toEqual({
+    expect(await corriger(journal, SANS_FAUTE, acquis)).toEqual({
       intervention: null,
       reussites: [{ ruleKey: ON, titre: "on / ont" }],
     });
-    expect(regle(journal)).toMatchObject({ state: "acquise", acquiredAt: acquis, relapses: 0 });
+    expect(await regle(journal)).toMatchObject({
+      state: "acquise",
+      acquiredAt: acquis,
+      relapses: 0,
+    });
     // Le message de réussite n'est donné qu'une fois.
-    expect(corriger(journal, SANS_FAUTE, acquis + DAY).reussites).toEqual([]);
+    expect((await corriger(journal, SANS_FAUTE, acquis + DAY)).reussites).toEqual([]);
 
-    const rechute = corriger(journal, FAUTE_ON, acquis + 2 * DAY);
+    const rechute = await corriger(journal, FAUTE_ON, acquis + 2 * DAY);
     expect(rechute.intervention).toMatchObject({ type: "astuce", ruleKey: ON });
-    expect(regle(journal)).toMatchObject({
+    expect(await regle(journal)).toMatchObject({
       state: "signalee",
       relapses: 1,
       acquiredAt: null,
       tipsShown: 1,
     });
 
-    const types = journal
-      .ruleEvents({ ruleKey: ON, limit: 1000 })
+    const types = (await journal.ruleEvents({ ruleKey: ON, limit: 1000 }))
       .map((e) => e.type)
       .reverse();
     expect(types.filter((t) => !["astuce", "choix"].includes(t))).toEqual([
@@ -227,7 +244,7 @@ describe("Journal — cycle de vie des règles", () => {
       "acquise",
       "rechute",
     ]);
-    expect(journal.ruleEvents({ ruleKey: ON, limit: 2 })[1]).toEqual({
+    expect((await journal.ruleEvents({ ruleKey: ON, limit: 2 }))[1]).toEqual({
       id: expect.any(Number),
       ruleKey: ON,
       at: acquis + 2 * DAY,
@@ -237,25 +254,25 @@ describe("Journal — cycle de vie des règles", () => {
     });
   });
 
-  it("ne déclare pas la règle acquise si l'application n'a pas été utilisée", () => {
-    const journal = new Journal(":memory:");
-    const dernier = rendreTravaillee(journal);
-    expect(corriger(journal, SANS_FAUTE, dernier + 60 * DAY).reussites).toEqual([]);
-    expect(regle(journal)?.state).toBe("travaillee");
+  it("ne déclare pas la règle acquise si l'application n'a pas été utilisée", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    const dernier = await rendreTravaillee(journal);
+    expect((await corriger(journal, SANS_FAUTE, dernier + 60 * DAY)).reussites).toEqual([]);
+    expect((await regle(journal))?.state).toBe("travaillee");
   });
 
-  it("laisse hors du cycle les modifications non classées et la ponctuation", () => {
-    const journal = new Journal(":memory:");
+  it("laisse hors du cycle les modifications non classées et la ponctuation", async () => {
+    const journal = await ouvrirJournal(":memory:");
     for (let i = 0; i < 4; i++) {
       // « dossier → classeur » : ni fiche, ni détection, ni accord.
-      corriger(journal, ["Voici le dossier , merci.", "Voici le classeur, merci."], jour(i));
+      await corriger(journal, ["Voici le dossier , merci.", "Voici le classeur, merci."], jour(i));
     }
-    expect(journal.rules()).toEqual([]);
-    expect(journal.ruleEvents()).toEqual([]);
+    expect(await journal.rules()).toEqual([]);
+    expect(await journal.ruleEvents()).toEqual([]);
   });
 
-  it("laisse hors du cycle les détections qui n'entrent pas dans la note", () => {
-    const journal = new Journal(":memory:");
+  it("laisse hors du cycle les détections qui n'entrent pas dans la note", async () => {
+    const journal = await ouvrirJournal(":memory:");
     const original = "Voici le dossier.";
     const match = {
       message: "Style",
@@ -266,13 +283,13 @@ describe("Journal — cycle de vie des règles", () => {
       rule: { id: "STYLE_X", issueType: "style", category: { id: "STYLE", name: "Style" } },
     };
     for (let i = 0; i < 4; i++) {
-      journal.record(analyze(original, "Voici le classeur.", [match]), jour(i), { original });
+      await journal.record(analyze(original, "Voici le classeur.", [match]), jour(i), { original });
     }
-    expect(journal.rules()).toEqual([]);
+    expect(await journal.rules()).toEqual([]);
   });
 
-  it("laisse hors du cycle la détection générique des fautes de frappe", () => {
-    const journal = new Journal(":memory:");
+  it("laisse hors du cycle la détection générique des fautes de frappe", async () => {
+    const journal = await ouvrirJournal(":memory:");
     const original = "Le devellopement avance.";
     const match = {
       message: "Faute de frappe possible trouvée.",
@@ -289,21 +306,21 @@ describe("Journal — cycle de vie des règles", () => {
     for (let i = 0; i < 4; i++) {
       const analysis = analyze(original, "Le développement avance.", [match]);
       expect(analysis.faultCount).toBe(1);
-      expect(journal.record(analysis, jour(i), { original }).intervention).toBeNull();
+      expect((await journal.record(analysis, jour(i), { original })).intervention).toBeNull();
     }
-    expect(journal.rules()).toEqual([]);
+    expect(await journal.rules()).toEqual([]);
     // La faute reste journalisée et comptée dans la note.
-    expect(journal.summary(30, jour(4)).rules[0]).toMatchObject({
+    expect((await journal.summary(30, jour(4))).rules[0]).toMatchObject({
       ruleKey: "FR_SPELLING_RULE",
       count: 4,
     });
   });
 
-  it("ne conserve jamais le texte entier dans les tables du cycle", () => {
-    avecBase((path) => {
-      const journal = new Journal(path);
-      rendreTravaillee(journal);
-      journal.close();
+  it("ne conserve jamais le texte entier dans les tables du cycle", async () => {
+    await avecBase(async (path) => {
+      const journal = await ouvrirJournal(path);
+      await rendreTravaillee(journal);
+      await journal.close();
       const db = new Database(path);
       const lignes = JSON.stringify([
         db.query("SELECT * FROM rule_states").all(),
@@ -315,19 +332,19 @@ describe("Journal — cycle de vie des règles", () => {
     });
   });
 
-  it("« Effacer le journal » remet aussi à zéro l'état des règles", () => {
-    const journal = new Journal(":memory:");
-    rendreTravaillee(journal);
-    expect(journal.rules()).not.toEqual([]);
-    expect(journal.ruleEvents()).not.toEqual([]);
+  it("« Effacer le journal » remet aussi à zéro l'état des règles", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await rendreTravaillee(journal);
+    expect(await journal.rules()).not.toEqual([]);
+    expect(await journal.ruleEvents()).not.toEqual([]);
 
-    journal.purge();
-    expect(journal.rules()).toEqual([]);
-    expect(journal.ruleEvents()).toEqual([]);
-    expect(journal.period(365, jour(10)).texts).toBe(0);
+    await journal.purge();
+    expect(await journal.rules()).toEqual([]);
+    expect(await journal.ruleEvents()).toEqual([]);
+    expect((await journal.period(365, jour(10))).texts).toBe(0);
     // Le cycle repart de zéro.
-    expect(corriger(journal, FAUTE_ON, jour(10)).intervention).toBeNull();
-    expect(regle(journal)).toMatchObject({ state: "observee", occurrences: 1 });
+    expect((await corriger(journal, FAUTE_ON, jour(10))).intervention).toBeNull();
+    expect(await regle(journal)).toMatchObject({ state: "observee", occurrences: 1 });
   });
 });
 
@@ -409,15 +426,15 @@ describe("Journal — migration du schéma", () => {
     return lignes;
   };
 
-  it("ouvre une base v0.2.0 sans perdre de données et reconstruit l'état des règles", () => {
-    avecBase((path) => {
+  it("ouvre une base v0.2.0 sans perdre de données et reconstruit l'état des règles", async () => {
+    await avecBase(async (path) => {
       baseV020(path);
       const avant = contenu(path);
       expect(avant.version).toBe(0);
 
-      const journal = new Journal(path);
-      expect(journal.period(365, jour(3))).toMatchObject({ texts: 3, words: 30 });
-      const regles = journal.rules();
+      const journal = await ouvrirJournal(path);
+      expect(await journal.period(365, jour(3))).toMatchObject({ texts: 3, words: 30 });
+      const regles = await journal.rules();
       expect(regles.map((r) => [r.ruleKey, r.state, r.occurrences])).toEqual([
         [ON, "signalee", 3],
         ["PAIRE:a/à", "observee", 1],
@@ -430,11 +447,11 @@ describe("Journal — migration du schéma", () => {
         lastSolicitedAt: null,
       });
       // L'historique reconstruit porte les dates d'origine.
-      expect(journal.ruleEvents({ ruleKey: ON }).map((e) => [e.type, e.at])).toEqual([
+      expect((await journal.ruleEvents({ ruleKey: ON })).map((e) => [e.type, e.at])).toEqual([
         ["signalee", jour(2)],
         ["observee", jour(0)],
       ]);
-      journal.close();
+      await journal.close();
 
       const apres = contenu(path);
       expect(apres.texts).toEqual(avant.texts);
@@ -443,80 +460,80 @@ describe("Journal — migration du schéma", () => {
     });
   });
 
-  it("retrouve à la migration les règles déjà acquises, à leur date d'origine", () => {
-    avecBase((path) => {
+  it("retrouve à la migration les règles déjà acquises, à leur date d'origine", async () => {
+    await avecBase(async (path) => {
       // Trois fautes de J0 à J2, puis 17 textes sans faute de J3 à J19.
       baseV020(path, 17);
-      const journal = new Journal(path);
+      const journal = await ouvrirJournal(path);
       // Acquise au premier texte corrigé 14 jours après la dernière faute (J2).
-      expect(regle(journal)).toMatchObject({
+      expect(await regle(journal)).toMatchObject({
         state: "acquise",
         acquiredAt: jour(16),
         stateSince: jour(16),
         occurrences: 3,
         relapses: 0,
       });
-      expect(journal.ruleEvents({ ruleKey: ON }).map((e) => [e.type, e.at])).toEqual([
+      expect((await journal.ruleEvents({ ruleKey: ON })).map((e) => [e.type, e.at])).toEqual([
         ["acquise", jour(16)],
         ["signalee", jour(2)],
         ["observee", jour(0)],
       ]);
       // Pas de « Règle acquise » en rafale au premier texte après la mise à jour.
-      expect(corriger(journal, SANS_FAUTE, jour(20))).toEqual({
+      expect(await corriger(journal, SANS_FAUTE, jour(20))).toEqual({
         intervention: null,
         reussites: [],
       });
       // Une faute ensuite est bien une rechute.
-      corriger(journal, FAUTE_ON, jour(21));
-      expect(regle(journal)).toMatchObject({ state: "signalee", relapses: 1 });
-      journal.close();
+      await corriger(journal, FAUTE_ON, jour(21));
+      expect(await regle(journal)).toMatchObject({ state: "signalee", relapses: 1 });
+      await journal.close();
     });
   });
 
-  it("ne déclare pas acquise à la migration une règle sans usage suffisant", () => {
-    avecBase((path) => {
+  it("ne déclare pas acquise à la migration une règle sans usage suffisant", async () => {
+    await avecBase(async (path) => {
       // Deux textes sans faute seulement : en dessous des minimums d'usage.
       baseV020(path, 2);
-      const journal = new Journal(path);
-      expect(regle(journal)?.state).toBe("signalee");
-      journal.close();
+      const journal = await ouvrirJournal(path);
+      expect((await regle(journal))?.state).toBe("signalee");
+      await journal.close();
     });
   });
 
-  it("est idempotente : rouvrir la base ne rejoue rien", () => {
-    avecBase((path) => {
+  it("est idempotente : rouvrir la base ne rejoue rien", async () => {
+    await avecBase(async (path) => {
       baseV020(path);
-      const premier = new Journal(path);
-      corriger(premier, FAUTE_ON, jour(3));
-      const regles = premier.rules();
-      const historique = premier.ruleEvents({ limit: 1000 });
-      premier.close();
+      const premier = await ouvrirJournal(path);
+      await corriger(premier, FAUTE_ON, jour(3));
+      const regles = await premier.rules();
+      const historique = await premier.ruleEvents({ limit: 1000 });
+      await premier.close();
 
-      const second = new Journal(path);
-      expect(second.rules()).toEqual(regles);
-      expect(second.ruleEvents({ limit: 1000 })).toEqual(historique);
-      second.close();
-      const troisieme = new Journal(path);
-      expect(troisieme.rules()).toEqual(regles);
-      troisieme.close();
+      const second = await ouvrirJournal(path);
+      expect(await second.rules()).toEqual(regles);
+      expect(await second.ruleEvents({ limit: 1000 })).toEqual(historique);
+      await second.close();
+      const troisieme = await ouvrirJournal(path);
+      expect(await troisieme.rules()).toEqual(regles);
+      await troisieme.close();
     });
   });
 
-  it("reprend le cycle là où l'historique le laisse", () => {
-    avecBase((path) => {
+  it("reprend le cycle là où l'historique le laisse", async () => {
+    await avecBase(async (path) => {
       baseV020(path);
-      const journal = new Journal(path);
+      const journal = await ouvrirJournal(path);
       // Règle déjà signalée par l'historique : la faute suivante affiche une astuce.
-      expect(corriger(journal, FAUTE_ON, jour(3)).intervention).toMatchObject({
+      expect((await corriger(journal, FAUTE_ON, jour(3))).intervention).toMatchObject({
         type: "astuce",
         ruleKey: ON,
       });
-      journal.close();
+      await journal.close();
     });
   });
 
-  it("fonctionne sur une base alpha dont les tables des règles et des badges ont user_id", () => {
-    avecBase((path) => {
+  it("fonctionne sur une base alpha dont les tables des règles et des badges ont user_id", async () => {
+    await avecBase(async (path) => {
       baseV020(path);
       // Schéma distribué avec une alpha de la v0.3.0, avant le retrait de user_id.
       const db = new Database(path);
@@ -557,36 +574,36 @@ describe("Journal — migration du schéma", () => {
       `);
       db.close();
 
-      const journal = new Journal(path);
-      expect(journal.rules().map((r) => [r.ruleKey, r.state, r.occurrences])).toEqual([
+      const journal = await ouvrirJournal(path);
+      expect((await journal.rules()).map((r) => [r.ruleKey, r.state, r.occurrences])).toEqual([
         [ON, "signalee", 3],
         ["PAIRE:a/à", "observee", 1],
       ]);
-      expect(journal.badges.obtained().get("premier-texte")).toBe(jour(0));
+      expect((await journal.badges.obtained()).get("premier-texte")).toBe(jour(0));
       for (const n of [3, 4, 5]) {
-        expect(corriger(journal, FAUTE_ON, jour(n)).intervention?.type).toBe("astuce");
+        expect((await corriger(journal, FAUTE_ON, jour(n))).intervention?.type).toBe("astuce");
       }
-      const choix = corriger(journal, FAUTE_ON, jour(6)).intervention;
+      const choix = (await corriger(journal, FAUTE_ON, jour(6))).intervention;
       if (choix?.type !== "choix") throw new Error("choix attendu");
-      expect(journal.answerChoice(choix.choiceId, true, jour(6) + 1000)).toBe("recorded");
-      expect(regle(journal)).toMatchObject({ state: "travaillee", occurrences: 7 });
+      expect(await journal.answerChoice(choix.choiceId, true, jour(6) + 1000)).toBe("recorded");
+      expect(await regle(journal)).toMatchObject({ state: "travaillee", occurrences: 7 });
       // Sept jours d'écriture : le badge s'enregistre dans l'ancienne table.
-      expect(journal.badges.award(jour(6) + 1000).map((b) => b.id)).toEqual(["jours-5"]);
-      expect(journal.badges.obtained().get("jours-5")).toBe(jour(4));
-      journal.close();
+      expect((await journal.badges.award(jour(6) + 1000)).map((b) => b.id)).toEqual(["jours-5"]);
+      expect((await journal.badges.obtained()).get("jours-5")).toBe(jour(4));
+      await journal.close();
 
-      const reouvert = new Journal(path);
-      expect(regle(reouvert)).toMatchObject({ choicesShown: 1, choicesCorrect: 1 });
-      reouvert.purge();
-      expect(reouvert.rules()).toEqual([]);
-      expect(reouvert.badges.obtained().size).toBe(0);
-      reouvert.close();
+      const reouvert = await ouvrirJournal(path);
+      expect(await regle(reouvert)).toMatchObject({ choicesShown: 1, choicesCorrect: 1 });
+      await reouvert.purge();
+      expect(await reouvert.rules()).toEqual([]);
+      expect((await reouvert.badges.obtained()).size).toBe(0);
+      await reouvert.close();
     });
   });
 
-  it("crée une base neuve directement à la version courante", () => {
-    avecBase((path) => {
-      new Journal(path).close();
+  it("crée une base neuve directement à la version courante", async () => {
+    await avecBase(async (path) => {
+      await (await ouvrirJournal(path)).close();
       expect(contenu(path).version).toBe(SCHEMA_VERSION);
     });
   });

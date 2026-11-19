@@ -10,6 +10,7 @@ import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
 import { awardBadgesSafely } from "./journal.badges.ts";
+import { ouvrirPiloteBun } from "./journal.driver.bun.ts";
 import { compterEtats } from "./src/analysis/regles/cycle.ts";
 import { SEUILS } from "./src/analysis/regles/seuils.ts";
 import { analyze } from "./src/analysis/analyze.ts";
@@ -36,7 +37,7 @@ const settings = new SettingsStore(
   config.desktop && config.settingsPath ? config.settingsPath : null,
 );
 
-const journal = new Journal(config.journalPath);
+const journal = await Journal.ouvrir(ouvrirPiloteBun(config.journalPath));
 
 const grammar = new GrammarChecker();
 grammar.warmUp();
@@ -247,29 +248,29 @@ Bun.serve({
         const analysis = analyze(original, corrected, validMatches);
         // L'état des règles est mis à jour ici ; le serveur décide de ce qui
         // s'affiche près du bouton Copier (astuce, choix à deux formes, réussite).
-        const suivi = journal.record(analysis, Date.now(), { original });
+        const suivi = await journal.record(analysis, Date.now(), { original });
         // Badges : une erreur de calcul n'empêche jamais l'analyse.
-        const nouveauxBadges = awardBadgesSafely(journal.badges);
+        const nouveauxBadges = await awardBadgesSafely(journal.badges);
         return json(
-          { ...analysis, week: journal.period(SCORE_WINDOW_DAYS), ...suivi, nouveauxBadges },
+          { ...analysis, week: await journal.period(SCORE_WINDOW_DAYS), ...suivi, nouveauxBadges },
           headers,
         );
       }
 
       // Badges de progression : catalogue complet, obtenus ou non.
       if (path === "/api/badges" && req.method === "GET") {
-        return json(journal.badges.catalogue(), headers);
+        return json(await journal.badges.catalogue(), headers);
       }
 
       // Cycle de vie des règles : lecture pour le tableau de bord et les badges.
       if (path === "/api/rules" && req.method === "GET") {
-        const rules = journal.rules();
+        const rules = await journal.rules();
         return json({ rules, counts: compterEtats(rules), thresholds: SEUILS }, headers);
       }
 
       if (path === "/api/rules/events" && req.method === "GET") {
         const limit = Number(url.searchParams.get("limit") ?? 200);
-        const events = journal.ruleEvents({
+        const events = await journal.ruleEvents({
           limit: Number.isFinite(limit) ? limit : 200,
           ruleKey: url.searchParams.get("ruleKey") ?? undefined,
         });
@@ -283,27 +284,27 @@ Bun.serve({
         if (!Number.isSafeInteger(body?.choiceId) || typeof body?.correct !== "boolean") {
           return json({ error: "Invalid payload" }, headers, 400);
         }
-        const result = journal.answerChoice(body.choiceId, body.correct);
+        const result = await journal.answerChoice(body.choiceId, body.correct);
         if (result === "unknown") return json({ error: "Unknown choice" }, headers, 404);
         if (result === "conflict") {
           return json({ error: "Choice already answered or replaced" }, headers, 409);
         }
-        const nouveauxBadges = awardBadgesSafely(journal.badges);
+        const nouveauxBadges = await awardBadgesSafely(journal.badges);
         return json({ recorded: true, nouveauxBadges }, headers);
       }
 
       // Écran « Progression » : tout l'écran en une seule requête (issue #15).
       if (path === "/api/progress" && req.method === "GET") {
-        return json(journal.progress(), headers);
+        return json(await journal.progress(), headers);
       }
 
       if (path === "/api/journal" && req.method === "GET") {
         const days = parsePeriodDays(url.searchParams.get("days"));
-        return json(journal.summary(days), headers);
+        return json(await journal.summary(days), headers);
       }
 
       if (path === "/api/journal" && req.method === "DELETE") {
-        journal.purge();
+        await journal.purge();
         return json({ purged: true }, headers);
       }
 

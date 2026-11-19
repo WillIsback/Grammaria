@@ -266,3 +266,32 @@ describe("Vue du catalogue", () => {
     expect(vue.obtenus).toBe(0);
   });
 });
+
+describe("Évaluation d'une partie du catalogue", () => {
+  it("donne pour chaque badge le même état que le catalogue entier", () => {
+    // Faits variés : textes sur plusieurs semaines, acquisitions, rechute, bonnes réponses.
+    const textes = Array.from({ length: 60 }, (_, i) =>
+      texte(jour(Math.floor(i * 1.7)), i % 4 === 0 ? 0 : 1, i % 3 === 0 ? 40 : 12),
+    );
+    const evenements: FaitEvenement[] = [
+      { ruleKey: "PAIRE:on/ont", at: jour(20), type: "acquise" },
+      { ruleKey: "PAIRE:on/ont", at: jour(30), type: "rechute" },
+      { ruleKey: "PAIRE:a/à", at: jour(35), type: "acquise" },
+      { ruleKey: "PAIRE:on/ont", at: jour(50), type: "acquise" },
+      ...Array.from({ length: 12 }, (_, i): FaitEvenement => ({
+        ruleKey: "PAIRE:et/est",
+        at: jour(i * 3),
+        type: "reponse_juste",
+      })),
+    ];
+    const f = faits(textes, evenements);
+    for (const now of [jour(10), jour(60), jour(200)]) {
+      const complet = evaluerBadges(f, now);
+      for (const [i, def] of BADGES.entries()) {
+        expect(evaluerBadges(f, now, [def])).toEqual([complet[i]]);
+      }
+      const impairs = BADGES.filter((_, i) => i % 2 === 1);
+      expect(evaluerBadges(f, now, impairs)).toEqual(complet.filter((_, i) => i % 2 === 1));
+    }
+  });
+});
