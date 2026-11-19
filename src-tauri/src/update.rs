@@ -538,13 +538,15 @@ mod tests {
         assert_eq!(status.failed_step, None);
     }
 
+    fn capability() -> serde_json::Value {
+        serde_json::from_str(include_str!("../capabilities/mise-a-jour.json")).expect("JSON valide")
+    }
+
     /// La capability ne doit s'appliquer qu'au serveur local, quel que soit
     /// son port, et à aucune autre origine.
     #[test]
     fn la_capability_ne_couvre_que_le_serveur_local() {
-        let capability: serde_json::Value =
-            serde_json::from_str(include_str!("../capabilities/mise-a-jour.json"))
-                .expect("JSON valide");
+        let capability = capability();
         assert_eq!(capability["local"], false);
         let urls = capability["remote"]["urls"]
             .as_array()
@@ -552,7 +554,7 @@ mod tests {
         assert_eq!(urls.len(), 1);
         let pattern =
             RemoteUrlPattern::from_str(urls[0].as_str().expect("chaîne")).expect("motif valide");
-        let matches = |url: &str| pattern.test(&url::Url::parse(url).expect("URL valide"));
+        let matches = |url: &str| pattern.test(&tauri::Url::parse(url).expect("URL valide"));
 
         assert!(matches("http://127.0.0.1:25000/"));
         assert!(matches("http://127.0.0.1:49152/index.html?x=1#y"));
@@ -567,9 +569,7 @@ mod tests {
     /// enregistrées : pas de commande de plugin, pas de `core:default`.
     #[test]
     fn la_capability_n_autorise_que_les_commandes_de_mise_a_jour() {
-        let capability: serde_json::Value =
-            serde_json::from_str(include_str!("../capabilities/mise-a-jour.json"))
-                .expect("JSON valide");
+        let capability = capability();
         let permissions: Vec<&str> = capability["permissions"]
             .as_array()
             .expect("liste de permissions")
