@@ -3,8 +3,8 @@
 //! Toute la logique est ici, côté Rust, au-dessus du plugin officiel
 //! `tauri-plugin-updater` : recherche de la dernière version stable,
 //! téléchargement, vérification de la signature, installation, redémarrage.
-//! L'interface (servie par le serveur local) ne fait que déclencher ces étapes
-//! par quatre commandes, autorisées dans `capabilities/mise-a-jour.json`.
+//! L'interface (page embarquée) ne fait que déclencher ces étapes par quatre
+//! commandes, autorisées dans `capabilities/default.json`.
 //!
 //! Rien n'est installé sans une action de l'utilisateur : `update_check` ne
 //! fait que regarder, seule `update_install` télécharge et installe.
@@ -22,9 +22,6 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// Page de la dernière version stable, pour un téléchargement à la main.
 const RELEASE_PAGE: &str = "https://github.com/WillIsback/Grammaria/releases/latest";
-
-/// Temps laissé pour lire le message avant un redémarrage de secours.
-const RESTART_DELAY: Duration = Duration::from_secs(6);
 
 /// Délai maximal de la recherche d'une mise à jour.
 const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
@@ -266,16 +263,13 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
         return Ok(state.status());
     }
 
-    // Sous Windows, l'installeur remplace le serveur embarqué : on l'arrête
-    // juste avant, sinon son exécutable est encore verrouillé.
+    // Sous Windows, l'installeur est lancé puis l'application quitte : on
+    // libère d'abord ses ressources (fenêtres, plugins).
     let app_for_exit = app.clone();
     let found = async {
         app.updater_builder()
             .timeout(CHECK_TIMEOUT)
-            .on_before_exit(move || {
-                crate::stop_server(&app_for_exit);
-                app_for_exit.cleanup_before_exit();
-            })
+            .on_before_exit(move || app_for_exit.cleanup_before_exit())
             .build()?
             .check()
             .await
@@ -341,34 +335,17 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
         match result {
             // Windows : l'installeur a déjà quitté l'application et la relance
             // lui-même. Linux : l'AppImage est remplacée, on redémarre dessus.
-            Ok(()) => {
-                crate::stop_server(&app);
-                app.request_restart();
-            }
+            Ok(()) => app.request_restart(),
             // Signature invalide, téléchargement coupé, dossier non modifiable… :
             // rien n'a été installé, la mise à jour reste proposée.
             Err(error) => {
-                // Windows : le serveur embarqué est arrêté juste avant de lancer
-                // l'installeur. Si ce lancement échoue, l'application n'a plus
-                // de serveur : on prévient, puis on la redémarre.
-                let server_stopped = !crate::server_running(&app);
                 app.state::<UpdateState>().update(|inner| {
                     inner.status.fail(
                         Step::Install,
-                        if server_stopped {
-                            "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée ; Grammaria redémarre dans quelques secondes."
-                        } else {
-                            "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée."
-                        },
+                        "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée.",
                         error.to_string(),
                     );
                 });
-                if server_stopped {
-                    std::thread::spawn(move || {
-                        std::thread::sleep(RESTART_DELAY);
-                        app.request_restart();
-                    });
-                }
             }
         }
     });
@@ -388,8 +365,6 @@ pub fn update_open_release_page(app: AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
-    use tauri::utils::acl::RemoteUrlPattern;
 
     const PUBKEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IGV4ZW1wbGU=";
 
@@ -533,54 +508,5 @@ mod tests {
         assert_eq!(status.phase, Phase::NoRelease);
         assert_eq!(status.error, None);
         assert_eq!(status.failed_step, None);
-    }
-
-    fn capability() -> serde_json::Value {
-        serde_json::from_str(include_str!("../capabilities/mise-a-jour.json")).expect("JSON valide")
-    }
-
-    /// La capability ne doit s'appliquer qu'au serveur local, quel que soit
-    /// son port, et à aucune autre origine.
-    #[test]
-    fn la_capability_ne_couvre_que_le_serveur_local() {
-        let capability = capability();
-        assert_eq!(capability["local"], false);
-        let urls = capability["remote"]["urls"]
-            .as_array()
-            .expect("liste d'URL");
-        assert_eq!(urls.len(), 1);
-        let pattern =
-            RemoteUrlPattern::from_str(urls[0].as_str().expect("chaîne")).expect("motif valide");
-        let matches = |url: &str| pattern.test(&tauri::Url::parse(url).expect("URL valide"));
-
-        assert!(matches("http://127.0.0.1:25000/"));
-        assert!(matches("http://127.0.0.1:49152/index.html?x=1#y"));
-        assert!(!matches("https://127.0.0.1:25000/"));
-        assert!(!matches("http://localhost:25000/"));
-        assert!(!matches("http://127.0.0.1.exemple.com:25000/"));
-        assert!(!matches("http://exemple.com/"));
-        assert!(!matches("http://192.168.1.10:25000/"));
-    }
-
-    /// Les permissions de la capability sont exactement les commandes
-    /// enregistrées : pas de commande de plugin, pas de `core:default`.
-    #[test]
-    fn la_capability_n_autorise_que_les_commandes_de_mise_a_jour() {
-        let capability = capability();
-        let permissions: Vec<&str> = capability["permissions"]
-            .as_array()
-            .expect("liste de permissions")
-            .iter()
-            .map(|permission| permission.as_str().expect("chaîne"))
-            .collect();
-        assert_eq!(
-            permissions,
-            [
-                "allow-update-status",
-                "allow-update-check",
-                "allow-update-install",
-                "allow-update-open-release-page",
-            ]
-        );
     }
 }

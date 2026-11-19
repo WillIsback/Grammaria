@@ -1,7 +1,23 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Page de démarrage embarquée. L'interface, elle, est servie par le serveur local : ses droits sont dans mise-a-jour.json.",
+  "description": "La page embarquée (tauri://localhost) peut appeler les commandes de l'application, une par une, et rien d'autre : ni les commandes de Tauri (core:default), ni celles des plugins, ni aucune origine distante.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "local": true,
+  "permissions": [
+    "allow-update-status",
+    "allow-update-check",
+    "allow-update-install",
+    "allow-update-open-release-page",
+    "allow-db-read",
+    "allow-db-read-many",
+    "allow-db-batch",
+    "allow-settings-get",
+    "allow-settings-set",
+    "allow-valid-words-get",
+    "allow-valid-words-add",
+    "allow-llm-models",
+    "allow-llm-chat",
+    "allow-llm-cancel"
+  ]
 }

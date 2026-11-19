@@ -1,11 +1,8 @@
 fn main() {
     // Les commandes de l'application passent par la liste d'accès de Tauri :
-    // une page ne peut appeler que celles qu'une capability lui autorise.
-    // Aujourd'hui, la page servie par le serveur local (origine « distante »
-    // pour Tauri) n'a droit qu'aux commandes de mise à jour
-    // (capabilities/mise-a-jour.json). Les commandes du journal, des réglages
-    // et du modèle sont prêtes pour la page embarquée qui remplacera le
-    // serveur ; aucune capability ne les autorise encore.
+    // une page ne peut appeler que celles qu'une capability lui autorise. La
+    // page embarquée les a toutes, une par une (capabilities/default.json),
+    // et rien d'autre.
     let attributes =
         tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&[
             "update_status",

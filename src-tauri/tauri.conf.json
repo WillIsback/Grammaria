@@ -5,8 +5,8 @@
   "version": "../package.json",
   "identifier": "fr.willisback.grammaria",
   "build": {
-    "beforeBuildCommand": "npm run build && bun scripts/desktop/prepare-sidecar.ts",
-    "frontendDist": "splash"
+    "beforeBuildCommand": "npm run build:bureau",
+    "frontendDist": "../dist/bureau"
   },
   "app": {
     "withGlobalTauri": true,
@@ -22,7 +22,20 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "worker-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost",
+        "img-src": "'self' data: blob:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "capabilities": ["default"]
     }
   },
   "plugins": {
@@ -45,11 +58,6 @@
     "copyright": "GPL-3.0-or-later",
     "license": "GPL-3.0-or-later",
     "licenseFile": "../LICENSE",
-    "externalBin": ["binaries/grammaria-server"],
-    "resources": {
-      "resources/dist/": "dist/",
-      "resources/lt/": "lt/"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

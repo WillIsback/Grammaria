@@ -18,11 +18,10 @@ tauri-build = { version = "2", features = [] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 # Requis par tauri::generate_context! dès que tauri.conf.json configure un plugin ;
-# sert aussi à échapper le message d'erreur affiché dans la fenêtre.
+# sert aussi aux commandes (JSON du journal, des réglages et du modèle).
 serde_json = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 # Journal : SQLite embarqué (compilé dans l'application, aucune bibliothèque
