@@ -4,17 +4,49 @@ on:
   push:
     tags:
       - "v*"
+  # Lancement manuel (onglet Actions ou API) : le workflow crée lui-même le tag
+  # sur le commit choisi (main par défaut) au moment de publier la release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag à publier, par exemple v0.2.0 ou v0.2.0-rc.1 (pré-version)"
+        type: string
+        required: true
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Tag publié : celui poussé, ou celui saisi au lancement manuel.
+  TAG: ${{ inputs.tag || github.ref_name }}
   # Pré-version : tag avec suffixe, par exemple v0.2.0-rc.1 ou v0.2.0-1. Elle est
   # publiée comme pré-version GitHub et ne touche ni à l'image Docker
   # « latest », ni aux étiquettes major.minor, ni à la release « Latest ».
-  PRERELEASE: ${{ contains(github.ref_name, '-') }}
+  PRERELEASE: ${{ contains(inputs.tag || github.ref_name, '-') }}
 
 jobs:
+  # Lancement manuel : refuser un tag mal formé ou déjà existant avant de construire.
+  check-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier le tag
+        env:
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag invalide : $TAG (attendu : v1.2.3 ou v1.2.3-rc.1)"
+            exit 1
+          fi
+          if [ "$EVENT" = "workflow_dispatch" ] && \
+            git ls-remote --exit-code --tags "https://github.com/$REPO.git" "refs/tags/$TAG" > /dev/null; then
+            echo "::error::Le tag $TAG existe déjà."
+            exit 1
+          fi
+          echo "Tag : $TAG (pré-version : $PRERELEASE)"
+
   ci:
+    needs: check-tag
     uses: ./.github/workflows/ci.yml
 
   # Application de bureau : seule une release signe les paquets Windows.
@@ -22,12 +54,12 @@ jobs:
     needs: ci
     uses: ./.github/workflows/build-desktop.yml
     with:
-      version: ${{ github.ref_name }}
+      version: ${{ inputs.tag || github.ref_name }}
       sign: true
     secrets: inherit
 
   release:
-    needs: [ci, desktop]
+    needs: [check-tag, ci, desktop]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -50,9 +82,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=semver,pattern={{version}},value=${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }},enable=${{ env.PRERELEASE != 'true' }}
+            type=raw,value=latest,enable=${{ env.PRERELEASE != 'true' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -79,6 +111,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Lancement manuel : le tag est créé ici, sur le commit construit.
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           prerelease: ${{ env.PRERELEASE == 'true' }}
           make_latest: ${{ env.PRERELEASE == 'true' && 'false' || 'true' }}
