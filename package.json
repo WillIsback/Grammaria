@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vp dev",
     "build": "tsc && vp build",
+    "build:bureau": "vp build --outDir dist/bureau && vp build --mode bureau",
     "preview": "vp preview",
     "test": "vp test",
     "test:run": "vp test run",
@@ -15,6 +16,8 @@
     "check": "vp check",
     "serve": "bun run server.ts",
     "test:journal": "bun test tests-bun",
+    "test:correcteur-bureau": "node scripts/desktop/verifier-correcteur.mjs",
+    "reference:correcteur": "bun scripts/desktop/reference-correcteur.ts",
     "prepare": "vp config"
   },
   "dependencies": {
