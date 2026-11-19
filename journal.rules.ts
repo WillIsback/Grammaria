@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Analysis } from "./src/analysis/analyze.ts";
-import { FICHES, type Fiche } from "./src/analysis/fiches.ts";
+import { FICHES, type Fiche, libelleSansFiche } from "./src/analysis/fiches.ts";
 import {
   appliquerEvenement,
   entreDansLeCycle,
@@ -71,45 +71,30 @@ export interface FollowOptions {
   random?: () => number;
 }
 
-interface StateRow {
-  rule_key: string;
-  state: EtatCycle;
-  state_since: number;
-  occurrences: number;
-  first_fault_at: number;
-  last_fault_at: number;
-  tips_shown: number;
-  choices_shown: number;
-  choices_correct: number;
-  choices_wrong: number;
-  last_solicited_at: number | null;
-  solicitations_that_day: number;
-  acquired_at: number | null;
-  relapses: number;
-}
+/**
+ * Champs de `RuleState`, dans l'ordre des colonnes de `rule_states` : la
+ * colonne est le nom du champ en snake_case (`tipsShown` → `tips_shown`).
+ */
+const CHAMPS_ETAT = [
+  "ruleKey",
+  "state",
+  "stateSince",
+  "occurrences",
+  "firstFaultAt",
+  "lastFaultAt",
+  "tipsShown",
+  "choicesShown",
+  "choicesCorrect",
+  "choicesWrong",
+  "lastSolicitedAt",
+  "solicitationsThatDay",
+  "acquiredAt",
+  "relapses",
+] as const satisfies readonly (keyof RuleState)[];
 
-function toState(row: StateRow): RuleState {
-  return {
-    ruleKey: row.rule_key,
-    state: row.state,
-    stateSince: row.state_since,
-    occurrences: row.occurrences,
-    firstFaultAt: row.first_fault_at,
-    lastFaultAt: row.last_fault_at,
-    tipsShown: row.tips_shown,
-    choicesShown: row.choices_shown,
-    choicesCorrect: row.choices_correct,
-    choicesWrong: row.choices_wrong,
-    lastSolicitedAt: row.last_solicited_at,
-    solicitationsThatDay: row.solicitations_that_day,
-    acquiredAt: row.acquired_at,
-    relapses: row.relapses,
-  };
-}
-
-const STATE_COLUMNS = `rule_key, state, state_since, occurrences, first_fault_at, last_fault_at,
-  tips_shown, choices_shown, choices_correct, choices_wrong, last_solicited_at,
-  solicitations_that_day, acquired_at, relapses`;
+const colonne = (champ: string) => champ.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+/** Colonnes de `rule_states` lues sous le nom des champs de `RuleState`. */
+const SELECT_ETAT = CHAMPS_ETAT.map((c) => `${colonne(c)} AS ${c}`).join(", ");
 
 /**
  * État des règles dans la base du journal : une ligne par règle
@@ -201,34 +186,18 @@ export class RuleStore {
   }
 
   private load(ruleKey: string): RuleState | null {
-    const row = this.db
-      .query(`SELECT ${STATE_COLUMNS} FROM rule_states WHERE rule_key = ?`)
-      .get(ruleKey) as StateRow | null;
-    return row ? toState(row) : null;
+    return this.db
+      .query(`SELECT ${SELECT_ETAT} FROM rule_states WHERE rule_key = ?`)
+      .get(ruleKey) as RuleState | null;
   }
 
   private save(s: RuleState): void {
     this.db
       .query(
-        `INSERT OR REPLACE INTO rule_states (${STATE_COLUMNS})
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO rule_states (${CHAMPS_ETAT.map(colonne).join(", ")})
+         VALUES (${CHAMPS_ETAT.map(() => "?").join(", ")})`,
       )
-      .run(
-        s.ruleKey,
-        s.state,
-        s.stateSince,
-        s.occurrences,
-        s.firstFaultAt,
-        s.lastFaultAt,
-        s.tipsShown,
-        s.choicesShown,
-        s.choicesCorrect,
-        s.choicesWrong,
-        s.lastSolicitedAt,
-        s.solicitationsThatDay,
-        s.acquiredAt,
-        s.relapses,
-      );
+      .run(...CHAMPS_ETAT.map((c) => s[c]));
   }
 
   private log(
@@ -284,15 +253,15 @@ export class RuleStore {
 
   /** Règles « signalées » ou « travaillées » devenues « acquises » avec ce texte. */
   private checkAcquisitions(now: number): Reussite[] {
-    const rows = this.db
+    const states = this.db
       .query(
-        `SELECT ${STATE_COLUMNS} FROM rule_states
+        `SELECT ${SELECT_ETAT} FROM rule_states
          WHERE state IN ('signalee', 'travaillee') AND last_fault_at <= ?
          ORDER BY rule_key`,
       )
-      .all(now - SEUILS.acquisitionJoursSansFaute * JOUR_MS) as StateRow[];
-    if (rows.length === 0) return [];
-    const oldest = Math.min(...rows.map((r) => r.last_fault_at));
+      .all(now - SEUILS.acquisitionJoursSansFaute * JOUR_MS) as RuleState[];
+    if (states.length === 0) return [];
+    const oldest = Math.min(...states.map((s) => s.lastFaultAt));
     const texts = (
       this.db
         .query("SELECT created_at AS at FROM texts WHERE created_at > ? AND created_at <= ?")
@@ -300,8 +269,7 @@ export class RuleStore {
     ).map((t) => t.at);
 
     const reussites: Reussite[] = [];
-    for (const row of rows) {
-      const state = toState(row);
+    for (const state of states) {
       const result = this.apply(
         state.ruleKey,
         { type: "usage" },
@@ -324,7 +292,7 @@ export class RuleStore {
       )
       .get(ruleKey) as { message: string; categoryName: string } | null;
     return {
-      label: FICHES[ruleKey]?.titre ?? (row?.message || row?.categoryName || ruleKey),
+      label: FICHES[ruleKey]?.titre ?? libelleSansFiche(ruleKey, row),
       categoryName: row?.categoryName ?? "",
     };
   }
@@ -345,8 +313,7 @@ export class RuleStore {
           candidat = {
             // remplacé juste après par l'état à jour
             state: undefined as unknown as RuleState,
-            titre:
-              correction.fiche?.titre ?? (fault.message || fault.categoryName || fault.ruleKey),
+            titre: correction.fiche?.titre ?? libelleSansFiche(fault.ruleKey, fault),
             astuce: correction.fiche?.astuce ?? null,
             passages: [],
             count: 0,
@@ -412,29 +379,26 @@ export class RuleStore {
 
   /** Toutes les règles suivies, de la plus récemment fautive à la plus ancienne. */
   list(): RuleView[] {
-    const rows = this.db
-      .query(`SELECT ${STATE_COLUMNS} FROM rule_states ORDER BY last_fault_at DESC, rule_key`)
-      .all() as StateRow[];
-    return rows.map((row) => ({
-      ...toState(row),
-      ...this.label(row.rule_key),
-      fiche: FICHES[row.rule_key] ?? null,
+    const states = this.db
+      .query(`SELECT ${SELECT_ETAT} FROM rule_states ORDER BY last_fault_at DESC, rule_key`)
+      .all() as RuleState[];
+    return states.map((state) => ({
+      ...state,
+      ...this.label(state.ruleKey),
+      fiche: FICHES[state.ruleKey] ?? null,
     }));
   }
 
-  /** Historique daté, du plus récent au plus ancien. */
+  /** Historique daté, du plus récent au plus ancien ; toutes les règles sans `ruleKey`. */
   events(options: { limit?: number; ruleKey?: string } = {}): RuleHistoryEntry[] {
     const limit = Math.min(Math.max(Math.trunc(options.limit ?? 200), 1), 1000);
-    const columns = `id, rule_key AS ruleKey, created_at AS at, type,
-      from_state AS "from", to_state AS "to"`;
-    if (options.ruleKey) {
-      return this.db
-        .query(`SELECT ${columns} FROM rule_events WHERE rule_key = ? ORDER BY id DESC LIMIT ?`)
-        .all(options.ruleKey, limit) as RuleHistoryEntry[];
-    }
     return this.db
-      .query(`SELECT ${columns} FROM rule_events ORDER BY id DESC LIMIT ?`)
-      .all(limit) as RuleHistoryEntry[];
+      .query(
+        `SELECT id, rule_key AS ruleKey, created_at AS at, type,
+                from_state AS "from", to_state AS "to"
+         FROM rule_events WHERE (?1 IS NULL OR rule_key = ?1) ORDER BY id DESC LIMIT ?2`,
+      )
+      .all(options.ruleKey || null, limit) as RuleHistoryEntry[];
   }
 
   purge(): void {

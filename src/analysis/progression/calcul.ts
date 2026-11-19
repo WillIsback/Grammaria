@@ -10,6 +10,7 @@
  * n'est réévalué qu'au moment d'une analyse (`POST /api/analyze`).
  */
 import type { EtatCycle } from "../regles/cycle";
+import { libelleSansFiche } from "../fiches";
 import { noteSur20 } from "../score";
 import { PROGRESSION } from "./reglages";
 
@@ -269,7 +270,7 @@ export function reglesFrequentes(faults: LigneFaute[], rules: RegleSuivie[]): Re
       const suivie = parCle.get(ruleKey);
       return {
         ruleKey,
-        label: suivie?.label ?? (last.message || last.categoryName || ruleKey),
+        label: suivie?.label ?? libelleSansFiche(ruleKey, last),
         categoryName: suivie?.categoryName ?? last.categoryName,
         count,
         state: suivie?.state ?? null,
