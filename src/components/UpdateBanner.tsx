@@ -22,14 +22,20 @@ export function UpdateBanner({ update }: Props) {
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   if (!update) return null;
 
-  const { status, userInitiated, install, openReleasePage } = update;
+  const { status, userInitiated, check, install, openReleasePage } = update;
   const { phase, mode, version } = status;
   const busy = phase === "downloading" || phase === "installing";
   const dismissed = version === null || version === dismissedVersion;
   const offered = phase === "available" && !dismissed;
-  // Échec d'une installation demandée par l'utilisateur ; une recherche
-  // automatique qui échoue (hors ligne) ne dérange personne.
-  const failed = phase === "error" && userInitiated && mode === "auto" && !dismissed;
+  // Échec d'une étape demandée par l'utilisateur ; une recherche automatique
+  // qui échoue (hors ligne) ne dérange personne. « Réessayer » relance l'étape
+  // en échec : une recherche ratée ne lance jamais une installation.
+  const failed =
+    phase === "error" &&
+    userInitiated &&
+    !dismissed &&
+    (status.failedStep === "check" || mode === "auto");
+  const retry = status.failedStep === "check" ? check : install;
   if (!busy && !offered && !failed) return null;
 
   return (
@@ -46,9 +52,13 @@ export function UpdateBanner({ update }: Props) {
         </p>
         {!busy && (
           <div className="flex items-center gap-1 shrink-0">
-            {mode === "auto" ? (
+            {failed ? (
+              <button type="button" onClick={retry} className={primaryButton}>
+                Réessayer
+              </button>
+            ) : mode === "auto" ? (
               <button type="button" onClick={install} className={primaryButton}>
-                {failed ? "Réessayer" : "Installer et redémarrer"}
+                Installer et redémarrer
               </button>
             ) : (
               <button type="button" onClick={openReleasePage} className={primaryButton}>

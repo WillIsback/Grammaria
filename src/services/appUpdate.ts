@@ -18,6 +18,8 @@ export type UpdatePhase =
   | "available"
   | "downloading"
   | "installing"
+  /** Aucun manifeste publié : rien à proposer pour le moment. */
+  | "noRelease"
   | "error";
 
 export interface AppUpdateStatus {
@@ -33,6 +35,8 @@ export interface AppUpdateStatus {
   /** Message pour l'utilisateur, et détail technique pour le support. */
   error: string | null;
   errorDetail: string | null;
+  /** Étape qui a échoué (phase « error ») : celle que « Réessayer » relance. */
+  failedStep: "check" | "install" | null;
   releasePage: string;
 }
 

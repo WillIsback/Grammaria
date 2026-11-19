@@ -23,6 +23,9 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 /// Page de la dernière version stable, pour un téléchargement à la main.
 const RELEASE_PAGE: &str = "https://github.com/WillIsback/Grammaria/releases/latest";
 
+/// Temps laissé pour lire le message avant un redémarrage de secours.
+const RESTART_DELAY: Duration = Duration::from_secs(6);
+
 /// Délai maximal de la recherche d'une mise à jour.
 const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 
@@ -49,7 +52,30 @@ pub enum Phase {
     Available,
     Downloading,
     Installing,
+    /// Aucun manifeste publié : pas de mise à jour disponible pour le moment.
+    NoRelease,
     Error,
+}
+
+/// Étape qui a échoué (phase `Error`) : « Réessayer » relance celle-là.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Step {
+    Check,
+    Install,
+}
+
+/// Issue d'une recherche.
+#[derive(Debug)]
+enum CheckOutcome {
+    Found {
+        version: String,
+        notes: Option<String>,
+    },
+    UpToDate,
+    /// Le manifeste n'existe pas (encore) sur la dernière release.
+    NoRelease,
+    Failed(String),
 }
 
 /// État transmis à l'interface.
@@ -69,7 +95,103 @@ pub struct Status {
     /// Message d'erreur en français, et détail technique pour le support.
     error: Option<String>,
     error_detail: Option<String>,
+    /// Étape en échec quand `phase` vaut `Error`.
+    failed_step: Option<Step>,
     release_page: &'static str,
+}
+
+impl Status {
+    fn new(current_version: String, mode: Mode) -> Self {
+        Self {
+            current_version,
+            mode,
+            phase: Phase::Idle,
+            version: None,
+            notes: None,
+            downloaded: 0,
+            total: None,
+            error: None,
+            error_detail: None,
+            failed_step: None,
+            release_page: RELEASE_PAGE,
+        }
+    }
+
+    fn clear_error(&mut self) {
+        self.error = None;
+        self.error_detail = None;
+        self.failed_step = None;
+    }
+
+    fn fail(&mut self, step: Step, message: &str, detail: String) {
+        self.phase = Phase::Error;
+        self.error = Some(message.to_string());
+        self.error_detail = Some(detail);
+        self.failed_step = Some(step);
+    }
+
+    /// Démarre une recherche, sauf si une étape est déjà en cours.
+    fn begin_check(&mut self) -> bool {
+        let busy = matches!(
+            self.phase,
+            Phase::Checking | Phase::Downloading | Phase::Installing
+        );
+        if self.mode == Mode::Inactive || busy {
+            return false;
+        }
+        self.phase = Phase::Checking;
+        self.clear_error();
+        true
+    }
+
+    /// Enregistre l'issue d'une recherche. Renvoie faux, sans rien changer, si
+    /// l'état n'est plus « recherche en cours » : une recherche qui se termine
+    /// ne doit jamais écraser un téléchargement ou une installation.
+    fn finish_check(&mut self, outcome: CheckOutcome) -> bool {
+        if self.phase != Phase::Checking {
+            return false;
+        }
+        match outcome {
+            CheckOutcome::Found { version, notes } => {
+                self.phase = Phase::Available;
+                self.version = Some(version);
+                self.notes = notes.filter(|notes| !notes.trim().is_empty());
+            }
+            CheckOutcome::UpToDate | CheckOutcome::NoRelease => {
+                self.phase = if matches!(outcome, CheckOutcome::UpToDate) {
+                    Phase::UpToDate
+                } else {
+                    Phase::NoRelease
+                };
+                self.version = None;
+                self.notes = None;
+            }
+            // La version trouvée auparavant, s'il y en a une, reste proposée.
+            CheckOutcome::Failed(detail) => self.fail(
+                Step::Check,
+                "Impossible de vérifier les mises à jour. Vérifiez votre connexion à Internet, puis réessayez.",
+                detail,
+            ),
+        }
+        true
+    }
+
+    /// Démarre l'installation : seulement en mode automatique, avec une mise à
+    /// jour trouvée, et jamais pendant une recherche ou une installation.
+    fn begin_install(&mut self, has_pending: bool) -> bool {
+        let busy = matches!(
+            self.phase,
+            Phase::Checking | Phase::Downloading | Phase::Installing
+        );
+        if self.mode != Mode::Auto || busy || !has_pending {
+            return false;
+        }
+        self.phase = Phase::Downloading;
+        self.downloaded = 0;
+        self.total = None;
+        self.clear_error();
+        true
+    }
 }
 
 struct Inner {
@@ -92,18 +214,10 @@ impl UpdateState {
             .and_then(|pubkey| pubkey.as_str())
             .unwrap_or_default();
         Self(Mutex::new(Inner {
-            status: Status {
-                current_version: app.package_info().version.to_string(),
-                mode: mode_for(bundle_type(), pubkey),
-                phase: Phase::Idle,
-                version: None,
-                notes: None,
-                downloaded: 0,
-                total: None,
-                error: None,
-                error_detail: None,
-                release_page: RELEASE_PAGE,
-            },
+            status: Status::new(
+                app.package_info().version.to_string(),
+                mode_for(bundle_type(), pubkey),
+            ),
             pending: None,
         }))
     }
@@ -142,12 +256,6 @@ pub fn is_stable_upgrade(current: &Version, candidate: &Version) -> bool {
     candidate.pre.is_empty() && candidate > current
 }
 
-fn fail(inner: &mut Inner, message: &str, detail: String) {
-    inner.status.phase = Phase::Error;
-    inner.status.error = Some(message.to_string());
-    inner.status.error_detail = Some(detail);
-}
-
 /// État courant, sans rien déclencher.
 #[tauri::command]
 pub fn update_status(state: State<'_, UpdateState>) -> Status {
@@ -157,20 +265,7 @@ pub fn update_status(state: State<'_, UpdateState>) -> Status {
 /// Recherche une version stable plus récente. Ne télécharge rien.
 #[tauri::command]
 pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Result<Status, String> {
-    let start = state.update(|inner| {
-        let busy = matches!(
-            inner.status.phase,
-            Phase::Checking | Phase::Downloading | Phase::Installing
-        );
-        if inner.status.mode == Mode::Inactive || busy {
-            return false;
-        }
-        inner.status.phase = Phase::Checking;
-        inner.status.error = None;
-        inner.status.error_detail = None;
-        true
-    });
-    if !start {
+    if !state.update(|inner| inner.status.begin_check()) {
         return Ok(state.status());
     }
 
@@ -191,24 +286,23 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
     };
 
     Ok(state.update(|inner| {
-        match found {
-            Ok(Some(update)) => {
-                inner.status.phase = Phase::Available;
-                inner.status.version = Some(update.version.clone());
-                inner.status.notes = update.body.clone().filter(|notes| !notes.trim().is_empty());
-                inner.pending = Some(update);
-            }
-            Ok(None) => {
-                inner.status.phase = Phase::UpToDate;
-                inner.status.version = None;
-                inner.status.notes = None;
-                inner.pending = None;
-            }
-            Err(error) => fail(
-                inner,
-                "Impossible de vérifier les mises à jour. Vérifiez votre connexion à Internet, puis réessayez.",
-                error.to_string(),
+        let (outcome, update) = match found {
+            Ok(Some(update)) => (
+                CheckOutcome::Found {
+                    version: update.version.clone(),
+                    notes: update.body.clone(),
+                },
+                Some(update),
             ),
+            Ok(None) => (CheckOutcome::UpToDate, None),
+            // Aucun manifeste sur la dernière release (404) : ce n'est pas une
+            // panne de connexion, il n'y a simplement rien à proposer.
+            Err(tauri_plugin_updater::Error::ReleaseNotFound) => (CheckOutcome::NoRelease, None),
+            Err(error) => (CheckOutcome::Failed(error.to_string()), None),
+        };
+        let failed = matches!(outcome, CheckOutcome::Failed(_));
+        if inner.status.finish_check(outcome) && !failed {
+            inner.pending = update;
         }
         inner.status.clone()
     }))
@@ -220,18 +314,12 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
 #[tauri::command]
 pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
     let update = state.update(|inner| {
-        if inner.status.mode != Mode::Auto
-            || matches!(inner.status.phase, Phase::Downloading | Phase::Installing)
-        {
-            return None;
+        let update = inner.pending.clone();
+        if inner.status.begin_install(update.is_some()) {
+            update
+        } else {
+            None
         }
-        let update = inner.pending.clone()?;
-        inner.status.phase = Phase::Downloading;
-        inner.status.downloaded = 0;
-        inner.status.total = None;
-        inner.status.error = None;
-        inner.status.error_detail = None;
-        Some(update)
     });
     let Some(update) = update else {
         return state.status();
@@ -264,13 +352,29 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
             }
             // Signature invalide, téléchargement coupé, dossier non modifiable… :
             // rien n'a été installé, la mise à jour reste proposée.
-            Err(error) => app.state::<UpdateState>().update(|inner| {
-                fail(
-                    inner,
-                    "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée.",
-                    error.to_string(),
-                );
-            }),
+            Err(error) => {
+                // Windows : le serveur embarqué est arrêté juste avant de lancer
+                // l'installeur. Si ce lancement échoue, l'application n'a plus
+                // de serveur : on prévient, puis on la redémarre.
+                let server_stopped = !crate::server_running(&app);
+                app.state::<UpdateState>().update(|inner| {
+                    inner.status.fail(
+                        Step::Install,
+                        if server_stopped {
+                            "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée ; Grammaria redémarre dans quelques secondes."
+                        } else {
+                            "La mise à jour n'a pas pu être installée. Votre version actuelle est conservée."
+                        },
+                        error.to_string(),
+                    );
+                });
+                if server_stopped {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(RESTART_DELAY);
+                        app.request_restart();
+                    });
+                }
+            }
         }
     });
 
@@ -330,24 +434,110 @@ mod tests {
 
     #[test]
     fn l_etat_est_serialise_en_camel_case() {
-        let status = Status {
-            current_version: "0.3.0".into(),
-            mode: Mode::Auto,
-            phase: Phase::UpToDate,
-            version: None,
-            notes: None,
-            downloaded: 0,
-            total: None,
-            error: None,
-            error_detail: None,
-            release_page: RELEASE_PAGE,
-        };
+        let mut status = Status::new("0.3.0".into(), Mode::Auto);
+        status.phase = Phase::UpToDate;
         let json = serde_json::to_value(&status).expect("sérialisable");
         assert_eq!(json["currentVersion"], "0.3.0");
         assert_eq!(json["mode"], "auto");
         assert_eq!(json["phase"], "upToDate");
         assert_eq!(json["releasePage"], RELEASE_PAGE);
         assert!(json["errorDetail"].is_null());
+        assert!(json["failedStep"].is_null());
+        status.fail(Step::Check, "message", "détail".into());
+        let json = serde_json::to_value(&status).expect("sérialisable");
+        assert_eq!(json["phase"], "error");
+        assert_eq!(json["failedStep"], "check");
+        status.phase = Phase::NoRelease;
+        assert_eq!(
+            serde_json::to_value(&status).expect("sérialisable")["phase"],
+            "noRelease"
+        );
+    }
+
+    fn found(version: &str) -> CheckOutcome {
+        CheckOutcome::Found {
+            version: version.into(),
+            notes: Some("  ".into()),
+        }
+    }
+
+    #[test]
+    fn une_recherche_ne_demarre_pas_pendant_une_autre_etape() {
+        for phase in [Phase::Checking, Phase::Downloading, Phase::Installing] {
+            let mut status = Status::new("0.3.0".into(), Mode::Auto);
+            status.phase = phase;
+            assert!(!status.begin_check());
+            assert_eq!(status.phase, phase);
+        }
+        let mut inactive = Status::new("0.3.0".into(), Mode::Inactive);
+        assert!(!inactive.begin_check());
+        assert_eq!(inactive.phase, Phase::Idle);
+    }
+
+    #[test]
+    fn l_installation_est_refusee_pendant_une_recherche() {
+        let mut status = Status::new("0.3.0".into(), Mode::Auto);
+        assert!(status.begin_check());
+        // Une mise à jour trouvée plus tôt ne suffit pas : la recherche est en cours.
+        assert!(!status.begin_install(true));
+        assert_eq!(status.phase, Phase::Checking);
+
+        assert!(status.finish_check(found("0.3.1")));
+        assert_eq!(status.phase, Phase::Available);
+        assert_eq!(status.notes, None);
+        assert!(!status.begin_install(false));
+        assert!(status.begin_install(true));
+        assert_eq!(status.phase, Phase::Downloading);
+        // Pas de second téléchargement en parallèle.
+        assert!(!status.begin_install(true));
+
+        let mut manual = Status::new("0.3.0".into(), Mode::Manual);
+        manual.phase = Phase::Available;
+        assert!(!manual.begin_install(true));
+    }
+
+    #[test]
+    fn la_fin_d_une_recherche_n_ecrase_pas_une_installation() {
+        for phase in [Phase::Downloading, Phase::Installing] {
+            let mut status = Status::new("0.3.0".into(), Mode::Auto);
+            status.phase = phase;
+            status.version = Some("0.3.1".into());
+            assert!(!status.finish_check(CheckOutcome::UpToDate));
+            assert!(!status.finish_check(CheckOutcome::Failed("réseau".into())));
+            assert_eq!(status.phase, phase);
+            assert_eq!(status.version.as_deref(), Some("0.3.1"));
+            assert_eq!(status.error, None);
+        }
+    }
+
+    #[test]
+    fn l_etape_en_echec_est_connue_et_la_version_trouvee_reste_proposee() {
+        let mut status = Status::new("0.3.0".into(), Mode::Auto);
+        status.begin_check();
+        status.finish_check(found("0.3.1"));
+        // Nouvelle recherche, qui échoue : c'est la recherche qu'il faut relancer.
+        assert!(status.begin_check());
+        assert!(status.finish_check(CheckOutcome::Failed("réseau".into())));
+        assert_eq!(status.phase, Phase::Error);
+        assert_eq!(status.failed_step, Some(Step::Check));
+        assert_eq!(status.version.as_deref(), Some("0.3.1"));
+
+        // Installation en échec : c'est l'installation qu'il faut relancer.
+        assert!(status.begin_install(true));
+        assert_eq!(status.failed_step, None);
+        status.fail(Step::Install, "message", "signature".into());
+        assert_eq!(status.failed_step, Some(Step::Install));
+        assert!(status.begin_install(true));
+    }
+
+    #[test]
+    fn un_manifeste_introuvable_n_est_pas_une_panne_de_connexion() {
+        let mut status = Status::new("0.3.0".into(), Mode::Auto);
+        status.begin_check();
+        assert!(status.finish_check(CheckOutcome::NoRelease));
+        assert_eq!(status.phase, Phase::NoRelease);
+        assert_eq!(status.error, None);
+        assert_eq!(status.failed_step, None);
     }
 
     /// La capability ne doit s'appliquer qu'au serveur local, quel que soit
