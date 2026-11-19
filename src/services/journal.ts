@@ -1,8 +1,13 @@
 import type { Analysis } from "../analysis/analyze";
+import type { Intervention, Reussite } from "../analysis/regles/intervention";
 import type { LTMatch, WeekSummary } from "../types";
 
 export interface AnalysisResponse extends Analysis {
   week: WeekSummary;
+  /** Astuce ou choix à deux formes à afficher près du bouton Copier. */
+  intervention?: Intervention | null;
+  /** Règles devenues « acquises » avec ce texte. */
+  reussites?: Reussite[];
 }
 
 /** Envoie le texte d'origine, le texte corrigé et les détections au journal. */
@@ -20,6 +25,16 @@ export async function analyzeCorrection(
   });
   if (!response.ok) throw new Error(`Analyse indisponible: ${response.status}`);
   return response.json();
+}
+
+/** Signale au journal la forme cliquée lors du choix à deux formes. */
+export async function answerChoice(ruleKey: string, correct: boolean): Promise<void> {
+  const response = await fetch("/api/rules/answer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ruleKey, correct }),
+  });
+  if (!response.ok) throw new Error(`Réponse non enregistrée: ${response.status}`);
 }
 
 export async function purgeJournal(): Promise<void> {
