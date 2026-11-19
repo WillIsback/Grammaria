@@ -135,6 +135,12 @@ export interface OptionsGestionnaire {
   originesCors: readonly string[];
   /** `top_k` envoyé au modèle s'il est > 0 (-1 : désactivé, non envoyé). */
   llmTopK: number;
+  /**
+   * Annule la requête au modèle dès l'abandon du signal de la requête (`req.signal`), même
+   * avant le premier fragment. Bureau seulement : la requête vient du pont, dont le signal est
+   * celui de l'interface. Sans effet sur le serveur (non défini).
+   */
+  suivreAbandonRequete?: boolean;
   /** Horloge en millisecondes (Date.now par défaut). */
   horloge?: () => number;
 }

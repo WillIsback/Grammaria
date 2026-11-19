@@ -84,4 +84,47 @@ describe("build web habituel (vp build)", () => {
       expect(contenu).not.toContain("org.languagetool");
     }
   });
+
+  it("n'embarque ni l'amorce ni le pont du bureau (un seul paquet JavaScript)", () => {
+    const scripts = fichiers(dossier).filter((f) => f.endsWith(".js"));
+    expect(scripts).toHaveLength(1);
+    const contenu = readFileSync(scripts[0], "utf8");
+    for (const commande of ["db_read_many", "llm_chat", "settings_get"]) {
+      expect(contenu).not.toContain(commande);
+    }
+  });
+});
+
+describe("build de l'interface du bureau (vp build --mode bureau-interface)", () => {
+  let dossier: string;
+  beforeAll(async () => {
+    dossier = join(temporaire, "bureau-interface");
+    await build({
+      root: RACINE,
+      configFile: join(RACINE, "vite.config.ts"),
+      mode: "bureau-interface",
+      logLevel: "silent",
+      build: { outDir: dossier },
+    });
+  }, BUILD_MS);
+
+  it("charge l'amorce (pont, journal, commandes Rust) dans un paquet à part", () => {
+    const scripts = fichiers(dossier).filter((f) => f.endsWith(".js"));
+    expect(scripts.length).toBeGreaterThan(1);
+    const tout = scripts.map((f) => readFileSync(f, "utf8")).join("\n");
+    for (const commande of ["db_read_many", "llm_chat", "llm_cancel", "settings_get"]) {
+      expect(tout).toContain(commande);
+    }
+    // Ni Worker ni archive : ils viennent du build `--mode bureau`.
+    expect(tout).not.toContain("LTPACK01");
+  });
+
+  it("aucune construction qui évalue du code (CSP sans unsafe-eval)", () => {
+    // L'import dynamique, interdit dans le Worker (un seul fichier), charge ici l'amorce et
+    // les chunks de l'interface, servis par l'application (script-src 'self').
+    for (const f of fichiers(dossier).filter((p) => p.endsWith(".js"))) {
+      const interdites = constructionsInterdites(readFileSync(f, "utf8"));
+      expect(interdites.filter((c) => c.nom !== "import dynamique")).toEqual([]);
+    }
+  });
 });

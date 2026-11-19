@@ -169,7 +169,11 @@ export function creerGestionnaire(
 
         try {
           return json({ words: await motsValides.ajouter(word) }, headers);
-        } catch {
+        } catch (error) {
+          // Bureau : Rust valide le mot à son tour et répond « Invalid word ».
+          if (error instanceof Error && error.message === "Invalid word") {
+            return json({ error: "Invalid word" }, headers, 400);
+          }
           return json({ error: "Failed to save word" }, headers, 500);
         }
       }
@@ -309,6 +313,11 @@ export function creerGestionnaire(
 
       // Annule la requête au modèle quand l'interface abandonne le flux.
       const abort = new AbortController();
+      // Bureau : l'abandon de la requête par l'interface annule aussi l'attente du premier
+      // fragment (le flux de réponse n'existe pas encore).
+      if (options.suivreAbandonRequete) {
+        req.signal.addEventListener("abort", () => abort.abort(), { once: true });
+      }
 
       try {
         // req.json() returns unknown JSON structure
