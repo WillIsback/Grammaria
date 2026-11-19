@@ -9,6 +9,7 @@ import {
   type FamilleBadge,
   type MesureBadge,
   type UniteBadge,
+  UNITES,
 } from "./catalogue";
 import type { EtatBadge } from "./evaluation";
 
@@ -59,25 +60,20 @@ export function annonce(def: DefinitionBadge): BadgeAnnonce {
 export function vueCatalogue(
   etats: EtatBadge[],
   obtenus: ReadonlyMap<string, number>,
-  catalogue: readonly DefinitionBadge[] = BADGES,
 ): CatalogueBadges {
   const parId = new Map(etats.map((e) => [e.id, e]));
-  const badges = catalogue.map((def): BadgeVue => {
+  // Le seuil n'apparaît que dans la progression.
+  const badges = BADGES.map(({ seuil, ...def }): BadgeVue => {
     const etat = parId.get(def.id);
     const obtenuLe = obtenus.get(def.id) ?? null;
     return {
-      id: def.id,
-      famille: def.famille,
-      titre: def.titre,
-      description: def.description,
-      critere: def.critere,
-      mesure: def.mesure,
-      unite: def.unite,
+      ...def,
+      unite: UNITES[def.mesure],
       obtenu: obtenuLe !== null,
       obtenuLe,
       progression: {
         valeur: etat?.valeur ?? 0,
-        seuil: def.seuil,
+        seuil,
         ...(etat?.detail ? { detail: etat.detail } : {}),
         ...(etat?.ratio !== undefined ? { ratio: etat.ratio } : {}),
       },

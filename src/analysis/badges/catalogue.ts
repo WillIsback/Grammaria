@@ -67,7 +67,6 @@ export interface DefinitionBadge {
   mesure: MesureBadge;
   /** Valeur à atteindre (le palier). Pour `noteMoyenne`, une note sur 20. */
   seuil: number;
-  unite: UniteBadge;
 }
 
 /** Un texte trop court ne compte pas comme « sans faute ». */
@@ -85,12 +84,20 @@ export const NOTE_MOYENNE = {
 export const PREFIXE_HOMOPHONES = "PAIRE:";
 
 const TEXTE: UniteBadge = { singulier: "texte", pluriel: "textes" };
-const JOUR: UniteBadge = { singulier: "jour", pluriel: "jours" };
-const SEMAINE: UniteBadge = { singulier: "semaine", pluriel: "semaines" };
 const REGLE: UniteBadge = { singulier: "règle", pluriel: "règles" };
-const FICHE: UniteBadge = { singulier: "fiche", pluriel: "fiches" };
-const NOTE: UniteBadge = { singulier: "sur 20", pluriel: "sur 20" };
-const REPONSE: UniteBadge = { singulier: "bonne réponse", pluriel: "bonnes réponses" };
+
+/** Unité de la progression affichée, qui ne dépend que de la mesure. */
+export const UNITES: Record<MesureBadge, UniteBadge> = {
+  textes: TEXTE,
+  jours: { singulier: "jour", pluriel: "jours" },
+  semaines: { singulier: "semaine", pluriel: "semaines" },
+  textesSansFaute: TEXTE,
+  noteMoyenne: { singulier: "sur 20", pluriel: "sur 20" },
+  reglesAcquises: REGLE,
+  homophonesAcquis: { singulier: "fiche", pluriel: "fiches" },
+  rechutesSurmontees: REGLE,
+  reponsesJustes: { singulier: "bonne réponse", pluriel: "bonnes réponses" },
+};
 
 const ACQUISE = `une règle est « acquise » après ${SEUILS.acquisitionJoursSansFaute} jours sans faute, sur au moins ${SEUILS.acquisitionTextesMin} textes corrigés et ${SEUILS.acquisitionJoursActifsMin} jours d'utilisation`;
 
@@ -104,7 +111,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger un premier texte.",
     mesure: "textes",
     seuil: 1,
-    unite: TEXTE,
   },
   {
     id: "textes-10",
@@ -114,7 +120,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger 10 textes.",
     mesure: "textes",
     seuil: 10,
-    unite: TEXTE,
   },
   {
     id: "textes-50",
@@ -124,7 +129,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger 50 textes.",
     mesure: "textes",
     seuil: 50,
-    unite: TEXTE,
   },
   {
     id: "textes-200",
@@ -134,7 +138,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger 200 textes.",
     mesure: "textes",
     seuil: 200,
-    unite: TEXTE,
   },
 
   // — Régularité (cumulative : rien ne se perd si vous faites une pause) —
@@ -146,7 +149,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger des textes sur 5 jours différents, consécutifs ou non.",
     mesure: "jours",
     seuil: 5,
-    unite: JOUR,
   },
   {
     id: "jours-30",
@@ -156,7 +158,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger des textes sur 30 jours différents, consécutifs ou non.",
     mesure: "jours",
     seuil: 30,
-    unite: JOUR,
   },
   {
     id: "semaines-4",
@@ -166,7 +167,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger au moins un texte au cours de 4 semaines différentes, consécutives ou non.",
     mesure: "semaines",
     seuil: 4,
-    unite: SEMAINE,
   },
   {
     id: "semaines-12",
@@ -176,7 +176,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Corriger au moins un texte au cours de 12 semaines différentes, consécutives ou non.",
     mesure: "semaines",
     seuil: 12,
-    unite: SEMAINE,
   },
 
   // — Justesse —
@@ -188,7 +187,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Corriger un texte d'au moins ${MOTS_MIN_SANS_FAUTE} mots sans faute comptée dans la note.`,
     mesure: "textesSansFaute",
     seuil: 1,
-    unite: TEXTE,
   },
   {
     id: "sans-faute-10",
@@ -198,7 +196,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Corriger 10 textes d'au moins ${MOTS_MIN_SANS_FAUTE} mots sans faute comptée dans la note.`,
     mesure: "textesSansFaute",
     seuil: 10,
-    unite: TEXTE,
   },
   {
     id: "note-18",
@@ -208,7 +205,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Atteindre une note moyenne d'au moins 18 sur 20 sur ${NOTE_MOYENNE.fenetreJours} jours glissants, avec au moins ${NOTE_MOYENNE.textesMin} textes corrigés sur la période.`,
     mesure: "noteMoyenne",
     seuil: 18,
-    unite: NOTE,
   },
 
   // — Maîtrise des règles —
@@ -220,7 +216,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Acquérir une première règle (${ACQUISE}).`,
     mesure: "reglesAcquises",
     seuil: 1,
-    unite: REGLE,
   },
   {
     id: "regles-3",
@@ -230,7 +225,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Acquérir 3 règles différentes.`,
     mesure: "reglesAcquises",
     seuil: 3,
-    unite: REGLE,
   },
   {
     id: "regles-5",
@@ -240,7 +234,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Acquérir 5 règles différentes.`,
     mesure: "reglesAcquises",
     seuil: 5,
-    unite: REGLE,
   },
   {
     id: "regles-10",
@@ -250,7 +243,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: `Acquérir 10 règles différentes.`,
     mesure: "reglesAcquises",
     seuil: 10,
-    unite: REGLE,
   },
   {
     id: "homophones-3",
@@ -261,7 +253,6 @@ export const BADGES: readonly DefinitionBadge[] = [
       "Acquérir 3 fiches d'homophones différentes : a / à, ou / où, et / est, on / ont, son / sont, ces / ses, ce / se, c'est / s'est, la / là, sa / ça, peu / peut / peux.",
     mesure: "homophonesAcquis",
     seuil: 3,
-    unite: FICHE,
   },
 
   // — Persévérance —
@@ -273,7 +264,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Acquérir de nouveau une règle après une rechute (une faute sur une règle acquise).",
     mesure: "rechutesSurmontees",
     seuil: 1,
-    unite: REGLE,
   },
   {
     id: "choix-10",
@@ -283,7 +273,6 @@ export const BADGES: readonly DefinitionBadge[] = [
     critere: "Choisir 10 fois la bonne forme lorsque le bouton Copier propose deux formes.",
     mesure: "reponsesJustes",
     seuil: 10,
-    unite: REPONSE,
   },
 ];
 

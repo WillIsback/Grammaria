@@ -241,6 +241,26 @@ describe("Vue du catalogue", () => {
     });
   });
 
+  it("garde la forme de GET /api/badges, unité comprise", () => {
+    const vue = vueCatalogue(evaluerBadges(faits(), jour(0)), new Map());
+    expect(Object.keys(vue.badges[0])).toEqual([
+      "id",
+      "famille",
+      "titre",
+      "description",
+      "critere",
+      "mesure",
+      "unite",
+      "obtenu",
+      "obtenuLe",
+      "progression",
+    ]);
+    const unite = (id: string) => vue.badges.find((b) => b.id === id)?.unite;
+    expect(unite("premier-sans-faute")).toEqual({ singulier: "texte", pluriel: "textes" });
+    expect(unite("note-18")).toEqual({ singulier: "sur 20", pluriel: "sur 20" });
+    expect(unite("choix-10")).toEqual({ singulier: "bonne réponse", pluriel: "bonnes réponses" });
+  });
+
   it("ignore un badge enregistré qui n'existe plus au catalogue", () => {
     const vue = vueCatalogue(evaluerBadges(faits(), jour(0)), new Map([["ancien-badge", 1]]));
     expect(vue.obtenus).toBe(0);

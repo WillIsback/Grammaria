@@ -180,13 +180,9 @@ function evaluerNoteMoyenne(def: DefinitionBadge, faits: FaitsBadges, now: numbe
  * État de chaque badge du catalogue, dans l'ordre du catalogue. Seuls les
  * faits datés au plus tard de `now` sont pris en compte.
  */
-export function evaluerBadges(
-  faits: FaitsBadges,
-  now: number,
-  catalogue: readonly DefinitionBadge[] = BADGES,
-): EtatBadge[] {
+export function evaluerBadges(faits: FaitsBadges, now: number): EtatBadge[] {
   const parMesure = series(faits, now);
-  return catalogue.map((def) => {
+  return BADGES.map((def) => {
     if (def.mesure === "noteMoyenne") return evaluerNoteMoyenne(def, faits, now);
     const { dates } = parMesure[def.mesure];
     return {

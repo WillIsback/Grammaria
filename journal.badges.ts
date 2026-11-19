@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { BADGES, definitionBadge } from "./src/analysis/badges/catalogue.ts";
+import { definitionBadge } from "./src/analysis/badges/catalogue.ts";
 import {
   evaluerBadges,
   type FaitEvenement,
@@ -80,7 +80,7 @@ export class BadgeStore {
 
   /** Catalogue complet : obtenus ou non, date d'obtention et progression. */
   catalogue(now: number = Date.now()): CatalogueBadges {
-    return vueCatalogue(evaluerBadges(this.facts(), now), this.obtained(), BADGES);
+    return vueCatalogue(evaluerBadges(this.facts(), now), this.obtained());
   }
 
   purge(): void {
