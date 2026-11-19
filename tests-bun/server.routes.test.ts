@@ -105,6 +105,13 @@ describe("En-têtes CORS", () => {
     expect(sansOrigine.headers.has("Access-Control-Allow-Origin")).toBe(false);
   });
 
+  it("ne prend pas pour locale une origine qui contient seulement « localhost »", async () => {
+    for (const origine of ["https://localhost.evil.example", "https://127.0.0.1.evil.example"]) {
+      const reponse = await appel("/api/journal", { headers: { Origin: origine } }, serveur);
+      expect(reponse.headers.has("Access-Control-Allow-Origin")).toBe(false);
+    }
+  });
+
   it("accepte les origines de CORS_ORIGIN", async () => {
     const autorisee = await appel(
       "/api/journal",

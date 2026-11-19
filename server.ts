@@ -99,10 +99,19 @@ function rejectForeignRequest(req: Request, url: URL): Response | null {
 }
 
 /** Origine de la requête si elle a le droit de lire la réponse (CORS), sinon null. */
+/** Origine servie depuis cette machine : le nom d'hôte exact, pas une sous-chaîne. */
+function isLocalOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function allowedOrigin(req: Request): string | null {
   const origin = req.headers.get("Origin") ?? "";
-  const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
-  return isLocalhost || config.corsOrigins.includes(origin) ? origin : null;
+  return isLocalOrigin(origin) || config.corsOrigins.includes(origin) ? origin : null;
 }
 
 function getCorsHeaders(req: Request): Headers {
