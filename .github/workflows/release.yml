@@ -8,6 +8,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Pré-version : tag avec suffixe, par exemple v0.2.0-rc.1 ou v0.2.0-1. Elle est
+  # publiée comme pré-version GitHub et ne touche ni à l'image Docker
+  # « latest », ni aux étiquettes major.minor, ni à la release « Latest ».
+  PRERELEASE: ${{ contains(github.ref_name, '-') }}
 
 jobs:
   ci:
@@ -47,8 +51,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -58,9 +62,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      # Une pré-version installe sa propre image ; une version stable, « latest ».
       - name: Patch install.sh with actual image name
+        env:
+          IMAGE_TAG: ${{ env.PRERELEASE == 'true' && steps.meta.outputs.version || 'latest' }}
         run: |
-          sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${{ github.repository }}:latest|g" install.sh
+          sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${{ github.repository }}:${IMAGE_TAG}|g" install.sh
 
       - name: Download desktop packages
         uses: actions/download-artifact@v4
@@ -73,6 +80,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          prerelease: ${{ env.PRERELEASE == 'true' }}
+          make_latest: ${{ env.PRERELEASE == 'true' && 'false' || 'true' }}
           files: |
             install.sh
             desktop/*
