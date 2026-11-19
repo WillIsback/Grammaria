@@ -36,6 +36,7 @@ export default defineConfig({
             { label: "Corriger un texte", link: "/docs/utiliser/corriger/" },
             { label: "Corrections et fiches de règles", link: "/docs/utiliser/corrections/" },
             { label: "Note et journal des fautes", link: "/docs/utiliser/note-et-journal/" },
+            { label: "Progression", link: "/docs/utiliser/progression/" },
           ],
         },
         {
