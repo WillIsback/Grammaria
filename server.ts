@@ -16,6 +16,7 @@ import { isStreamTeardownError } from "./src/utils/streamErrors.ts";
 import {
   createModelDetector,
   downstreamHeaders,
+  isThinkingParamRejection,
   resolveModel,
   upstreamHeaders,
 } from "./src/utils/upstream.ts";
@@ -47,8 +48,16 @@ let llmClient: OpenAI;
 /** Modèle par défaut du serveur LLM, quand ni la config ni l'interface n'en fixent un. */
 let detectModel: () => Promise<string | null>;
 
+/**
+ * Vrai quand le serveur du modèle a refusé `chat_template_kwargs` (paramètre
+ * de vLLM / SGLang qui coupe le raisonnement) : on ne le renvoie plus jusqu'au
+ * prochain changement de réglages.
+ */
+let thinkingParamRejected = false;
+
 /** (Re)crée le client du LLM ; rappelé quand les réglages changent (mode bureau). */
 function connectLlm(): void {
+  thinkingParamRejected = false;
   llmClient = new OpenAI({
     baseURL: `${config.llmTarget}/v1`,
     apiKey: config.llmApiKey || "unused",
@@ -335,7 +344,10 @@ Bun.serve({
           "correction.mode": correctionMode,
         });
 
-        const extraParams = config.llmDisableThinking
+        // Un modèle à raisonnement (Qwen3…) réfléchit avant d'écrire : plusieurs
+        // secondes sans aucun texte affiché. Il est coupé par défaut.
+        let disableThinking = config.llmDisableThinking && !thinkingParamRejected;
+        const extraParams = disableThinking
           ? { chat_template_kwargs: { enable_thinking: false } }
           : {};
 
@@ -348,12 +360,31 @@ Bun.serve({
           ...(config.llmTopK > 0 ? { top_k: config.llmTopK } : {}),
           ...extraParams,
         };
-        // OpenAI SDK requires escape hatch for spread params
-        const stream = (await llmClient.chat.completions.create(
-          createParams as any,
-        )) as unknown as AsyncIterable<{
-          choices?: Array<{ delta?: { content?: string } }>;
-        }>;
+        type LlmChunk = {
+          choices?: Array<{
+            delta?: { content?: string; reasoning_content?: string; reasoning?: string };
+          }>;
+        };
+        const openStream = async (params: object) =>
+          // OpenAI SDK requires escape hatch for spread params
+          (await llmClient.chat.completions.create(
+            params as any,
+          )) as unknown as AsyncIterable<LlmChunk>;
+
+        let stream: AsyncIterable<LlmChunk>;
+        try {
+          stream = await openStream(createParams);
+        } catch (err) {
+          // API qui refuse le paramètre de raisonnement : relancer sans lui.
+          if (!disableThinking || !isThinkingParamRejection(err)) throw err;
+          console.warn(
+            "[LLM] chat_template_kwargs refusé par le serveur du modèle : relance sans ce paramètre.",
+          );
+          thinkingParamRejected = true;
+          disableThinking = false;
+          const { chat_template_kwargs: _kwargs, ...withoutThinking } = createParams as any;
+          stream = await openStream(withoutThinking);
+        }
 
         const encoder = new TextEncoder();
         const readable = new ReadableStream({
@@ -391,12 +422,20 @@ Bun.serve({
               }, keepaliveIntervalMs);
             }
 
+            // Où passe le temps : délai avant le premier mot, et raisonnement
+            // éventuel du modèle (fragments reçus mais jamais affichés).
+            let firstTokenMs: number | null = null;
+            let reasoningChunks = 0;
+
             try {
               startKeepalive();
               try {
                 for await (const chunk of stream) {
-                  const delta: string = chunk.choices?.[0]?.delta?.content ?? "";
+                  const choiceDelta = chunk.choices?.[0]?.delta;
+                  if (choiceDelta?.reasoning_content || choiceDelta?.reasoning) reasoningChunks++;
+                  const delta: string = choiceDelta?.content ?? "";
                   if (!delta) continue;
+                  firstTokenMs ??= Date.now() - startTime;
                   fullContent += delta;
                   // The model answers with the corrected text only: forward each
                   // fragment so the client can display it as it arrives.
@@ -420,8 +459,13 @@ Bun.serve({
               const totalDuration = Date.now() - startTime;
               const outputText = cleanLlmOutput(fullContent);
 
-              console.log(`[LLM] Stream terminé en ${totalDuration}ms`);
+              console.log(
+                `[LLM] Stream terminé en ${totalDuration}ms (premier mot après ${firstTokenMs ?? "—"}ms, ` +
+                  `fragments de raisonnement : ${reasoningChunks}, raisonnement coupé : ${disableThinking})`,
+              );
               span.setAttributes({
+                "llm.first_token_ms": firstTokenMs ?? -1,
+                "llm.reasoning_chunks": reasoningChunks,
                 "output.text": outputText.slice(0, 2000),
                 "output.value": fullContent.slice(0, 2000),
                 "output.mime_type": "text/plain",
@@ -431,7 +475,7 @@ Bun.serve({
 
               safeEnqueue(
                 encoder.encode(
-                  `data: ${JSON.stringify({ done: true, text: outputText, duration: totalDuration })}\n\n`,
+                  `data: ${JSON.stringify({ done: true, text: outputText, duration: totalDuration, firstTokenMs, reasoningChunks })}\n\n`,
                 ),
               );
             } catch (err) {

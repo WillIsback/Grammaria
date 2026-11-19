@@ -32,6 +32,14 @@ export type SettingsUpdate = Partial<LlmSettings>;
 
 const MAX_FIELD_LENGTH = 2_000;
 
+/**
+ * Version du fichier de réglages. Avant la 2, l'application de bureau
+ * démarrait avec le raisonnement du modèle actif et recopiait cette valeur
+ * dans le fichier sans que l'utilisateur l'ait choisie : le champ
+ * `llmDisableThinking` d'un fichier plus ancien est donc ignoré.
+ */
+const SETTINGS_VERSION = 2;
+
 export class SettingsStore {
   constructor(private readonly path: string | null) {
     if (path) Object.assign(config, this.readFile());
@@ -70,7 +78,12 @@ export class SettingsStore {
   private readFile(): Partial<LlmSettings> {
     if (!this.path || !existsSync(this.path)) return {};
     try {
-      return parseUpdate(JSON.parse(readFileSync(this.path, "utf-8")));
+      const raw = JSON.parse(readFileSync(this.path, "utf-8"));
+      if (raw && typeof raw === "object" && (raw.settingsVersion ?? 1) < SETTINGS_VERSION) {
+        delete raw.llmDisableThinking;
+      }
+      delete raw?.settingsVersion;
+      return parseUpdate(raw);
     } catch (error) {
       console.error("[Settings] Fichier de réglages illisible, valeurs par défaut :", error);
       return {};
@@ -82,7 +95,8 @@ export class SettingsStore {
     mkdirSync(dirname(path), { recursive: true });
     const tmp = `${path}.tmp`;
     // La clé API est en clair : fichier lisible par son seul propriétaire.
-    writeFileSync(tmp, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
+    const content = { settingsVersion: SETTINGS_VERSION, ...settings };
+    writeFileSync(tmp, `${JSON.stringify(content, null, 2)}\n`, { mode: 0o600 });
     renameSync(tmp, path);
     try {
       chmodSync(path, 0o600);

@@ -124,3 +124,17 @@ export function createModelDetector(
     return cached;
   };
 }
+
+/**
+ * Vrai si l'erreur d'une API compatible OpenAI signale le refus du paramètre
+ * `chat_template_kwargs` (propre à vLLM / SGLang, qui coupe le raisonnement).
+ * Le serveur relance alors la requête sans ce paramètre.
+ */
+export function isThinkingParamRejection(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const { status, message } = err as { status?: number; message?: string };
+  if (status !== 400 && status !== 422) return false;
+  return /chat_template_kwargs|enable_thinking|unrecognized|unknown (field|parameter|argument)|extra (fields|inputs)/i.test(
+    String(message ?? ""),
+  );
+}

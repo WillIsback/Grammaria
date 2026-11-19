@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
@@ -85,5 +85,51 @@ describe("normalizeTarget", () => {
     ["  https://api.mistral.ai/v1/ ".trim(), "https://api.mistral.ai"],
   ])("%s → %s", (input, expected) => {
     expect(normalizeTarget(input)).toBe(expected);
+  });
+});
+
+// Issue #10 : l'application de bureau démarrait avec le raisonnement actif et
+// recopiait cette valeur dans settings.json sans choix de l'utilisateur.
+describe("SettingsStore — migration du raisonnement (v1 → v2)", () => {
+  beforeEach(() => {
+    Object.assign(config, initial, { llmDisableThinking: true });
+  });
+
+  function fileWith(content: object) {
+    const dir = mkdtempSync(join(tmpdir(), "grammaria-settings-"));
+    const path = join(dir, "settings.json");
+    writeFileSync(path, JSON.stringify(content));
+    return path;
+  }
+
+  it("ignore llmDisableThinking d'un fichier de version 1", () => {
+    const path = fileWith({
+      llmTarget: "http://gpu.tailnet:8000",
+      llmApiKey: "",
+      llmModelName: "",
+      llmDisableThinking: false,
+    });
+    new SettingsStore(path);
+    expect(config.llmTarget).toBe("http://gpu.tailnet:8000");
+    expect(config.llmDisableThinking).toBe(true);
+  });
+
+  it("garde le choix explicite d'un fichier de version 2", () => {
+    const path = fileWith({
+      settingsVersion: 2,
+      llmTarget: "http://gpu:8000",
+      llmDisableThinking: false,
+    });
+    new SettingsStore(path);
+    expect(config.llmDisableThinking).toBe(false);
+  });
+
+  it("écrit la version 2 à l'enregistrement", () => {
+    const path = fileWith({ llmTarget: "http://gpu:8000" });
+    new SettingsStore(path).update({ llmDisableThinking: false });
+    expect(JSON.parse(readFileSync(path, "utf-8"))).toMatchObject({
+      settingsVersion: 2,
+      llmDisableThinking: false,
+    });
   });
 });

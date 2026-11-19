@@ -90,3 +90,29 @@ describe("server.ts — mode bureau", () => {
     );
   });
 });
+
+// Issue #10 : correction ~7 fois plus lente qu'ai_corrector (raisonnement du modèle).
+describe("server.ts — raisonnement du modèle", () => {
+  it("coupe le raisonnement par défaut, sauf si l'API a refusé le paramètre", () => {
+    expect(serverSource).toMatch(
+      /let disableThinking = config\.llmDisableThinking && !thinkingParamRejected;/,
+    );
+  });
+
+  it("relance sans chat_template_kwargs quand l'API le refuse", () => {
+    expect(serverSource).toMatch(/!disableThinking \|\| !isThinkingParamRejection\(err\)/);
+    expect(serverSource).toMatch(/thinkingParamRejected = true;\s*disableThinking = false;/);
+  });
+
+  it("journalise le délai avant le premier mot et les fragments de raisonnement", () => {
+    expect(serverSource).toMatch(/premier mot après/);
+    expect(serverSource).toMatch(/reasoning_content/);
+  });
+});
+
+describe("src-tauri — raisonnement coupé par défaut sur le bureau", () => {
+  const libSource = readFileSync(join(import.meta.dirname, "../../src-tauri/src/lib.rs"), "utf-8");
+  it("ne force plus LLM_DISABLE_THINKING=false", () => {
+    expect(libSource).not.toMatch(/"LLM_DISABLE_THINKING"/);
+  });
+});

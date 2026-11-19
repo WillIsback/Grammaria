@@ -115,9 +115,9 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             path(data_dir.join("valid-words.json")),
         ),
         // Aucun LLM par défaut : l'utilisateur le choisit dans les réglages.
+        // Le raisonnement du modèle reste coupé par défaut (LLM_DISABLE_THINKING
+        // non défini) : le serveur relance sans ce paramètre si une API le refuse.
         ("LLM_TARGET", String::new()),
-        // Réglage propre à vLLM / Qwen3 ; refusé par certaines API.
-        ("LLM_DISABLE_THINKING", "false".into()),
     ]);
 
     let (mut events, child) = handle
