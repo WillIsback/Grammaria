@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Aucune commande Tauri n'est exposée : l'interface parle au serveur local en HTTP.",
+  "description": "Page de démarrage embarquée. L'interface, elle, est servie par le serveur local : ses droits sont dans mise-a-jour.json.",
   "windows": ["main"],
   "permissions": ["core:default"]
 }

@@ -7,6 +7,13 @@
 # quand l'appelant passe `sign: true` (release.yml) ET que les secrets Azure
 # (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET) sont présents.
 # Les builds de pull request ou lancés à la main ne sont jamais signés.
+#
+# Mise à jour automatique : l'application installée vérifie chaque paquet avec
+# une paire de clés propre à Tauri (minisign), distincte de la signature
+# Windows et sans coût Azure. Les signatures (.sig) ne sont produites que pour
+# une release (`sign: true`), quand le secret TAURI_SIGNING_PRIVATE_KEY existe
+# et que la clé publique est renseignée dans src-tauri/tauri.conf.json. Sinon
+# le build reste identique, sans artefact de mise à jour.
 name: build-desktop
 
 on:
@@ -24,7 +31,7 @@ on:
         type: string
         required: true
       sign:
-        description: "Signer les paquets Windows (release uniquement)"
+        description: "Signer les paquets Windows et produire les signatures de mise à jour (release uniquement)"
         type: boolean
         required: false
         default: false
@@ -199,9 +206,38 @@ jobs:
           EOF
           cat src-tauri/tauri.windows-signing.conf.json
 
+      # Décision unique pour la mise à jour automatique. Le fichier de
+      # configuration ajouté active `createUpdaterArtifacts` : Tauri signe alors
+      # l'AppImage et l'installeur NSIS avec la clé privée lue dans les secrets.
+      - name: Décider des artefacts de mise à jour (release uniquement)
+        id: updater
+        shell: bash
+        env:
+          SIGN: ${{ inputs.sign == true }}
+          HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          pubkey=$(node -p 'require("./src-tauri/tauri.conf.json").plugins.updater.pubkey.trim()')
+          if [ "$SIGN" != "true" ]; then
+            echo "Build de test : pas d'artefacts de mise à jour."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_UPDATER_KEY" != "true" ]; then
+            echo "::warning::Release sans secret TAURI_SIGNING_PRIVATE_KEY : pas de mise à jour automatique pour cette version."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$pubkey" ]; then
+            echo "::warning::Clé publique absente de src-tauri/tauri.conf.json (plugins.updater.pubkey) : pas de mise à jour automatique pour cette version."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Build de release : artefacts de mise à jour activés."
+            echo '{ "bundle": { "createUpdaterArtifacts": true } }' > src-tauri/tauri.updater.conf.json
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build Tauri
         shell: bash
         env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ steps.updater.outputs.enabled == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ steps.updater.outputs.enabled == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          UPDATER: ${{ steps.updater.outputs.enabled }}
           AZURE_TENANT_ID: ${{ steps.signing.outputs.enabled == 'true' && secrets.AZURE_TENANT_ID || '' }}
           AZURE_CLIENT_ID: ${{ steps.signing.outputs.enabled == 'true' && secrets.AZURE_CLIENT_ID || '' }}
           AZURE_CLIENT_SECRET: ${{ steps.signing.outputs.enabled == 'true' && secrets.AZURE_CLIENT_SECRET || '' }}
@@ -213,7 +249,16 @@ jobs:
           if [ "$SIGNING" = "true" ]; then
             extra+=(--config src-tauri/tauri.windows-signing.conf.json)
           fi
-          npx tauri build --ci --bundles "$BUNDLES" "${extra[@]}"
+          if [ "$UPDATER" = "true" ]; then
+            extra+=(--config src-tauri/tauri.updater.conf.json)
+          fi
+          npx tauri build --ci --bundles "$BUNDLES" "${extra[@]}" 2>&1 | tee "$RUNNER_TEMP/tauri-build.log"
+          # Tauri ne fait qu'avertir quand la clé privée ne va pas avec la clé
+          # publique ; les applications installées refuseraient alors la mise à jour.
+          if [ "$UPDATER" = "true" ] && grep -q "does not match the public key" "$RUNNER_TEMP/tauri-build.log"; then
+            echo "::error::Le secret TAURI_SIGNING_PRIVATE_KEY ne correspond pas à la clé publique de src-tauri/tauri.conf.json."
+            exit 1
+          fi
 
       # Le serveur embarqué est un exécutable Bun compilé : on vérifie qu'il
       # démarre et que le correcteur grammatical répond, après une éventuelle
@@ -291,20 +336,32 @@ jobs:
             throw "au moins un fichier livré n'est pas signé correctement"
           }
 
+      # Signatures de mise à jour : seuls l'installeur NSIS et l'AppImage se
+      # mettent à jour seuls. Celles du MSI et du .deb ne sont pas publiées.
       - name: Rassembler les paquets et les sommes de contrôle
         shell: bash
+        env:
+          UPDATER: ${{ steps.updater.outputs.enabled }}
         run: |
           set -euo pipefail
           mkdir -p dist-desktop
           bundle=src-tauri/target/release/bundle
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp "$bundle"/nsis/*.exe "$bundle"/msi/*.msi dist-desktop/
+            signature="$bundle"/nsis/*-setup.exe.sig
             sums=SHA256SUMS-windows
           else
             cp "$bundle"/deb/*.deb "$bundle"/appimage/*.AppImage dist-desktop/
+            signature="$bundle"/appimage/*.AppImage.sig
             sums=SHA256SUMS-linux
           fi
           (cd dist-desktop && sha256sum * > "$sums" && cat "$sums")
+          if [ "$UPDATER" = "true" ]; then
+            # Sans signature, la release n'aurait pas de mise à jour : on échoue ici.
+            # shellcheck disable=SC2086
+            cp $signature dist-desktop/
+            ls dist-desktop/*.sig
+          fi
 
       - name: Upload
         uses: actions/upload-artifact@v4

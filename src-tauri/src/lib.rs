@@ -4,6 +4,7 @@
 //! compilé (sidecar `grammaria-server`) sur un port local libre, attend qu'il
 //! réponde, puis affiche son interface. Le serveur est le même que la version
 //! web : correcteur grammatical intégré, journal SQLite, relais vers le LLM.
+//! Seule la mise à jour de l'application vit ici (module `update`).
 
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
@@ -17,11 +18,22 @@ use tauri::{Manager, RunEvent, Url, WebviewWindow};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
+mod update;
+
 /// Délai maximal de démarrage du serveur (chargement des règles compris).
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Processus du serveur, arrêté à la fermeture de l'application.
 struct Sidecar(Mutex<Option<CommandChild>>);
+
+/// Arrête le serveur embarqué (fermeture, redémarrage, mise à jour).
+pub(crate) fn stop_server(app: &tauri::AppHandle) {
+    if let Some(state) = app.try_state::<Sidecar>() {
+        if let Some(child) = state.0.lock().ok().and_then(|mut c| c.take()) {
+            let _ = child.kill();
+        }
+    }
+}
 
 /// Port TCP libre sur 127.0.0.1, choisi par le système.
 fn free_port() -> std::io::Result<u16> {
@@ -196,16 +208,30 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_shell::init())
-        .setup(|app| start_server(app))
+        .plugin(tauri_plugin_opener::init())
+        // Mise à jour : seule une version stable plus récente est proposée.
+        .plugin(
+            tauri_plugin_updater::Builder::new()
+                .default_version_comparator(|current, release| {
+                    update::is_stable_upgrade(&current, &release.version)
+                })
+                .build(),
+        )
+        .invoke_handler(tauri::generate_handler![
+            update::update_status,
+            update::update_check,
+            update::update_install,
+            update::update_open_release_page,
+        ])
+        .setup(|app| {
+            app.manage(update::UpdateState::new(app));
+            start_server(app)
+        })
         .build(tauri::generate_context!())
         .expect("impossible de démarrer Grammaria")
         .run(|app, event| {
             if let RunEvent::Exit = event {
-                if let Some(state) = app.try_state::<Sidecar>() {
-                    if let Some(child) = state.0.lock().ok().and_then(|mut c| c.take()) {
-                        let _ = child.kill();
-                    }
-                }
+                stop_server(app);
             }
         });
 }

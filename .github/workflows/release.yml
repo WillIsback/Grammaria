@@ -49,7 +49,8 @@ jobs:
     needs: check-tag
     uses: ./.github/workflows/ci.yml
 
-  # Application de bureau : seule une release signe les paquets Windows.
+  # Application de bureau : seule une release signe les paquets Windows et
+  # produit les signatures de mise à jour.
   desktop:
     needs: ci
     uses: ./.github/workflows/build-desktop.yml
@@ -107,6 +108,27 @@ jobs:
           pattern: grammaria-desktop-*
           path: desktop
           merge-multiple: true
+
+      # Manifeste de mise à jour de l'application de bureau. Les applications
+      # installées le lisent sur la dernière release stable
+      # (…/releases/latest/download/latest.json) : il n'est donc écrit que pour
+      # une version stable, jamais pour une pré-version (alpha, rc).
+      - name: Setup Bun
+        if: env.PRERELEASE != 'true'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Manifeste de mise à jour (version stable uniquement)
+        if: env.PRERELEASE != 'true'
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! ls desktop/*.sig > /dev/null 2>&1; then
+            echo "::warning::Aucune signature de mise à jour : cette version ne sera pas proposée par la mise à jour automatique (secret TAURI_SIGNING_PRIVATE_KEY ou clé publique manquants)."
+            exit 0
+          fi
+          bun scripts/desktop/update-manifest.ts desktop "$TAG" "$REPO"
+          cat desktop/latest.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
