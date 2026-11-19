@@ -6,7 +6,6 @@
 //! web : correcteur grammatical intégré, journal SQLite, relais vers le LLM.
 //! Seule la mise à jour de l'application vit ici (module `update`).
 
-use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
@@ -93,7 +92,6 @@ fn js_string(value: &str) -> String {
 }
 
 fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let handle = app.handle().clone();
     let window = app
         .get_webview_window("main")
         .ok_or("fenêtre principale introuvable")?;
@@ -107,7 +105,7 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     let port = free_port()?;
     let path = |p: PathBuf| p.to_string_lossy().into_owned();
-    let envs: HashMap<&str, String> = HashMap::from([
+    let envs = [
         ("GRAMMARIA_DESKTOP", "1".into()),
         // Le serveur s'arrête quand l'entrée standard (tube tenu par
         // l'application) se ferme : pas de processus orphelin après un plantage.
@@ -129,9 +127,9 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         // Le raisonnement du modèle reste coupé par défaut (LLM_DISABLE_THINKING
         // non défini) : le serveur relance sans ce paramètre si une API le refuse.
         ("LLM_TARGET", String::new()),
-    ]);
+    ];
 
-    let (mut events, child) = handle
+    let (mut events, child) = app
         .shell()
         .sidecar("grammaria-server")?
         .envs(envs)
@@ -141,7 +139,7 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Sortie du serveur → server.log, pour le support.
     let log_for_events = log_path.clone();
     let window_for_events = window.clone();
-    let app_for_events = handle.clone();
+    let app_for_events = app.handle().clone();
     tauri::async_runtime::spawn(async move {
         let mut log = OpenOptions::new()
             .create(true)
