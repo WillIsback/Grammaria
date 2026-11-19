@@ -26,7 +26,6 @@ import {
 
 const tracer = trace.getTracer("grammaria");
 
-const PORT = config.port;
 const DIST_DIR = resolve(config.distDir || join(import.meta.dir, "dist"));
 const VALID_WORDS_PATH =
   config.validWordsPath || join(import.meta.dir, "public", "data", "valid-words.json");
@@ -44,10 +43,16 @@ grammar.warmUp();
 
 /** Taille maximale d'un texte accepté par /api/check et /api/analyze (caractères). */
 const MAX_ANALYZE_LENGTH = 20_000;
-/** Routes du cycle de vie des règles. */
-const RULE_PATHS = new Set(["/api/rules", "/api/rules/events", "/api/rules/answer"]);
-/** Écran « Progression » : tout l'écran en une seule requête (issue #15). */
-const PROGRESS_PATH = "/api/progress";
+/** Routes de l'analyse et du journal (badges, progression, cycle de vie des règles). */
+const JOURNAL_PATHS = new Set([
+  "/api/analyze",
+  "/api/journal",
+  "/api/progress",
+  "/api/badges",
+  "/api/rules",
+  "/api/rules/events",
+  "/api/rules/answer",
+]);
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
 
@@ -93,16 +98,41 @@ function rejectForeignRequest(req: Request, url: URL): Response | null {
   return null;
 }
 
-function getCorsHeaders(req: Request): Headers {
+/** Origine de la requête si elle a le droit de lire la réponse (CORS), sinon null. */
+function allowedOrigin(req: Request): string | null {
   const origin = req.headers.get("Origin") ?? "";
   const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
-  const isAllowed = isLocalhost || config.corsOrigins.some((o) => origin === o);
-  const headers = new Headers();
-  headers.set("Content-Type", "application/json");
-  if (isAllowed) {
-    headers.set("Access-Control-Allow-Origin", origin);
-  }
+  return isLocalhost || config.corsOrigins.includes(origin) ? origin : null;
+}
+
+function getCorsHeaders(req: Request): Headers {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  const origin = allowedOrigin(req);
+  if (origin !== null) headers.set("Access-Control-Allow-Origin", origin);
   return headers;
+}
+
+/** En-têtes des erreurs du relais LLM : sans CORS. */
+const JSON_ONLY = { "Content-Type": "application/json" };
+
+function json(body: unknown, headers: HeadersInit, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+/** Réponse à une pré-vérification CORS (OPTIONS). */
+function preflight(headers: Headers, methods: string): Response {
+  headers.set("Access-Control-Allow-Methods", methods);
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return new Response(null, { headers });
+}
+
+/** Corps JSON non typé de la requête, validé par l'appelant ; undefined s'il est illisible. */
+async function readJson(req: Request): Promise<any> {
+  try {
+    return await req.json();
+  } catch {
+    return undefined;
+  }
 }
 
 function readValidWords(): string[] {
@@ -121,7 +151,7 @@ function writeValidWords(words: string[]): void {
 }
 
 Bun.serve({
-  port: PORT,
+  port: config.port,
   hostname: config.host,
   async fetch(req: Request, server: Bun.Server<undefined>): Promise<Response> {
     const url = new URL(req.url);
@@ -133,106 +163,61 @@ Bun.serve({
     // === API: Réglages du LLM (modifiables en mode bureau uniquement) ===
     if (path === "/api/settings") {
       const headers = getCorsHeaders(req);
-      if (req.method === "GET") {
-        return new Response(JSON.stringify(settings.publicView()), { headers });
-      }
+      if (req.method === "GET") return json(settings.publicView(), headers);
       if (req.method === "PUT") {
-        if (!settings.editable) {
-          return new Response(JSON.stringify({ error: "Settings are read-only" }), {
-            status: 403,
-            headers,
-          });
-        }
+        if (!settings.editable) return json({ error: "Settings are read-only" }, headers, 403);
         try {
           const view = settings.update(await req.json());
           connectLlm();
-          return new Response(JSON.stringify(view), { headers });
+          return json(view, headers);
         } catch (error) {
-          return new Response(
-            JSON.stringify({ error: error instanceof Error ? error.message : "Invalid settings" }),
-            { status: 400, headers },
-          );
+          const message = error instanceof Error ? error.message : "Invalid settings";
+          return json({ error: message }, headers, 400);
         }
       }
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
+      return json({ error: "Method not allowed" }, headers, 405);
     }
 
     // === API: Valid Words ===
+    // Les autres méthodes n'ont pas de 405 : elles retombent sur les fichiers statiques.
     if (path === "/api/valid-words") {
       const headers = getCorsHeaders(req);
 
-      if (req.method === "OPTIONS") {
-        const corsHeaders = getCorsHeaders(req);
-        corsHeaders.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        corsHeaders.set("Access-Control-Allow-Headers", "Content-Type");
-        return new Response(null, { headers: corsHeaders });
-      }
+      if (req.method === "OPTIONS") return preflight(headers, "GET, POST, OPTIONS");
 
-      if (req.method === "GET") {
-        return new Response(JSON.stringify({ words: readValidWords() }), { headers });
-      }
+      if (req.method === "GET") return json({ words: readValidWords() }, headers);
 
       if (req.method === "POST") {
-        try {
-          const body = await req.json();
-          const word = typeof body.word === "string" ? body.word.trim() : "";
-          if (!word || word.length > 100 || !/^[\p{L}''\-\s]+$/u.test(word)) {
-            return new Response(JSON.stringify({ error: "Invalid word" }), {
-              status: 400,
-              headers,
-            });
-          }
-
-          const words = readValidWords();
-          if (!words.includes(word)) {
-            words.push(word);
-            try {
-              writeValidWords(words);
-            } catch {
-              return new Response(JSON.stringify({ error: "Failed to save word" }), {
-                status: 500,
-                headers,
-              });
-            }
-          }
-
-          return new Response(JSON.stringify({ words }), { headers });
-        } catch {
-          return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-            status: 400,
-            headers,
-          });
+        const body = await readJson(req);
+        // null aussi : il n'a pas de champ à lire.
+        if (body == null) return json({ error: "Invalid JSON" }, headers, 400);
+        const word = typeof body.word === "string" ? body.word.trim() : "";
+        if (!word || word.length > 100 || !/^[\p{L}''\-\s]+$/u.test(word)) {
+          return json({ error: "Invalid word" }, headers, 400);
         }
+
+        const words = readValidWords();
+        if (!words.includes(word)) {
+          words.push(word);
+          try {
+            writeValidWords(words);
+          } catch {
+            return json({ error: "Failed to save word" }, headers, 500);
+          }
+        }
+        return json({ words }, headers);
       }
     }
 
     // === API: Analyse (diff + croisement des détections grammaticales) et journal ===
-    if (
-      path === "/api/analyze" ||
-      path === "/api/journal" ||
-      path === PROGRESS_PATH ||
-      path === "/api/badges" ||
-      RULE_PATHS.has(path)
-    ) {
+    if (JOURNAL_PATHS.has(path)) {
       const headers = getCorsHeaders(req);
 
-      if (req.method === "OPTIONS") {
-        headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type");
-        return new Response(null, { headers });
-      }
+      if (req.method === "OPTIONS") return preflight(headers, "GET, POST, DELETE, OPTIONS");
 
       if (path === "/api/analyze" && req.method === "POST") {
-        // corps JSON non typé, validé ci-dessous
-        let body: any;
-        try {
-          body = await req.json();
-        } catch {
-          return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
-        }
+        const body = await readJson(req);
+        if (body === undefined) return json({ error: "Invalid JSON" }, headers, 400);
         const { original, corrected, matches } = body ?? {};
         if (
           typeof original !== "string" ||
@@ -241,10 +226,7 @@ Bun.serve({
           original.length > MAX_ANALYZE_LENGTH ||
           corrected.length > MAX_ANALYZE_LENGTH
         ) {
-          return new Response(JSON.stringify({ error: "Invalid payload" }), {
-            status: 400,
-            headers,
-          });
+          return json({ error: "Invalid payload" }, headers, 400);
         }
         const validMatches = matches.filter(
           (m) =>
@@ -259,20 +241,15 @@ Bun.serve({
         const suivi = journal.record(analysis, Date.now(), { original });
         // Badges : une erreur de calcul n'empêche jamais l'analyse.
         const nouveauxBadges = awardBadgesSafely(journal.badges);
-        return new Response(
-          JSON.stringify({
-            ...analysis,
-            week: journal.period(SCORE_WINDOW_DAYS),
-            ...suivi,
-            nouveauxBadges,
-          }),
-          { headers },
+        return json(
+          { ...analysis, week: journal.period(SCORE_WINDOW_DAYS), ...suivi, nouveauxBadges },
+          headers,
         );
       }
 
       // Badges de progression : catalogue complet, obtenus ou non.
       if (path === "/api/badges" && req.method === "GET") {
-        return new Response(JSON.stringify(journal.badges.catalogue()), { headers });
+        return json(journal.badges.catalogue(), headers);
       }
 
       // Cycle de vie des règles : lecture pour le tableau de bord et les badges.
@@ -281,7 +258,7 @@ Bun.serve({
         const counts = Object.fromEntries(
           ETATS_CYCLE.map((etat) => [etat, rules.filter((r) => r.state === etat).length]),
         );
-        return new Response(JSON.stringify({ rules, counts, thresholds: SEUILS }), { headers });
+        return json({ rules, counts, thresholds: SEUILS }, headers);
       }
 
       if (path === "/api/rules/events" && req.method === "GET") {
@@ -290,100 +267,65 @@ Bun.serve({
           limit: Number.isFinite(limit) ? limit : 200,
           ruleKey: url.searchParams.get("ruleKey") ?? undefined,
         });
-        return new Response(JSON.stringify({ events }), { headers });
+        return json({ events }, headers);
       }
 
       // Réponse au choix à deux formes du bouton Copier.
       if (path === "/api/rules/answer" && req.method === "POST") {
-        // corps JSON non typé, validé ci-dessous
-        let body: any;
-        try {
-          body = await req.json();
-        } catch {
-          return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
-        }
+        const body = await readJson(req);
+        if (body === undefined) return json({ error: "Invalid JSON" }, headers, 400);
         if (!Number.isSafeInteger(body?.choiceId) || typeof body?.correct !== "boolean") {
-          return new Response(JSON.stringify({ error: "Invalid payload" }), {
-            status: 400,
-            headers,
-          });
+          return json({ error: "Invalid payload" }, headers, 400);
         }
         const result = journal.answerChoice(body.choiceId, body.correct);
-        if (result === "unknown") {
-          return new Response(JSON.stringify({ error: "Unknown choice" }), {
-            status: 404,
-            headers,
-          });
-        }
+        if (result === "unknown") return json({ error: "Unknown choice" }, headers, 404);
         if (result === "conflict") {
-          return new Response(JSON.stringify({ error: "Choice already answered or replaced" }), {
-            status: 409,
-            headers,
-          });
+          return json({ error: "Choice already answered or replaced" }, headers, 409);
         }
         const nouveauxBadges = awardBadgesSafely(journal.badges);
-        return new Response(JSON.stringify({ recorded: true, nouveauxBadges }), { headers });
+        return json({ recorded: true, nouveauxBadges }, headers);
       }
 
-      if (path === PROGRESS_PATH && req.method === "GET") {
-        return new Response(JSON.stringify(journal.progress()), { headers });
+      // Écran « Progression » : tout l'écran en une seule requête (issue #15).
+      if (path === "/api/progress" && req.method === "GET") {
+        return json(journal.progress(), headers);
       }
 
       if (path === "/api/journal" && req.method === "GET") {
         const days = parsePeriodDays(url.searchParams.get("days"));
-        return new Response(JSON.stringify(journal.summary(days)), { headers });
+        return json(journal.summary(days), headers);
       }
 
       if (path === "/api/journal" && req.method === "DELETE") {
         journal.purge();
-        return new Response(JSON.stringify({ purged: true }), { headers });
+        return json({ purged: true }, headers);
       }
 
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
+      return json({ error: "Method not allowed" }, headers, 405);
     }
 
     // === API: Correcteur grammatical intégré (règles LanguageTool) ===
     if (path === "/api/check") {
       const headers = getCorsHeaders(req);
 
-      if (req.method === "OPTIONS") {
-        headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type");
-        return new Response(null, { headers });
-      }
+      if (req.method === "OPTIONS") return preflight(headers, "POST, OPTIONS");
 
-      if (req.method !== "POST") {
-        return new Response(JSON.stringify({ error: "Method not allowed" }), {
-          status: 405,
-          headers,
-        });
-      }
+      if (req.method !== "POST") return json({ error: "Method not allowed" }, headers, 405);
 
-      let text: unknown;
-      try {
-        ({ text } = (await req.json()) as { text?: unknown });
-      } catch {
-        return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
-      }
+      const body = await readJson(req);
+      // null aussi : il n'a pas de champ à lire.
+      if (body == null) return json({ error: "Invalid JSON" }, headers, 400);
+      const text: unknown = body.text;
       if (typeof text !== "string" || !text.trim() || text.length > MAX_ANALYZE_LENGTH) {
-        return new Response(JSON.stringify({ error: "Invalid payload" }), {
-          status: 400,
-          headers,
-        });
+        return json({ error: "Invalid payload" }, headers, 400);
       }
 
       try {
         const matches = await grammar.check(text);
-        return new Response(JSON.stringify({ matches }), { headers });
+        return json({ matches }, headers);
       } catch (error) {
         console.error("[Grammar] Check failed:", error);
-        return new Response(JSON.stringify({ error: "Grammar checker unavailable" }), {
-          status: 503,
-          headers,
-        });
+        return json({ error: "Grammar checker unavailable" }, headers, 503);
       }
     }
 
@@ -585,53 +527,34 @@ Bun.serve({
           `[LLM] Erreur après ${duration}ms:`,
           error instanceof Error ? error.message : error,
         );
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : "Unknown error",
-        });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        span.setStatus({ code: SpanStatusCode.ERROR, message });
         span.end();
-        return new Response(
-          JSON.stringify({
-            error: "LLM unavailable",
-            details: error instanceof Error ? error.message : "Unknown error",
-          }),
-          { status: 502, headers: { "Content-Type": "application/json" } },
-        );
+        return json({ error: "LLM unavailable", details: message }, JSON_ONLY, 502);
       }
     }
 
     // === API: LLM Proxy (fallback for other LLM routes) ===
     if (path.startsWith("/v1/")) {
-      const llmPath = path;
-      const llmUrl = `${config.llmTarget}${llmPath}${url.search}`;
-
       try {
-        // Override Authorization with the real LLM API key (frontend sends a placeholder)
-        // and drop Host & co., which describe the browser → Grammaria hop.
-        const proxyHeaders = upstreamHeaders(req.headers, config.llmApiKey);
-
-        const llmResponse = await fetch(llmUrl, {
+        const llmResponse = await fetch(`${config.llmTarget}${path}${url.search}`, {
           method: req.method,
-          headers: proxyHeaders,
+          // Override Authorization with the real LLM API key (frontend sends a placeholder)
+          // and drop Host & co., which describe the browser → Grammaria hop.
+          headers: upstreamHeaders(req.headers, config.llmApiKey),
           body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
           redirect: "follow",
         });
 
         const responseHeaders = downstreamHeaders(llmResponse.headers);
-        const origin = req.headers.get("Origin") ?? "";
-        const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
-        const allowed = isLocalhost || config.corsOrigins.some((o) => origin === o);
-        responseHeaders.set("Access-Control-Allow-Origin", allowed ? origin : "");
+        responseHeaders.set("Access-Control-Allow-Origin", allowedOrigin(req) ?? "");
 
         return new Response(llmResponse.body, {
           status: llmResponse.status,
           headers: responseHeaders,
         });
       } catch {
-        return new Response(JSON.stringify({ error: "LLM unavailable" }), {
-          status: 502,
-          headers: { "Content-Type": "application/json" },
-        });
+        return json({ error: "LLM unavailable" }, JSON_ONLY, 502);
       }
     }
 

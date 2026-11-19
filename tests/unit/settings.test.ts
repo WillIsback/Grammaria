@@ -7,14 +7,17 @@ import { normalizeTarget, SettingsStore } from "../../settings";
 
 const initial = { ...config };
 
+/** Chemin d'un fichier de réglages dans un dossier temporaire neuf. */
+const tempSettingsPath = () =>
+  join(mkdtempSync(join(tmpdir(), "grammaria-settings-")), "settings.json");
+
 describe("SettingsStore — réglages du LLM en mode bureau", () => {
   beforeEach(() => {
     Object.assign(config, initial);
   });
 
   function store() {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-settings-"));
-    const path = join(dir, "settings.json");
+    const path = tempSettingsPath();
     return { path, store: new SettingsStore(path) };
   }
 
@@ -96,8 +99,7 @@ describe("SettingsStore — migration du raisonnement (v1 → v2)", () => {
   });
 
   function fileWith(content: object) {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-settings-"));
-    const path = join(dir, "settings.json");
+    const path = tempSettingsPath();
     writeFileSync(path, JSON.stringify(content));
     return path;
   }

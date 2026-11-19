@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { config } from "./config.ts";
+import type { ServerSettings } from "./src/services/settings.ts";
 
 /**
  * Réglages du LLM modifiables depuis l'interface, en mode bureau uniquement.
@@ -16,16 +17,6 @@ export interface LlmSettings {
   llmApiKey: string;
   llmModelName: string;
   llmDisableThinking: boolean;
-}
-
-/** Vue publique : la clé API n'est jamais renvoyée au navigateur. */
-export interface PublicSettings {
-  editable: boolean;
-  configured: boolean;
-  llmTarget: string;
-  llmModelName: string;
-  llmDisableThinking: boolean;
-  hasApiKey: boolean;
 }
 
 export type SettingsUpdate = Partial<LlmSettings>;
@@ -54,7 +45,8 @@ export class SettingsStore {
     return this.path ? existsSync(this.path) && config.llmTarget !== "" : config.llmTarget !== "";
   }
 
-  publicView(): PublicSettings {
+  /** Vue publique : la clé API n'est jamais renvoyée au navigateur. */
+  publicView(): ServerSettings {
     return {
       editable: this.editable,
       configured: this.configured,
@@ -66,7 +58,7 @@ export class SettingsStore {
   }
 
   /** Valide puis applique et enregistre les réglages. Lève une erreur lisible si invalides. */
-  update(input: unknown): PublicSettings {
+  update(input: unknown): ServerSettings {
     if (!this.path) throw new Error("Les réglages ne sont pas modifiables sur ce serveur.");
     const update = parseUpdate(input);
     const next: LlmSettings = { ...currentSettings(), ...update };

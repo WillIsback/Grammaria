@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { serverSource } from "./serverSource.ts";
 
 // Régression QA (2026-11-18), même convention que server.topK.test.ts :
 // server.ts tourne sous Bun et ne s'importe pas sous vitest, on vérifie donc
@@ -8,8 +9,6 @@ import { describe, expect, it } from "vite-plus/test";
 // helpers testés dans tests/unit/upstream.test.ts.
 //  - Les relais /v1/* transmettaient l'en-tête Host du client.
 //  - Sans LLM_MODEL_NAME, le modèle « auto » de l'interface partait tel quel.
-
-const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
 
 describe("server.ts — relais amont", () => {
   it("aucun fetch amont ne réutilise les en-têtes bruts de la requête", () => {
