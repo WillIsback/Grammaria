@@ -74,7 +74,7 @@ def call_llm(text: str, port: int = 1234, base_url: str | None = None, api_key: 
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": text},
             ],
-            "temperature": 0.3,
+            "temperature": 0.1,
         },
         headers={"Authorization": f"Bearer {api_key}"},
         stream=True,

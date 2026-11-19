@@ -21,7 +21,9 @@ export async function correctText(
       { role: "system" as const, content: systemPrompt },
       { role: "user" as const, content: userPrompt },
     ],
-    temperature: 0.3,
+    // Basse : reproduire le texte en ne changeant que les fautes. Pas 0, qui
+    // fait boucler certains modèles sur les textes longs.
+    temperature: 0.1,
     correction_mode: settings.mode,
   };
 
