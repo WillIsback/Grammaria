@@ -155,28 +155,25 @@ impl Status {
         if self.phase != Phase::Checking {
             return false;
         }
-        match outcome {
-            CheckOutcome::Found { version, notes } => {
-                self.phase = Phase::Available;
-                self.version = Some(version);
-                self.notes = notes.filter(|notes| !notes.trim().is_empty());
-            }
-            CheckOutcome::UpToDate | CheckOutcome::NoRelease => {
-                self.phase = if matches!(outcome, CheckOutcome::UpToDate) {
-                    Phase::UpToDate
-                } else {
-                    Phase::NoRelease
-                };
-                self.version = None;
-                self.notes = None;
-            }
-            // La version trouvée auparavant, s'il y en a une, reste proposée.
-            CheckOutcome::Failed(detail) => self.fail(
-                Step::Check,
-                "Impossible de vérifier les mises à jour. Vérifiez votre connexion à Internet, puis réessayez.",
-                detail,
+        let (phase, version, notes) = match outcome {
+            CheckOutcome::Found { version, notes } => (
+                Phase::Available,
+                Some(version),
+                notes.filter(|notes| !notes.trim().is_empty()),
             ),
-        }
+            CheckOutcome::UpToDate => (Phase::UpToDate, None, None),
+            CheckOutcome::NoRelease => (Phase::NoRelease, None, None),
+            // La version trouvée auparavant, s'il y en a une, reste proposée.
+            CheckOutcome::Failed(detail) => {
+                self.fail(
+                    Step::Check,
+                    "Impossible de vérifier les mises à jour. Vérifiez votre connexion à Internet, puis réessayez.",
+                    detail,
+                );
+                return true;
+            }
+        };
+        (self.phase, self.version, self.notes) = (phase, version, notes);
         true
     }
 
