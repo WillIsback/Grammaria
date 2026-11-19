@@ -23,9 +23,9 @@ Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
 ## Comment
 
 1. Vous collez un texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie aussitôt.
-2. Le modèle de langage ne fait que corriger. Les modifications sont **calculées** par comparaison entre votre texte et le texte corrigé, sans appel supplémentaire au modèle.
+2. Le modèle de langage ne fait que corriger. Les modifications sont **calculées** par comparaison entre votre texte et le texte corrigé, sans appel supplémentaire au modèle. La ponctuation est corrigée en silence : appliquée dans le texte, elle n'est ni listée ni comptée.
 3. Les règles françaises de [LanguageTool](https://languagetool.org), intégrées au serveur (aucun service à lancer), analysent votre texte en parallèle. Une de ses détections n'est retenue que si le modèle a réellement corrigé le passage, ce qui écarte les faux positifs.
-4. Douze confusions courantes (a/à, on/ont, ces/ses, -er/-é…) sont reconnues directement et accompagnées d'une **fiche**.
+4. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é, travail/travaille…) sont reconnues directement et accompagnées d'une **fiche**.
 5. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
 6. Une **note sur 20**, calculée sur la densité de fautes, suit votre progression texte par texte et sur sept jours.
 

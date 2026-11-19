@@ -62,6 +62,21 @@ function overlaps(hunk: Hunk, match: LTMatch): boolean {
   return match.offset < hunk.end && hunk.start < matchEnd;
 }
 
+/**
+ * Ponctuation retouchée sans conséquence pour l'apprentissage (virgule,
+ * point, guillemets…). L'apostrophe et le trait d'union en sont exclus : ils
+ * font partie des mots (« l'équipe », « est-ce »), les corriger relève de
+ * l'orthographe.
+ */
+const PONCTUATION = /[^\P{P}'’\-\u2010\u2011]/gu;
+const ESPACES = /\s/gu;
+
+/** Vrai si « avant → après » ne diffère que par la ponctuation et les espaces. */
+export function isPunctuationOnly(before: string, after: string): boolean {
+  const strip = (s: string) => s.replace(PONCTUATION, "").replace(ESPACES, "");
+  return before !== after && strip(before) === strip(after);
+}
+
 const MAX_SENTENCE_LENGTH = 300;
 
 export function sentenceAt(text: string, offset: number): string {
@@ -88,6 +103,12 @@ export function analyze(original: string, corrected: string, matches: LTMatch[])
 
   for (const hunk of diffHunks(original, corrected)) {
     const overlapping = matches.filter((m) => !used.has(m) && overlaps(hunk, m));
+    // Ponctuation : appliquée dans le texte corrigé, mais invisible. Ni
+    // listée, ni comptée, ni journalisée (elle ne nourrit aucune intervention).
+    if (isPunctuationOnly(hunk.before, hunk.after)) {
+      for (const m of overlapping) used.add(m);
+      continue;
+    }
     const base = {
       replacement: hunk.after.trim(),
       sentence: sentenceAt(original, hunk.start),
