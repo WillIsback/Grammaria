@@ -40,7 +40,7 @@ Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vo
 
 ## Application de bureau
 
-Pour Windows et Linux, sans serveur à installer : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. Une fois les mises à jour automatiques activées, l'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** indique si elles sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+Pour Windows et Linux, sans serveur à installer : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
 ## Démarrage rapide (serveur)
 
