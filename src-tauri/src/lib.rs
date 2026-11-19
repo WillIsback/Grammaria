@@ -6,7 +6,6 @@
 //! web : correcteur grammatical intégré, journal SQLite, relais vers le LLM.
 //! Seule la mise à jour de l'application vit ici (module `update`).
 
-use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
@@ -73,34 +72,26 @@ fn show_error(window: &WebviewWindow, message: &str, log: &Path) {
          p.style.cssText = 'font:15px system-ui,sans-serif;max-width:36rem;margin:20vh auto;padding:0 1rem;color:#b91c1c;line-height:1.5';\
          p.textContent = {};\
          document.body.appendChild(p);",
-        serde_json_string(&text)
+        js_string(&text)
     );
     let _ = window.eval(&script);
 }
 
-/// Chaîne JavaScript littérale (échappement JSON minimal, sans dépendance).
-fn serde_json_string(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            '\u{2028}' => out.push_str("\\u2028"),
-            '\u{2029}' => out.push_str("\\u2029"),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+/// Chaîne JavaScript littérale, pour un script évalué par la webview.
+///
+/// Une chaîne JSON est une chaîne JavaScript valide : guillemets, antislashs
+/// et caractères de contrôle (retours à la ligne compris) sont échappés.
+/// U+2028 et U+2029, que JSON laisse tels quels, ne sont admis dans une chaîne
+/// JavaScript que depuis ES2019 : on les échappe aussi. Le script n'est pas
+/// placé dans du HTML, `</script>` n'a donc rien de particulier ici.
+fn js_string(value: &str) -> String {
+    serde_json::to_string(value)
+        .expect("une chaîne se sérialise toujours en JSON")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
 }
 
 fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let handle = app.handle().clone();
     let window = app
         .get_webview_window("main")
         .ok_or("fenêtre principale introuvable")?;
@@ -114,7 +105,7 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     let port = free_port()?;
     let path = |p: PathBuf| p.to_string_lossy().into_owned();
-    let envs: HashMap<&str, String> = HashMap::from([
+    let envs = [
         ("GRAMMARIA_DESKTOP", "1".into()),
         // Le serveur s'arrête quand l'entrée standard (tube tenu par
         // l'application) se ferme : pas de processus orphelin après un plantage.
@@ -136,9 +127,9 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         // Le raisonnement du modèle reste coupé par défaut (LLM_DISABLE_THINKING
         // non défini) : le serveur relance sans ce paramètre si une API le refuse.
         ("LLM_TARGET", String::new()),
-    ]);
+    ];
 
-    let (mut events, child) = handle
+    let (mut events, child) = app
         .shell()
         .sidecar("grammaria-server")?
         .envs(envs)
@@ -148,7 +139,7 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Sortie du serveur → server.log, pour le support.
     let log_for_events = log_path.clone();
     let window_for_events = window.clone();
-    let app_for_events = handle.clone();
+    let app_for_events = app.handle().clone();
     tauri::async_runtime::spawn(async move {
         let mut log = OpenOptions::new()
             .create(true)
@@ -253,4 +244,32 @@ pub fn run() {
                 stop_server(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::js_string;
+
+    /// Le texte affiché par `show_error` (chemin du journal compris) ne doit
+    /// jamais pouvoir sortir de la chaîne littérale ni casser le script.
+    #[test]
+    fn le_message_d_erreur_reste_une_chaine_javascript_sure() {
+        let text = "Moteur \"arrêté\" ; journal : C:\\Users\\Zoé\\server.log\n\r\t\u{0}\u{8}\u{1f}\u{2028}\u{2029}</script>'; alert(1); '";
+        let literal = js_string(text);
+
+        // Une seule chaîne JSON, qui redonne exactement le texte d'origine.
+        assert_eq!(serde_json::from_str::<String>(&literal).unwrap(), text);
+        // JSON ⊂ JavaScript, sauf U+2028/U+2029 avant ES2019 : aucun
+        // terminateur de ligne ni caractère de contrôle brut ne subsiste.
+        assert!(!literal
+            .chars()
+            .any(|c| c.is_control() || c == '\u{2028}' || c == '\u{2029}'));
+        assert!(literal.contains(r#"\"arrêté\""#));
+        assert!(literal.contains(r"C:\\Users\\Zoé"));
+        assert!(literal.contains(r"\n\r\t\u0000\b\u001f\u2028\u2029"));
+        // Ni guillemet libre entre les délimiteurs.
+        assert!(literal.starts_with('"') && literal.ends_with('"'));
+        let inner = &literal[1..literal.len() - 1];
+        assert!(!inner.replace(r"\\", "").replace(r#"\""#, "").contains('"'));
+    }
 }
