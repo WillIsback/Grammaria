@@ -5,9 +5,20 @@ interface Props {
   onOpenSettings: () => void;
   /** Menu Paramètres (rubrique IA : serveur et choix du modèle). */
   onOpenPreferences: () => void;
+  /** Écran « Progression » ; le bouton n'apparaît que si ce rappel est fourni. */
+  onOpenProgress?: () => void;
+  /** Vrai pendant que l'écran « Progression » est affiché. */
+  progressOpen?: boolean;
 }
 
-export function Header({ theme, onToggleTheme, onOpenSettings, onOpenPreferences }: Props) {
+export function Header({
+  theme,
+  onToggleTheme,
+  onOpenSettings,
+  onOpenPreferences,
+  onOpenProgress,
+  progressOpen = false,
+}: Props) {
   const isDark = theme === "dark";
 
   return (
@@ -64,6 +75,36 @@ export function Header({ theme, onToggleTheme, onOpenSettings, onOpenPreferences
               <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
             </svg>
           </button>
+
+          {onOpenProgress && (
+            <button
+              type="button"
+              onClick={onOpenProgress}
+              aria-pressed={progressOpen}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200
+                ${
+                  progressOpen
+                    ? "bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+                }`}
+              aria-label="Progression"
+              title="Progression"
+            >
+              <svg
+                aria-hidden="true"
+                className="w-[18px] h-[18px]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 3v18h18" />
+                <path d="M7 16v-4M12 16V8M17 16v-7" />
+              </svg>
+            </button>
+          )}
 
           <button
             type="button"
