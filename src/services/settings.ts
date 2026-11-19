@@ -12,6 +12,8 @@ export interface SettingsInput {
   llmTarget?: string;
   /** Absent : la clé enregistrée est conservée. */
   llmApiKey?: string;
+  /** Coupe le raisonnement du modèle (plus rapide). */
+  llmDisableThinking?: boolean;
 }
 
 export async function fetchServerSettings(): Promise<ServerSettings> {

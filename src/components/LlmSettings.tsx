@@ -21,6 +21,7 @@ const input =
 export function LlmSettings({ settings, onSaved }: Props) {
   const [target, setTarget] = useState(settings.llmTarget);
   const [apiKey, setApiKey] = useState("");
+  const [disableThinking, setDisableThinking] = useState(settings.llmDisableThinking);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +32,7 @@ export function LlmSettings({ settings, onSaved }: Props) {
     try {
       const saved = await saveServerSettings({
         llmTarget: target,
+        llmDisableThinking: disableThinking,
         ...(apiKey ? { llmApiKey: apiKey } : {}),
       });
       setApiKey("");
@@ -116,6 +118,21 @@ export function LlmSettings({ settings, onSaved }: Props) {
           Supprimer la clé enregistrée
         </button>
       )}
+
+      <label className="mt-3 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={disableThinking}
+          onChange={(e) => setDisableThinking(e.target.checked)}
+          className="mt-0.5 accent-brand-600"
+        />
+        <span>
+          Couper le raisonnement du modèle (recommandé)
+          <span className="block text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+            Un modèle qui raisonne (Qwen3…) réfléchit plusieurs secondes avant d&rsquo;écrire.
+          </span>
+        </span>
+      </label>
 
       <button
         type="submit"
