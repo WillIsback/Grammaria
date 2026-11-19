@@ -50,6 +50,22 @@ export type { RuleHistoryEntry, RuleHistoryType, RuleView, Suivi } from "./journ
  */
 export const SCHEMA_VERSION = 2;
 
+/**
+ * Journal créé par une version plus récente de Grammaria (`user_version` au-delà
+ * de `SCHEMA_VERSION`) : l'ouvrir risquerait de l'abîmer. `Journal.ouvrir` échoue
+ * sans rien écrire ; le bureau affiche ce message, le serveur ne démarre pas.
+ */
+export class JournalFuturError extends Error {
+  constructor(readonly version: number) {
+    super(
+      `Ce journal a été créé par une version plus récente de Grammaria (schéma ${version}, ` +
+        `cette version connaît le schéma ${SCHEMA_VERSION}). Installez la dernière version de ` +
+        "Grammaria pour l'ouvrir ; il n'a pas été modifié.",
+    );
+    this.name = "JournalFuturError";
+  }
+}
+
 export interface RuleCount {
   ruleKey: string;
   categoryName: string;
@@ -197,11 +213,14 @@ export class Journal {
    * Les tables `texts` et `faults` ne sont jamais modifiées.
    */
   private async migrate(): Promise<void> {
-    await this.driver.batch(
-      [...SCHEMA_JOURNAL, ...SCHEMA_REGLES, ...SCHEMA_BADGES].map((sql) => ({ sql })),
-    );
+    // Version lue AVANT toute écriture : un journal d'une version future de
+    // Grammaria (schéma inconnu) n'est jamais modifié.
     const [{ user_version: version }] = await this.driver.read<{ user_version: number }>(
       "PRAGMA user_version",
+    );
+    if (version > SCHEMA_VERSION) throw new JournalFuturError(version);
+    await this.driver.batch(
+      [...SCHEMA_JOURNAL, ...SCHEMA_REGLES, ...SCHEMA_BADGES].map((sql) => ({ sql })),
     );
     if (version >= SCHEMA_VERSION) return;
 

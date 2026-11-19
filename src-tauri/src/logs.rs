@@ -37,9 +37,14 @@ const TAILLE_MAX: u64 = 1024 * 1024;
 const MESSAGE_MAX: usize = 1_000;
 /// Message de la page conservé (caractères).
 const MESSAGE_PAGE_MAX: usize = 2_000;
-/// Débit de la page : réserve de messages, et délai pour en regagner un.
+/// Débit de la page : réserve de messages, et délai pour en regagner un. Les
+/// erreurs de commandes ont leur propre réserve, aux mêmes valeurs.
 const RESERVE_PAGE: u32 = 20;
 const RECHARGE_PAGE: Duration = Duration::from_secs(2);
+/// Une erreur de commande identique à la précédente n'est pas réécrite mais
+/// comptée ; le décompte (« … répété N fois ») est écrit à la ligne suivante,
+/// à la fermeture, ou si elle revient après ce délai.
+const REGROUPEMENT: Duration = Duration::from_secs(60);
 
 /// Gravité d'une ligne.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -104,10 +109,21 @@ impl Debit {
     }
 }
 
+/// Dernière erreur de commande écrite, et ses répétitions depuis.
+struct Repetition {
+    niveau: Niveau,
+    source: String,
+    texte: String,
+    compte: u64,
+    depuis: Instant,
+}
+
 struct Etat {
     fichier: Option<File>,
     taille: u64,
     debit: Debit,
+    debit_commandes: Debit,
+    derniere: Option<Repetition>,
 }
 
 /// Le journal technique : un fichier, sa rotation et le débit de la page.
@@ -135,6 +151,8 @@ impl Journal {
                 fichier,
                 taille,
                 debit: Debit::new(Instant::now()),
+                debit_commandes: Debit::new(Instant::now()),
+                derniere: None,
             }),
         }
     }
@@ -165,7 +183,80 @@ impl Journal {
             tronquer(&masquer(message, secrets), max)
         );
         let mut etat = self.etat.lock().unwrap_or_else(|p| p.into_inner());
+        self.vider_repetition(&mut etat);
         self.ajouter(&mut etat, &ligne);
+    }
+
+    /// Erreur d'une commande : débit limité (réserve propre), et une erreur
+    /// identique à la précédente est comptée au lieu d'être réécrite. Une
+    /// rafale (page qui boucle sur une commande en échec) ne fait donc pas
+    /// tourner le fichier et n'efface pas les lignes utiles. Renvoie faux si
+    /// rien n'a été écrit.
+    fn ecrire_commande(
+        &self,
+        niveau: Niveau,
+        source: &str,
+        message: &str,
+        secrets: &[&str],
+        maintenant: Instant,
+    ) -> bool {
+        let texte = tronquer(&masquer(message, secrets), MESSAGE_MAX);
+        let mut etat = self.etat.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some(derniere) = etat.derniere.as_mut() {
+            if derniere.source == source
+                && derniere.texte == texte
+                && maintenant.saturating_duration_since(derniere.depuis) < REGROUPEMENT
+            {
+                derniere.compte += 1;
+                return false;
+            }
+        }
+        self.vider_repetition(&mut etat);
+        let ignores_avant = etat.debit_commandes.ignores;
+        if !etat.debit_commandes.prendre(maintenant) {
+            return false;
+        }
+        let horodatage = horodatage(SystemTime::now());
+        if ignores_avant > 0 {
+            etat.debit_commandes.ignores = 0;
+            let ligne = format!(
+                "{horodatage} AVERT [commandes] {ignores_avant} erreur(s) de commande ignorée(s) : débit dépassé.\n"
+            );
+            self.ajouter(&mut etat, &ligne);
+        }
+        let ligne = format!("{horodatage} {} [{source}] {texte}\n", niveau.etiquette());
+        self.ajouter(&mut etat, &ligne);
+        etat.derniere = Some(Repetition {
+            niveau,
+            source: source.to_string(),
+            texte,
+            compte: 0,
+            depuis: maintenant,
+        });
+        true
+    }
+
+    /// Écrit le décompte des répétitions de la dernière erreur de commande.
+    fn vider_repetition(&self, etat: &mut Etat) {
+        let Some(derniere) = etat.derniere.take() else {
+            return;
+        };
+        if derniere.compte > 0 {
+            let ligne = format!(
+                "{} {} [{}] … répété {} fois.\n",
+                horodatage(SystemTime::now()),
+                derniere.niveau.etiquette(),
+                derniere.source,
+                derniere.compte
+            );
+            self.ajouter(etat, &ligne);
+        }
+    }
+
+    /// Écrit ce qui reste en attente (décompte des répétitions), à la fermeture.
+    pub fn vider(&self) {
+        let mut etat = self.etat.lock().unwrap_or_else(|p| p.into_inner());
+        self.vider_repetition(&mut etat);
     }
 
     /// Message de la page : niveau connu, débit limité, taille bornée. Renvoie
@@ -178,6 +269,7 @@ impl Journal {
         maintenant: Instant,
     ) -> bool {
         let mut etat = self.etat.lock().unwrap_or_else(|p| p.into_inner());
+        self.vider_repetition(&mut etat);
         let ignores_avant = etat.debit.ignores;
         if !etat.debit.prendre(maintenant) {
             return false;
@@ -370,13 +462,30 @@ pub fn ecrire_masque(niveau: Niveau, source: &str, message: &str, secrets: &[&st
 
 /// Erreur d'une commande. Un conflit du journal (`Conflit : …`, modification
 /// concurrente détectée et rejouée par la page) n'est qu'un avertissement.
+/// Débit limité et répétitions regroupées (voir `Journal::ecrire_commande`).
 pub fn echec_commande(commande: &str, message: &str) {
     let niveau = if message.starts_with("Conflit") {
         Niveau::Avertissement
     } else {
         Niveau::Erreur
     };
-    ecrire(niveau, commande, message);
+    commande_masquee(niveau, commande, message, &[]);
+}
+
+/// Ligne due à une commande appelée par la page (erreur du relais du modèle,
+/// par exemple) : même débit limité et même regroupement des répétitions que
+/// `echec_commande`, en masquant aussi `secrets`.
+pub fn commande_masquee(niveau: Niveau, commande: &str, message: &str, secrets: &[&str]) {
+    if let Some(journal) = JOURNAL.get() {
+        journal.ecrire_commande(niveau, commande, message, secrets, Instant::now());
+    }
+}
+
+/// Écrit ce qui est en attente (décompte des répétitions) ; à la fermeture.
+pub fn vider() {
+    if let Some(journal) = JOURNAL.get() {
+        journal.vider();
+    }
 }
 
 /// Message de la page (erreur JavaScript, correcteur, fin de correction).
@@ -489,6 +598,114 @@ mod tests {
         assert!(contenu.contains("80 message(s) de la page ignoré(s)"));
         assert!(contenu.trim_end().ends_with("INFO [page] reprise"));
         assert_eq!(contenu.lines().count(), RESERVE_PAGE as usize + 2);
+    }
+
+    #[test]
+    fn une_rafale_d_erreurs_identiques_est_regroupee() {
+        let dossier = tempfile::tempdir().unwrap();
+        let journal = Journal::new(dossier.path());
+        let debut = Instant::now();
+        journal.ecrire(Niveau::Info, "application", "Démarrage.", &[]);
+        for n in 0..1_000 {
+            let ecrit = journal.ecrire_commande(
+                Niveau::Erreur,
+                "db_read",
+                "base verrouillée",
+                &[],
+                debut + Duration::from_millis(n),
+            );
+            assert_eq!(ecrit, n == 0);
+        }
+        // Une autre erreur : le décompte de la précédente, puis elle.
+        assert!(journal.ecrire_commande(
+            Niveau::Erreur,
+            "db_batch",
+            "disque plein",
+            &[],
+            debut + Duration::from_secs(2)
+        ));
+        let contenu = lire(&journal);
+        let lignes: Vec<&str> = contenu.lines().collect();
+        assert_eq!(lignes.len(), 4, "{contenu}");
+        assert!(lignes[0].ends_with("INFO [application] Démarrage."));
+        assert!(lignes[1].ends_with("ERREUR [db_read] base verrouillée"));
+        assert!(lignes[2].ends_with("ERREUR [db_read] … répété 999 fois."));
+        assert!(lignes[3].ends_with("ERREUR [db_batch] disque plein"));
+
+        // Répétée, puis une ligne ordinaire : le décompte passe avant elle.
+        journal.ecrire_commande(
+            Niveau::Erreur,
+            "db_batch",
+            "disque plein",
+            &[],
+            debut + Duration::from_secs(3),
+        );
+        journal.ecrire(Niveau::Info, "mise à jour", "Recherche.", &[]);
+        let contenu = lire(&journal);
+        let fin: Vec<&str> = contenu.lines().rev().take(2).collect();
+        assert!(fin[1].ends_with("ERREUR [db_batch] … répété 1 fois."));
+        assert!(fin[0].ends_with("INFO [mise à jour] Recherche."));
+
+        // Au-delà du délai de regroupement, la même erreur est réécrite.
+        let plus_tard = debut + Duration::from_secs(10);
+        assert!(journal.ecrire_commande(Niveau::Erreur, "db_read", "x", &[], plus_tard));
+        assert!(!journal.ecrire_commande(Niveau::Erreur, "db_read", "x", &[], plus_tard));
+        assert!(journal.ecrire_commande(
+            Niveau::Erreur,
+            "db_read",
+            "x",
+            &[],
+            plus_tard + REGROUPEMENT
+        ));
+        assert!(lire(&journal).contains("[db_read] … répété 1 fois."));
+        // À la fermeture, le décompte en attente est écrit.
+        journal.ecrire_commande(
+            Niveau::Erreur,
+            "db_read",
+            "x",
+            &[],
+            plus_tard + REGROUPEMENT,
+        );
+        journal.vider();
+        assert!(lire(&journal)
+            .trim_end()
+            .ends_with("[db_read] … répété 1 fois."));
+    }
+
+    #[test]
+    fn le_debit_des_erreurs_de_commandes_est_limite() {
+        let dossier = tempfile::tempdir().unwrap();
+        let journal = Journal::new(dossier.path());
+        let debut = Instant::now();
+        let ecrites = (0..100)
+            .filter(|n| {
+                journal.ecrire_commande(
+                    Niveau::Erreur,
+                    "db_read",
+                    &format!("erreur {n}"),
+                    &["secret-123"],
+                    debut,
+                )
+            })
+            .count();
+        assert_eq!(ecrites, RESERVE_PAGE as usize);
+        // La réserve de la page est distincte : ses messages passent encore.
+        assert!(journal.ecrire_page(Niveau::Erreur, "page", &[], debut));
+        assert!(journal.ecrire_commande(
+            Niveau::Erreur,
+            "db_read",
+            "reprise secret-123",
+            &["secret-123"],
+            debut + RECHARGE_PAGE
+        ));
+        let contenu = lire(&journal);
+        assert!(contenu.contains("80 erreur(s) de commande ignorée(s) : débit dépassé."));
+        assert!(contenu
+            .trim_end()
+            .ends_with("[db_read] reprise [clé masquée]"));
+        assert!(!contenu.contains("secret-123"));
+        // Le fichier reste petit : la rafale ne l'a pas fait tourner.
+        assert!(!dossier.path().join("grammaria.log.1").exists());
     }
 
     #[test]

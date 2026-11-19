@@ -19,12 +19,20 @@
 //! - un autorisateur SQLite interdit, pour le SQL de la page, `ATTACH`,
 //!   `DETACH`, `load_extension()`, le contrôle des transactions (`BEGIN`,
 //!   `COMMIT`, `SAVEPOINT`… : c'est Rust qui garantit l'atomicité), les tables
-//!   virtuelles et tout pragma hors d'une courte liste (seul `user_version`
-//!   peut être modifié, pour les migrations du schéma) ;
+//!   virtuelles, les déclencheurs, les vues, `DROP` et `ALTER TABLE` (le
+//!   journal ne crée que des tables et des index, sans jamais en supprimer)
+//!   et tout pragma hors d'une courte liste (seul `user_version` peut être
+//!   modifié, pour les migrations du schéma, et seulement entre 0 et
+//!   `USER_VERSION_MAX`) ;
 //! - `VACUUM` (dont `VACUUM INTO 'fichier'`) est refusé ;
 //! - le mode défensif de SQLite protège le schéma interne (`sqlite_master`,
 //!   `writable_schema`…), `trusted_schema` est coupé et aucune base ne peut
-//!   être attachée (`SQLITE_LIMIT_ATTACHED` = 0).
+//!   être attachée (`SQLITE_LIMIT_ATTACHED` = 0) ;
+//! - une commande est interrompue au-delà de `DUREE_MAX` (requête sans fin,
+//!   `WITH RECURSIVE` qui ne s'arrête pas…), et une lecture refusée au-delà de
+//!   `LIGNES_MAX` lignes ou `OCTETS_MAX` octets de JSON : la mémoire reste
+//!   bornée. Les lignes sont sérialisées une par une, le résultat occupe donc
+//!   à peu près sa taille en JSON.
 //!
 //! # Types
 //!
@@ -40,7 +48,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::logs;
 use rusqlite::config::DbConfig;
@@ -49,6 +57,7 @@ use rusqlite::limits::Limit;
 use rusqlite::types::{Value as SqlValue, ValueRef};
 use rusqlite::{params_from_iter, Connection, ErrorCode, TransactionBehavior};
 use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
 use serde_json::{Map, Number, Value};
 use tauri::State;
 
@@ -59,8 +68,46 @@ pub const JOURNAL_FILE: &str = "grammaria.db";
 /// processus qui lit la base, une sauvegarde…).
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Durée maximale d'une commande (lecture, lot entier). Mesuré : la migration
+/// v0 → v2 d'un journal de 50 000 textes et 150 000 fautes prend 0,5 s au
+/// total, calcul TypeScript compris ; la progression sur ce journal, 0,12 s.
+/// 10 s laissent une marge de 20 sur une machine équivalente, et de 4 environ
+/// sur une machine cinq fois plus lente.
+const DUREE_MAX: Duration = Duration::from_secs(10);
+
+/// Lignes et octets (JSON) au plus par commande de lecture. La plus grosse
+/// lecture du journal (migration : tous les textes deux fois, toutes les
+/// fautes comptées) fait environ 250 000 lignes et 15 Mio pour 50 000 textes à
+/// 3 fautes : la marge est de 4 (environ 200 000 textes).
+const LIGNES_MAX: usize = 1_000_000;
+const OCTETS_MAX: usize = 64 * 1024 * 1024;
+
+/// Version du schéma la plus haute que la page peut écrire dans
+/// `PRAGMA user_version`. À tenir égale à `SCHEMA_VERSION` de `journal.ts`
+/// (un test le vérifie).
+pub const USER_VERSION_MAX: i64 = 2;
+
+/// Instructions de la machine virtuelle de SQLite entre deux vérifications
+/// de l'échéance (quelques microsecondes).
+const PAS_PROGRESSION: i32 = 10_000;
+
+/// Bornes d'une commande ; réduites dans les tests.
+#[derive(Clone, Copy, Debug)]
+struct Limites {
+    duree: Duration,
+    lignes: usize,
+    octets: usize,
+}
+
+const LIMITES: Limites = Limites {
+    duree: DUREE_MAX,
+    lignes: LIGNES_MAX,
+    octets: OCTETS_MAX,
+};
+
 /// Une ligne de résultat : nom de colonne → valeur.
-pub type Row = Map<String, Value>;
+/// Une ligne de résultat, déjà en JSON : objet nom de colonne → valeur.
+pub type Row = Box<RawValue>;
 
 /// Une requête de lecture (`db_read_many`).
 #[derive(Debug, Deserialize)]
@@ -104,6 +151,10 @@ struct Guarded {
     /// la page : l'autorisateur applique alors les règles strictes. Le SQL de
     /// Rust (`BEGIN IMMEDIATE`, `COMMIT`, pragmas d'ouverture) passe à côté.
     page: Arc<AtomicBool>,
+    /// Échéance de la commande en cours : au-delà, le gestionnaire de
+    /// progression de SQLite interrompt l'instruction (`SQLITE_INTERRUPT`).
+    echeance: Arc<Mutex<Option<Instant>>>,
+    limites: Limites,
 }
 
 /// Base du journal, ouverte au premier appel d'une commande `db_*`.
@@ -112,13 +163,19 @@ pub struct Db(Arc<DbInner>);
 struct DbInner {
     path: PathBuf,
     conn: Mutex<Option<Guarded>>,
+    limites: Limites,
 }
 
 impl Db {
     pub fn new(path: PathBuf) -> Self {
+        Self::avec_limites(path, LIMITES)
+    }
+
+    fn avec_limites(path: PathBuf, limites: Limites) -> Self {
         Db(Arc::new(DbInner {
             path,
             conn: Mutex::new(None),
+            limites,
         }))
     }
 
@@ -134,11 +191,16 @@ impl Db {
             .unwrap_or_else(|poison| poison.into_inner());
         if slot.is_none() {
             *slot = Some(
-                open(&self.0.path)
+                open(&self.0.path, self.0.limites)
                     .map_err(|error| format!("Impossible d'ouvrir le journal ({error})."))?,
             );
         }
-        work(slot.as_mut().expect("connexion ouverte ci-dessus"))
+        let guarded = slot.as_mut().expect("connexion ouverte ci-dessus");
+        let echeance = guarded.echeance.clone();
+        *verrou(&echeance) = Some(Instant::now() + guarded.limites.duree);
+        let resultat = work(guarded);
+        *verrou(&echeance) = None;
+        resultat
     }
 
     /// Même chose sur un fil dédié : SQLite est bloquant, il ne doit occuper
@@ -156,7 +218,11 @@ impl Db {
 
 /// Ouvre la base avec les mêmes réglages que le serveur (`journal.ts` : WAL,
 /// clés étrangères) et les garde-fous décrits en tête du module.
-fn open(path: &Path) -> rusqlite::Result<Guarded> {
+fn verrou<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poison| poison.into_inner())
+}
+
+fn open(path: &Path, limites: Limites) -> rusqlite::Result<Guarded> {
     if let Some(dir) = path.parent() {
         // Erreur éventuelle reportée par l'ouverture elle-même.
         let _ = std::fs::create_dir_all(dir);
@@ -174,7 +240,18 @@ fn open(path: &Path) -> rusqlite::Result<Guarded> {
     conn.authorizer(Some(move |context: AuthContext<'_>| {
         authorize(flag.load(Ordering::Relaxed), context)
     }));
-    Ok(Guarded { conn, page })
+    let echeance: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
+    let suivie = echeance.clone();
+    conn.progress_handler(
+        PAS_PROGRESSION,
+        Some(move || verrou(&suivie).is_some_and(|fin| Instant::now() >= fin)),
+    );
+    Ok(Guarded {
+        conn,
+        page,
+        echeance,
+        limites,
+    })
 }
 
 /// Pragmas que la page peut lire (sans valeur) ou appeler avec un nom de
@@ -218,8 +295,13 @@ fn pragma_allowed(name: &str, value: Option<&str>) -> bool {
     let name = name.to_ascii_lowercase();
     match value {
         None => PRAGMAS_LECTURE.contains(&name.as_str()),
-        // Seule écriture permise : la version du schéma, pour les migrations.
-        Some(_) => name == "user_version" || PRAGMAS_A_ARGUMENT.contains(&name.as_str()),
+        // Seule écriture permise : la version du schéma, pour les migrations,
+        // dans la plage des versions connues.
+        Some(value) if name == "user_version" => value
+            .trim()
+            .parse::<i64>()
+            .is_ok_and(|version| (0..=USER_VERSION_MAX).contains(&version)),
+        Some(_) => PRAGMAS_A_ARGUMENT.contains(&name.as_str()),
     }
 }
 
@@ -237,6 +319,23 @@ fn authorize(page: bool, context: AuthContext<'_>) -> Authorization {
         // Rust ouvre et ferme lui-même les transactions des commandes.
         AuthAction::Transaction { .. } | AuthAction::Savepoint { .. } => Authorization::Deny,
         AuthAction::CreateVtable { .. } | AuthAction::DropVtable { .. } => Authorization::Deny,
+        // Jamais envoyés par le journal (`journal*.ts` : CREATE TABLE et CREATE
+        // INDEX IF NOT EXISTS seulement) : un déclencheur ou une vue ferait
+        // exécuter du SQL caché aux écritures et lectures suivantes, un DROP ou
+        // un ALTER détruirait le journal.
+        AuthAction::CreateTrigger { .. }
+        | AuthAction::CreateTempTrigger { .. }
+        | AuthAction::CreateView { .. }
+        | AuthAction::CreateTempView { .. }
+        | AuthAction::DropTable { .. }
+        | AuthAction::DropTempTable { .. }
+        | AuthAction::DropIndex { .. }
+        | AuthAction::DropTempIndex { .. }
+        | AuthAction::DropTrigger { .. }
+        | AuthAction::DropTempTrigger { .. }
+        | AuthAction::DropView { .. }
+        | AuthAction::DropTempView { .. }
+        | AuthAction::AlterTable { .. } => Authorization::Deny,
         AuthAction::Pragma {
             pragma_name,
             pragma_value,
@@ -280,6 +379,13 @@ fn check_sql(sql: &str) -> Result<(), String> {
 fn sql_error(error: rusqlite::Error) -> String {
     if matches!(error, rusqlite::Error::MultipleStatement) {
         return "Une seule instruction SQL par entrée.".into();
+    }
+    // Échéance dépassée : interrompue par le gestionnaire de progression.
+    if error.sqlite_error_code() == Some(ErrorCode::OperationInterrupted) {
+        return format!(
+            "Requête interrompue : elle dépassait la durée maximale d'une commande ({} s).",
+            DUREE_MAX.as_secs()
+        );
     }
     let text = error.to_string();
     // Refus de l'autorisateur : SQLITE_AUTH, ou SQLITE_ERROR « not
@@ -367,12 +473,52 @@ fn to_json(column: &str, value: ValueRef<'_>) -> Result<Value, String> {
     })
 }
 
+/// Ce qu'une commande de lecture peut encore renvoyer.
+struct Budget {
+    lignes: usize,
+    octets: usize,
+    limites: Limites,
+}
+
+impl Budget {
+    fn new(limites: Limites) -> Self {
+        Budget {
+            lignes: limites.lignes,
+            octets: limites.octets,
+            limites,
+        }
+    }
+
+    /// Prend une ligne de `taille` octets, ou refuse la lecture entière.
+    fn prendre(&mut self, taille: usize) -> Result<(), String> {
+        if self.lignes == 0 {
+            return Err(format!(
+                "Résultat trop volumineux : plus de {} lignes.",
+                self.limites.lignes
+            ));
+        }
+        if taille > self.octets {
+            let octets = self.limites.octets;
+            let taille_max = if octets >= 1024 * 1024 {
+                format!("{} Mio", octets / (1024 * 1024))
+            } else {
+                format!("{} Kio", octets / 1024)
+            };
+            return Err(format!("Résultat trop volumineux : plus de {taille_max}."));
+        }
+        self.lignes -= 1;
+        self.octets -= taille;
+        Ok(())
+    }
+}
+
 /// Une lecture : instruction unique, en lecture seule, règles strictes.
 fn read(
     conn: &Connection,
     page: &AtomicBool,
     sql: &str,
     params: &[Value],
+    budget: &mut Budget,
 ) -> Result<Vec<Row>, String> {
     check_sql(sql)?;
     let bound = bind_all(params, None)?;
@@ -396,19 +542,31 @@ fn read(
             let value = row.get_ref(index).map_err(sql_error)?;
             object.insert(name.clone(), to_json(name, value)?);
         }
-        out.push(object);
+        // Sérialisée tout de suite : une ligne occupe sa taille en JSON, pas
+        // celle d'une table de hachage par ligne.
+        let json = serde_json::to_string(&object).map_err(|error| error.to_string())?;
+        budget.prendre(json.len())?;
+        out.push(RawValue::from_string(json).map_err(|error| error.to_string())?);
     }
     Ok(out)
 }
 
+/// `db_read` : une lecture, avec les bornes de la commande.
+fn read_one(guarded: &Guarded, sql: &str, params: &[Value]) -> Result<Vec<Row>, String> {
+    let mut budget = Budget::new(guarded.limites);
+    read(&guarded.conn, &guarded.page, sql, params, &mut budget)
+}
+
 fn read_many(guarded: &mut Guarded, queries: &[Query]) -> Result<Vec<Vec<Row>>, String> {
     let page = guarded.page.clone();
+    // Bornes communes à toutes les lectures de la commande.
+    let mut budget = Budget::new(guarded.limites);
     // Une transaction de lecture : toutes les requêtes voient le même état,
     // même si une autre connexion écrit entre deux.
     let tx = guarded.conn.transaction().map_err(sql_error)?;
     let results = queries
         .iter()
-        .map(|query| read(&tx, &page, &query.sql, &query.params))
+        .map(|query| read(&tx, &page, &query.sql, &query.params, &mut budget))
         .collect::<Result<Vec<_>, _>>()?;
     tx.commit().map_err(sql_error)?;
     Ok(results)
@@ -477,16 +635,9 @@ pub async fn db_read(
     sql: String,
     params: Option<Vec<Value>>,
 ) -> Result<Vec<Row>, String> {
-    db.run(move |guarded| {
-        read(
-            &guarded.conn,
-            &guarded.page,
-            &sql,
-            &params.unwrap_or_default(),
-        )
-    })
-    .await
-    .inspect_err(|error| logs::echec_commande("db_read", error))
+    db.run(move |guarded| read_one(guarded, &sql, &params.unwrap_or_default()))
+        .await
+        .inspect_err(|error| logs::echec_commande("db_read", error))
 }
 
 /// Plusieurs lectures dans un même instantané, en un aller-retour.
@@ -622,9 +773,21 @@ mod tests {
         }
     }
 
+    /// Lignes JSON → valeurs, pour les comparer.
+    fn parse(rows: &[Row]) -> Vec<Value> {
+        rows.iter()
+            .map(|row| serde_json::from_str(row.get()).expect("ligne JSON"))
+            .collect()
+    }
+
     impl Banc {
-        fn read(&self, sql: &str, params: Vec<Value>) -> Result<Vec<Row>, String> {
-            self.db.with(|g| read(&g.conn, &g.page, sql, &params))
+        /// Lignes telles qu'envoyées à la page (texte JSON).
+        fn read_raw(&self, sql: &str, params: Vec<Value>) -> Result<Vec<Row>, String> {
+            self.db.with(|g| read_one(g, sql, &params))
+        }
+
+        fn read(&self, sql: &str, params: Vec<Value>) -> Result<Vec<Value>, String> {
+            self.read_raw(sql, params).map(|rows| parse(&rows))
         }
 
         fn batch(&self, statements: Value) -> Result<Vec<StatementResult>, String> {
@@ -657,10 +820,7 @@ mod tests {
     fn une_base_creee_par_le_serveur_est_relue_telle_quelle() {
         let banc = banc();
         let version = banc.read("PRAGMA user_version", vec![]).unwrap();
-        assert_eq!(
-            version,
-            vec![json!({"user_version": 2}).as_object().unwrap().clone()]
-        );
+        assert_eq!(version, vec![json!({"user_version": 2})]);
 
         let textes = banc
             .read(
@@ -669,7 +829,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(
-            Value::Array(textes.into_iter().map(Value::Object).collect()),
+            Value::Array(textes),
             json!([{"id": 1, "created_at": MAINTENANT, "word_count": 120, "score": 17.5, "user_id": "local"}])
         );
         let faute = banc
@@ -698,8 +858,7 @@ mod tests {
         let path = dir.path().join("sous-dossier").join(JOURNAL_FILE);
         let db = Db::new(path.clone());
         assert!(!path.exists());
-        db.with(|g| read(&g.conn, &g.page, "SELECT 1 AS un", &[]))
-            .unwrap();
+        db.with(|g| read_one(g, "SELECT 1 AS un", &[])).unwrap();
         assert!(path.exists());
     }
 
@@ -817,13 +976,203 @@ mod tests {
         // Les pragmas d'information restent permis.
         let colonnes = banc.read("PRAGMA table_info(badges)", vec![]).unwrap();
         assert_eq!(colonnes.len(), 2);
-        // Et la migration du schéma peut changer sa version.
-        banc.batch(json!([{ "sql": "PRAGMA user_version = 3" }]))
+        // Et la migration du schéma peut changer sa version, dans la plage connue.
+        banc.batch(json!([{ "sql": "PRAGMA user_version = 1" }]))
             .unwrap();
         assert_eq!(
             banc.read("PRAGMA user_version", vec![]).unwrap()[0]["user_version"],
-            3
+            1
         );
+        for version in 0..=USER_VERSION_MAX {
+            let sql = format!("PRAGMA main.user_version = {version}");
+            banc.batch(json!([{ "sql": sql }])).unwrap();
+        }
+        for sql in [
+            format!("PRAGMA user_version = {}", USER_VERSION_MAX + 1),
+            "PRAGMA user_version = -1".to_string(),
+            "PRAGMA user_version = 2147483647".to_string(),
+            "PRAGMA user_version = 0x10".to_string(),
+            "PRAGMA user_version = 'x'".to_string(),
+        ] {
+            let error = banc.batch(json!([{ "sql": sql }])).unwrap_err();
+            assert!(error.contains("non autorisée"), "{sql} : {error}");
+        }
+        assert_eq!(
+            banc.read("PRAGMA user_version", vec![]).unwrap()[0]["user_version"],
+            USER_VERSION_MAX
+        );
+    }
+
+    /// `USER_VERSION_MAX` suit `SCHEMA_VERSION` de `journal.ts` : une migration
+    /// vers une version que Rust ne connaît pas serait refusée.
+    #[test]
+    fn la_version_maximale_suit_celle_du_journal() {
+        let journal = include_str!("../../journal.ts");
+        let version: i64 = journal
+            .lines()
+            .find_map(|ligne| ligne.trim().strip_prefix("export const SCHEMA_VERSION ="))
+            .expect("SCHEMA_VERSION déclarée dans journal.ts")
+            .trim()
+            .trim_end_matches(';')
+            .parse()
+            .expect("SCHEMA_VERSION entière");
+        assert_eq!(
+            USER_VERSION_MAX, version,
+            "mettre USER_VERSION_MAX (db.rs) à jour avec SCHEMA_VERSION (journal.ts)"
+        );
+    }
+
+    #[test]
+    fn declencheurs_vues_drop_et_alter_sont_refuses() {
+        let banc = banc();
+        for sql in [
+            "CREATE TRIGGER t AFTER INSERT ON texts BEGIN DELETE FROM faults; END",
+            "CREATE TEMP TRIGGER t AFTER INSERT ON texts BEGIN DELETE FROM faults; END",
+            "CREATE VIEW v AS SELECT * FROM texts",
+            "CREATE TEMP VIEW v AS SELECT * FROM texts",
+            "DROP TABLE badges",
+            "DROP TABLE IF EXISTS badges",
+            "DROP INDEX idx_texts_created",
+            // (`DROP TRIGGER IF EXISTS` d'un objet absent ne fait rien et
+            // n'appelle pas l'autorisateur ; aucun ne peut être créé.)
+            "ALTER TABLE texts ADD COLUMN x TEXT",
+            "ALTER TABLE badges RENAME TO autre",
+        ] {
+            let error = banc.batch(json!([{ "sql": sql }])).unwrap_err();
+            assert!(error.contains("non autorisée"), "{sql} : {error}");
+        }
+        assert_eq!(banc.count("badges"), 0);
+        let index = banc
+            .read(
+                "SELECT COUNT(*) AS n FROM sqlite_master WHERE type IN ('index', 'trigger', 'view')
+                   AND name NOT LIKE 'sqlite_%'",
+                vec![],
+            )
+            .unwrap();
+        // Les 5 index du schéma ; ni déclencheur ni vue.
+        assert_eq!(index[0]["n"], 5);
+        // Ce que le journal envoie reste permis (schéma, écritures, purge).
+        banc.batch(json!([
+            { "sql": "CREATE TABLE IF NOT EXISTS badges (badge_id TEXT NOT NULL PRIMARY KEY, obtained_at INTEGER NOT NULL)" },
+            { "sql": "CREATE INDEX IF NOT EXISTS idx_texts_created ON texts(created_at)" },
+            { "sql": "INSERT OR REPLACE INTO badges VALUES ('b', 1)" },
+            { "sql": "DELETE FROM badges" },
+        ]))
+        .unwrap();
+    }
+
+    /// Base de test aux bornes réduites.
+    fn banc_borne(limites: Limites) -> Banc {
+        let banc = banc();
+        Banc {
+            db: Db::avec_limites(banc.path.clone(), limites),
+            ..banc
+        }
+    }
+
+    const INFINIE: &str =
+        "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c) SELECT x FROM c";
+
+    #[test]
+    fn une_requete_sans_fin_est_interrompue() {
+        let banc = banc_borne(Limites {
+            duree: Duration::from_millis(300),
+            ..LIMITES
+        });
+        // Sans résultat à garder : seule l'échéance l'arrête.
+        let debut = Instant::now();
+        let error = banc
+            .read(&format!("SELECT COUNT(*) AS n FROM ({INFINIE})"), vec![])
+            .unwrap_err();
+        assert!(error.starts_with("Requête interrompue"), "{error}");
+        assert!(debut.elapsed() < Duration::from_secs(5));
+        // Dans un lot aussi : rien n'est écrit.
+        let error = banc
+            .batch(json!([
+                { "sql": "INSERT INTO badges VALUES ('a', 1)" },
+                { "sql": format!("INSERT INTO badges SELECT 'b' || x, x FROM ({INFINIE})") },
+            ]))
+            .unwrap_err();
+        assert!(error.contains("Requête interrompue"), "{error}");
+        assert_eq!(banc.count("badges"), 0);
+        // L'échéance vaut pour une commande : la suivante repart de zéro.
+        assert_eq!(banc.count("texts"), 1);
+    }
+
+    #[test]
+    fn une_lecture_est_bornee_en_lignes_et_en_octets() {
+        let banc = banc_borne(Limites {
+            lignes: 1_000,
+            octets: 64 * 1024,
+            ..LIMITES
+        });
+        let error = banc.read(INFINIE, vec![]).unwrap_err();
+        assert_eq!(error, "Résultat trop volumineux : plus de 1000 lignes.");
+        let error = banc
+            .read(
+                "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c LIMIT 500)
+                 SELECT x, printf('%.1000c', 'a') AS long FROM c",
+                vec![],
+            )
+            .unwrap_err();
+        assert_eq!(error, "Résultat trop volumineux : plus de 64 Kio.");
+        // Les bornes valent pour toute la commande db_read_many.
+        let queries: Vec<Query> = serde_json::from_value(json!([
+            { "sql": "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c LIMIT 600) SELECT x FROM c" },
+            { "sql": "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c LIMIT 600) SELECT x FROM c" },
+        ]))
+        .unwrap();
+        let error = banc.db.with(|g| read_many(g, &queries)).unwrap_err();
+        assert!(error.contains("1000 lignes"), "{error}");
+        // Sous les bornes : lu normalement.
+        let lignes = banc
+            .read(
+                "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c LIMIT 1000) SELECT x FROM c",
+                vec![],
+            )
+            .unwrap();
+        assert_eq!(lignes.len(), 1_000);
+    }
+
+    /// Les bornes réelles ne gênent pas un journal de 50 000 textes : migration
+    /// complète (lectures et lot) mesurée en Rust.
+    #[test]
+    fn un_gros_journal_tient_dans_les_bornes() {
+        let banc = banc();
+        banc.batch(json!([
+            { "sql": "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c LIMIT 50000)
+                      INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score)
+                      SELECT 1700000000000 + x * 3600000, 150, 3, 0, 15 FROM c" },
+            { "sql": "INSERT INTO faults (text_id, created_at, rule_key, source, category_id, category_name,
+                        issue_type, message, word, replacement, sentence, counted)
+                      SELECT t.id, t.created_at, 'REGLE_' || ((t.id * 7 + k.k * 13) % 60), 'lt', 'GRAMMAR',
+                        'Grammaire', 'grammar', 'Accord du participe passé', 'mangé', 'mangés',
+                        'Ils ont mangé des pommes hier soir.', 1
+                      FROM texts t, (SELECT 0 AS k UNION ALL SELECT 1 UNION ALL SELECT 2) k" },
+        ]))
+        .unwrap();
+        // Lectures de la migration v0 → v1 et des badges (journal.rules.ts, journal.badges.ts).
+        let queries: Vec<Query> = serde_json::from_value(json!([
+            { "sql": "SELECT id, created_at AS at FROM texts ORDER BY created_at, id" },
+            { "sql": "SELECT text_id AS textId, rule_key AS ruleKey, created_at AS at, id FROM faults
+                      WHERE counted = 1 ORDER BY id" },
+            { "sql": "SELECT id, created_at AS at, word_count AS words, fault_count AS faults, score
+                      FROM texts ORDER BY created_at, id" },
+        ]))
+        .unwrap();
+        let debut = Instant::now();
+        let lignes = banc.db.with(|g| read_many(g, &queries)).unwrap();
+        let duree = debut.elapsed();
+        let total: usize = lignes.iter().map(Vec::len).sum();
+        let octets: usize = lignes.iter().flatten().map(|l| l.get().len()).sum();
+        println!("50 000 textes : {total} lignes, {octets} octets, {duree:?}");
+        // 50 001 textes deux fois, 150 004 fautes (le banc en contient déjà un).
+        assert_eq!(total, 250_006);
+        // Marge d'environ 4 (au moins 3,9) sur les deux bornes.
+        assert!(total * 39 <= LIGNES_MAX * 10, "{total}");
+        assert!(octets * 4 <= OCTETS_MAX, "{octets}");
+        // Mesuré : 1,3 s en debug, 0,17 s en release.
+        assert!(duree * 2 < DUREE_MAX, "{duree:?}");
     }
 
     #[test]
@@ -854,7 +1203,7 @@ mod tests {
             .batch(json!([
                 { "sql": "CREATE TABLE IF NOT EXISTS nouvelle (id INTEGER PRIMARY KEY, x TEXT)" },
                 { "sql": "CREATE INDEX IF NOT EXISTS idx_nouvelle ON nouvelle(x)" },
-                { "sql": "PRAGMA user_version = 3" },
+                { "sql": "PRAGMA user_version = 2" },
             ]))
             .unwrap();
         // Aucune ligne modifiée par ces instructions (pas la valeur précédente).
@@ -993,7 +1342,13 @@ mod tests {
             { "sql": "SELECT word FROM faults WHERE created_at = ?", "params": [MAINTENANT] },
         ]))
         .unwrap();
-        let results = banc.db.with(|g| read_many(g, &queries)).unwrap();
+        let results: Vec<Vec<Value>> = banc
+            .db
+            .with(|g| read_many(g, &queries))
+            .unwrap()
+            .iter()
+            .map(|rows| parse(rows))
+            .collect();
         assert_eq!(results[0][0]["n"], 1);
         assert_eq!(results[1][0]["word"], "mangé");
         // Les mêmes garde-fous qu'une lecture simple.
@@ -1028,17 +1383,21 @@ mod tests {
         assert_eq!(row["vrai"], 1);
         // Les entiers sortent chiffre pour chiffre : jusqu'à 2^53 − 1
         // (Number.MAX_SAFE_INTEGER), JSON.parse les relit exactement.
-        let texte = serde_json::to_string(row).unwrap();
-        assert!(texte.contains("\"entier\":1795000000000"), "{texte}");
-        assert!(texte.contains("\"grand\":9007199254740991"), "{texte}");
-        // 64 bits complets côté SQLite (le texte JSON reste exact).
-        let max = banc
-            .read("SELECT 9223372036854775807 AS m", vec![])
+        let brut = banc
+            .read_raw(
+                "SELECT ? AS entier, ? AS grand",
+                vec![json!(MAINTENANT), json!(9_007_199_254_740_991_i64)],
+            )
             .unwrap();
         assert_eq!(
-            serde_json::to_string(&max[0]).unwrap(),
-            "{\"m\":9223372036854775807}"
+            brut[0].get(),
+            "{\"entier\":1795000000000,\"grand\":9007199254740991}"
         );
+        // 64 bits complets côté SQLite (le texte JSON reste exact).
+        let max = banc
+            .read_raw("SELECT 9223372036854775807 AS m", vec![])
+            .unwrap();
+        assert_eq!(max[0].get(), "{\"m\":9223372036854775807}");
 
         // Paramètres refusés proprement.
         assert!(banc
