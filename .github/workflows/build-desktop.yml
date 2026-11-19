@@ -2,11 +2,31 @@
 # Application de bureau (Tauri 2) : paquets Linux (deb, AppImage) et Windows
 # (NSIS, MSI).
 #
+# Plus de serveur Bun en sidecar : la page est embarquée (`beforeBuildCommand` :
+# `npm run build:bureau`, Node seul), le correcteur tourne dans un Worker de la
+# WebView et Rust fournit SQLite, les réglages et le relais du modèle. Bun n'est
+# donc plus installé ici.
+#
+# Après le build, le binaire réellement produit (celui qui est empaqueté, signé
+# en release) est lancé en mode autotest (variable GRAMMARIA_AUTOTEST_OUT, voir
+# src-tauri/src/autotest.rs) dans sa vraie WebView : WebKitGTK sous Xvfb,
+# WebView2 sous Windows, contre un faux modèle local
+# (scripts/desktop/faux-modele.mjs) ; scripts/desktop/verifier-autotest.mjs
+# juge le résultat. Le JSON de résultats est publié en artefact `autotest-*`.
+# Une garde de taille arrête ensuite un .deb ou un installeur NSIS trop gros.
+#
 # Signature Windows : Azure Artifact Signing, même compte que Syntheo. Le
-# quota mensuel est partagé : on ne signe QUE les builds de release, c'est-à-dire
-# quand l'appelant passe `sign: true` (release.yml) ET que les secrets Azure
-# (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET) sont présents.
-# Les builds de pull request ou lancés à la main ne sont jamais signés.
+# quota mensuel (environ 500 signatures) est partagé : on ne signe QUE les
+# builds de release, c'est-à-dire quand l'appelant passe `sign: true`
+# (release.yml) ET que les secrets Azure (AZURE_TENANT_ID, AZURE_CLIENT_ID,
+# AZURE_CLIENT_SECRET) sont présents. Les builds de pull request ou lancés à la
+# main ne sont jamais signés.
+#
+# Consommation par release (bundler Tauri 2.12, une signature par appel de
+# `signCommand`) : installeur NSIS 8 (grammaria.exe, 5 greffons NSIS embarqués,
+# désinstalleur, installeur), MSI 4 (grammaria.exe re-signé après son
+# marquage par type de paquet, 2 extensions WiX, le .msi), soit 12. Avec le
+# sidecar, l'exécutable du serveur en coûtait une de plus (13).
 #
 # Mise à jour automatique : l'application installée vérifie chaque paquet avec
 # une paire de clés propre à Tauri (minisign), distincte de la signature
@@ -37,13 +57,20 @@ on:
         default: false
   pull_request:
     branches: [main]
+    # La page de l'application est l'interface web embarquée, avec le moteur de
+    # grammaire et le journal : tout ce qu'elle importe peut casser le bureau.
     paths:
       - "src-tauri/**"
+      - "src/**"
       - "scripts/desktop/**"
-      - "server.ts"
-      - "grammar.worker.ts"
-      - "settings.ts"
-      - "config.ts"
+      - "tests/fixtures/correcteur/**"
+      - "journal*.ts"
+      - "index.html"
+      - "public/**"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/build-desktop.yml"
 
 concurrency:
@@ -67,10 +94,12 @@ jobs:
             os: ubuntu-22.04
             bundles: deb,appimage
             artifact: grammaria-desktop-linux
+            slug: linux
           - name: Windows
             os: windows-latest
             bundles: nsis,msi
             artifact: grammaria-desktop-windows
+            slug: windows
 
     steps:
       - name: Checkout
@@ -84,9 +113,6 @@ jobs:
           node-version: "22"
           cache: "npm"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -95,12 +121,14 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # xvfb : écran virtuel de l'autotest (dbus-run-session vient du paquet
+      # dbus, toujours présent).
       - name: Dépendances système (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
-            libayatana-appindicator3-dev librsvg2-dev patchelf
+            libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
 
       - name: Install dependencies
         env:
@@ -116,7 +144,9 @@ jobs:
         env:
           VERSION: ${{ inputs.version || '0.0.0' }}
         run: |
+          # shellcheck disable=SC2153 # VERSION vient de `env`.
           version="${VERSION#v}"
+          # shellcheck disable=SC2016 # Script Node entre apostrophes, exprès.
           node -e '
             const fs = require("fs");
             const path = "src-tauri/tauri.conf.json";
@@ -244,7 +274,10 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # `beforeBuildCommand` (src-tauri/tauri.conf.json) construit la page et le
+      # correcteur embarqués : `npm run build:bureau`.
       - name: Build Tauri
+        id: build
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ steps.updater.outputs.enabled == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
@@ -272,42 +305,6 @@ jobs:
             exit 1
           fi
 
-      # Le serveur embarqué est un exécutable Bun compilé : on vérifie qu'il
-      # démarre et que le correcteur grammatical répond, après une éventuelle
-      # signature (qui modifie le binaire). Le « é » est échappé (\u00e9) : sous
-      # Git Bash pour Windows, curl transmet -d dans la page de code Windows,
-      # pas en UTF-8, et le moteur recevait « �tait ».
-      - name: Test de fumée du serveur embarqué
-        shell: bash
-        run: |
-          set -euo pipefail
-          exe=src-tauri/target/release/grammaria-server
-          [ "$RUNNER_OS" = "Windows" ] && exe="$exe.exe"
-          data="$RUNNER_TEMP/grammaria-smoke"
-          mkdir -p "$data"
-          GRAMMARIA_DESKTOP=1 HOST=127.0.0.1 PORT=25123 \
-            GRAMMARIA_DIST_DIR=src-tauri/resources/dist \
-            GRAMMARIA_LT_RESOURCES=src-tauri/resources/lt \
-            JOURNAL_PATH="$data/grammaria.db" \
-            GRAMMARIA_SETTINGS_PATH="$data/settings.json" \
-            GRAMMARIA_VALID_WORDS_PATH="$data/valid-words.json" \
-            "$exe" > "$data/server.log" 2>&1 &
-          pid=$!
-          for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:25123/api/settings > /dev/null; then break; fi
-            sleep 1
-          done
-          result=$(curl -sf -X POST http://127.0.0.1:25123/api/check \
-            -H 'Content-Type: application/json' \
-            -d '{"text":"Les enfants \u00e9tait content."}' || true)
-          kill "$pid" || true
-          echo "$result" | head -c 300; echo
-          if ! echo "$result" | grep -q ACCORD_SUJET_VERBE; then
-            cat "$data/server.log"
-            echo "::error::Le serveur embarqué ne détecte pas les fautes."
-            exit 1
-          fi
-
       # Vérifie les fichiers réellement livrés : les deux installateurs, et les
       # exécutables extraits du MSI (installation administrative, rien n'est
       # installé). Tauri signe les copies qu'il embarque, pas les fichiers de
@@ -324,9 +321,11 @@ jobs:
           $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @("/a", "`"$($msi.FullName)`"", "/qn", "TARGETDIR=`"$extract`"")
           if ($proc.ExitCode -ne 0) { throw "Extraction du MSI impossible (code $($proc.ExitCode))" }
           $inner = @(Get-ChildItem $extract -Recurse -Filter *.exe)
-          foreach ($name in "grammaria.exe", "grammaria-server.exe") {
-            if (-not ($inner | Where-Object Name -eq $name)) { throw "$name absent du MSI" }
-          }
+          if (-not ($inner | Where-Object Name -eq "grammaria.exe")) { throw "grammaria.exe absent du MSI" }
+          # Plus de sidecar : un exécutable de plus dans le MSI serait livré sans
+          # avoir été prévu (ni testé par l'autotest).
+          $autres = @($inner | Where-Object Name -ne "grammaria.exe")
+          if ($autres.Count -gt 0) { throw "Exécutables inattendus dans le MSI : $($autres.Name -join ', ')" }
           $files = @(
             Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe
             $msi
@@ -360,24 +359,277 @@ jobs:
           bundle=src-tauri/target/release/bundle
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp "$bundle"/nsis/*.exe "$bundle"/msi/*.msi dist-desktop/
-            signature="$bundle"/nsis/*-setup.exe.sig
+            signature=("$bundle"/nsis/*-setup.exe.sig)
             sums=SHA256SUMS-windows
           else
             cp "$bundle"/deb/*.deb "$bundle"/appimage/*.AppImage dist-desktop/
-            signature="$bundle"/appimage/*.AppImage.sig
+            signature=("$bundle"/appimage/*.AppImage.sig)
             sums=SHA256SUMS-linux
           fi
           if [ "$UPDATER" = "true" ]; then
-            # Sans signature, la release n'aurait pas de mise à jour : on échoue ici.
-            # shellcheck disable=SC2086
-            cp $signature dist-desktop/
+            # Sans signature, la release n'aurait pas de mise à jour : on échoue ici
+            # (motif sans correspondance laissé tel quel, `cp` échoue).
+            cp "${signature[@]}" dist-desktop/
             ls dist-desktop/*.sig
           fi
-          (cd dist-desktop && sha256sum * > "$sums" && cat "$sums")
+          (cd dist-desktop && sha256sum -- * > "$sums" && cat "$sums")
+
+      # Garde de taille sur les paquets livrés. Mesures de la 0.3.0 : .deb
+      # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Pas de seuil sur
+      # l'AppImage (elle embarque WebKitGTK) ni sur le MSI, seulement affichés.
+      # Un paquet attendu absent fait aussi échouer l'étape.
+      - name: Garde de taille des paquets
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mio=$((1024 * 1024))
+          seuil_deb=$((12 * mio))
+          seuil_nsis=$((14 * mio))
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            garde=(dist-desktop/*-setup.exe)
+            paquets=("${garde[@]}" dist-desktop/*.msi)
+          else
+            garde=(dist-desktop/*.deb)
+            paquets=("${garde[@]}" dist-desktop/*.AppImage)
+          fi
+          if [ "${#garde[@]}" -eq 0 ]; then
+            echo "::error::Paquet soumis à la garde de taille absent de dist-desktop/."
+            exit 1
+          fi
+          echec=0
+          {
+            echo "### Tailles des paquets — $RUNNER_OS"
+            echo
+            echo "| Paquet | Taille | Seuil |"
+            echo "| --- | ---: | ---: |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for paquet in "${paquets[@]}"; do
+            octets=$(( $(wc -c < "$paquet") ))
+            case "$paquet" in
+              *.deb) seuil=$seuil_deb ;;
+              *-setup.exe) seuil=$seuil_nsis ;;
+              *) seuil=0 ;;
+            esac
+            taille=$(awk -v o="$octets" -v m="$mio" 'BEGIN { printf "%.2f Mio", o / m }')
+            if [ "$seuil" -gt 0 ]; then
+              limite="$((seuil / mio)) Mio"
+              if [ "$octets" -gt "$seuil" ]; then
+                echo "::error::$(basename "$paquet") pèse $taille, au-delà du seuil de $limite."
+                limite="$limite (dépassé)"
+                echec=1
+              fi
+            else
+              limite="—"
+            fi
+            echo "$(basename "$paquet") : $taille ($octets octets), seuil : $limite"
+            echo "| $(basename "$paquet") | $taille | $limite |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo >> "$GITHUB_STEP_SUMMARY"
+          exit "$echec"
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: dist-desktop/
+          retention-days: 14
+
+      # ───────────── Autotest dans la vraie application ─────────────
+      # Le binaire lancé est celui de target/release : celui que Tauri vient
+      # d'empaqueter (et de signer, en release). Pas de second build.
+      #
+      # Placé après la publication des paquets et lancé dès que le build a
+      # réussi (`!cancelled() && steps.build.outcome == 'success'`) : un
+      # dépassement de la garde de taille n'empêche pas l'autotest, et un
+      # autotest en échec laisse les paquets téléchargeables pour essayer à la
+      # main. Le job échoue quand même : release.yml ne publie rien.
+      #
+      # Chaque étape de lancement démarre le faux modèle et l'application dans
+      # le même shell (un processus d'arrière-plan ne survit pas toujours à son
+      # étape sous Windows), enregistre le code de sortie de l'application sans
+      # échouer, et laisse l'étape « vérification et résumé » juger : ainsi le
+      # vérificateur détaille toujours les critères, même quand l'application
+      # a échoué. L'application se ferme seule (code 0 ou 1) ou au bout de
+      # 170 s (délai interne, code 1) ; le délai de 200 s ci-dessous n'est
+      # qu'un filet si elle restait bloquée.
+
+      # WebView2 est préinstallé sur les images windows-latest (avec Edge) ; on
+      # le vérifie, et on l'installe s'il manquait, pour ne pas confondre une
+      # image sans WebView2 avec un échec de l'application.
+      - name: Autotest — WebView2 présent (Windows)
+        id: webview2
+        if: runner.os == 'Windows' && !cancelled() && steps.build.outcome == 'success'
+        shell: pwsh
+        run: |
+          $cles = @(
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+            "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          )
+          function Get-VersionWebView2 {
+            foreach ($cle in $cles) {
+              $pv = (Get-ItemProperty -LiteralPath $cle -Name pv -ErrorAction SilentlyContinue).pv
+              if ($pv -and $pv -ne "0.0.0.0") { return $pv }
+            }
+            return $null
+          }
+          $version = Get-VersionWebView2
+          if (-not $version) {
+            Write-Host "::warning::WebView2 Runtime absent de l'image : installation (Evergreen Bootstrapper)."
+            $setup = Join-Path $env:RUNNER_TEMP "MicrosoftEdgeWebview2Setup.exe"
+            Invoke-WebRequest -UseBasicParsing -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile $setup
+            $installation = Start-Process -FilePath $setup -ArgumentList "/silent", "/install" -Wait -PassThru
+            if ($installation.ExitCode -ne 0) { throw "Installation de WebView2 impossible (code $($installation.ExitCode))" }
+            $version = Get-VersionWebView2
+            if (-not $version) { throw "WebView2 toujours absent après installation" }
+          }
+          Write-Host "WebView2 Runtime : $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Autotest — application réelle (Linux, WebKitGTK sous Xvfb)
+        if: runner.os == 'Linux' && !cancelled() && steps.build.outcome == 'success'
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -uo pipefail
+          dir="$RUNNER_TEMP/autotest"
+          rm -rf "$dir"
+          mkdir -p "$dir/home"
+          node scripts/desktop/faux-modele.mjs > "$dir/faux-modele.log" 2>&1 &
+          modele=$!
+          for _ in $(seq 1 50); do
+            curl -sf http://127.0.0.1:31977/v1/models > /dev/null && break
+            sleep 0.2
+          done
+          debut=$(date +%s)
+          code=0
+          # Dossiers personnels isolés : rien n'est écrit chez l'utilisateur du
+          # runner (l'application range déjà ses données à côté du JSON).
+          # timeout tue tout le groupe (xvfb-run, dbus, application) au besoin.
+          env HOME="$dir/home" \
+            XDG_DATA_HOME="$dir/home/data" \
+            XDG_CONFIG_HOME="$dir/home/config" \
+            XDG_CACHE_HOME="$dir/home/cache" \
+            WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+            GRAMMARIA_AUTOTEST_OUT="$dir/autotest.json" \
+            timeout --kill-after=10 200 \
+            xvfb-run -a dbus-run-session -- src-tauri/target/release/grammaria \
+            > "$dir/app.log" 2>&1 || code=$?
+          duree=$(( $(date +%s) - debut ))
+          kill "$modele" 2> /dev/null || true
+          echo "$code" > "$dir/code-application"
+          echo "$duree" > "$dir/duree-application"
+          echo "Application fermée avec le code $code en $duree s (lancement compris)."
+
+      - name: Autotest — application réelle (Windows, WebView2)
+        if: runner.os == 'Windows' && !cancelled() && steps.build.outcome == 'success'
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = Join-Path $env:RUNNER_TEMP "autotest"
+          if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+          # Chemin complet de node.exe : avec redirection, Start-Process ne passe
+          # pas par le shell.
+          $node = (Get-Command node -CommandType Application | Select-Object -First 1).Source
+          $modele = Start-Process -FilePath $node -ArgumentList "scripts/desktop/faux-modele.mjs" `
+            -PassThru -NoNewWindow `
+            -RedirectStandardOutput (Join-Path $dir "faux-modele.log") `
+            -RedirectStandardError (Join-Path $dir "faux-modele.err.log")
+          $pret = $false
+          for ($i = 0; $i -lt 50 -and -not $pret; $i++) {
+            try {
+              Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:31977/v1/models" -TimeoutSec 2 | Out-Null
+              $pret = $true
+            } catch {
+              Start-Sleep -Milliseconds 200
+            }
+          }
+          if (-not $pret) { Write-Host "::warning::Faux modèle injoignable sur 127.0.0.1:31977." }
+
+          # Application à sous-système graphique : `&` ne l'attendrait pas.
+          # Start-Process -PassThru, puis WaitForExit avec délai ; lire Handle
+          # tout de suite, sinon ExitCode reste vide une fois le processus fini.
+          # L'environnement (GRAMMARIA_AUTOTEST_OUT) est hérité par l'enfant.
+          $env:GRAMMARIA_AUTOTEST_OUT = Join-Path $dir "autotest.json"
+          $exe = (Resolve-Path -LiteralPath "src-tauri\target\release\grammaria.exe").Path
+          $chrono = [System.Diagnostics.Stopwatch]::StartNew()
+          $app = Start-Process -FilePath $exe -PassThru `
+            -RedirectStandardOutput (Join-Path $dir "app.log") `
+            -RedirectStandardError (Join-Path $dir "app.err.log")
+          $null = $app.Handle
+          if ($app.WaitForExit(200000)) {
+            $app.WaitForExit()
+            $code = $app.ExitCode
+          } else {
+            Write-Host "::error::Application toujours ouverte après 200 s : arrêt forcé (WebView2 et enfants compris)."
+            $app.Kill($true)
+            $app.WaitForExit()
+            $code = 124
+          }
+          $chrono.Stop()
+          Remove-Item Env:GRAMMARIA_AUTOTEST_OUT
+          Stop-Process -Id $modele.Id -Force -ErrorAction SilentlyContinue
+
+          $duree = [int]$chrono.Elapsed.TotalSeconds
+          Set-Content -LiteralPath (Join-Path $dir "code-application") -Value "$code" -Encoding ascii
+          Set-Content -LiteralPath (Join-Path $dir "duree-application") -Value "$duree" -Encoding ascii
+          Write-Host "Application fermée avec le code $code en $duree s (lancement compris)."
+
+      # Juge les résultats (scripts/desktop/verifier-autotest.mjs : détections
+      # identiques à tests/fixtures/correcteur/reference.json, lot SQLite
+      # atomique, flux du modèle, aucune violation de la CSP, « Edg/ » dans
+      # l'agent utilisateur sous Windows…) et écrit le résumé du job.
+      - name: Autotest — vérification et résumé
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        shell: bash
+        env:
+          WEBVIEW2: ${{ steps.webview2.outputs.version }}
+        run: |
+          set -uo pipefail
+          dir="$RUNNER_TEMP/autotest"
+          code=$(tr -d '\r\n' < "$dir/code-application" 2> /dev/null || true)
+          duree=$(tr -d '\r\n' < "$dir/duree-application" 2> /dev/null || true)
+          verification=0
+          node scripts/desktop/verifier-autotest.mjs "$dir/autotest.json" \
+            > "$dir/verification.txt" 2>&1 || verification=$?
+          cat "$dir/verification.txt"
+          moteur="WebKitGTK"
+          [ "$RUNNER_OS" = "Windows" ] && moteur="WebView2 ${WEBVIEW2:-?}"
+          {
+            echo "### Autotest de l'application — $RUNNER_OS ($moteur)"
+            echo
+            echo "Application : code ${code:-absent} en ${duree:-?} s ; vérificateur : code $verification."
+            echo
+            grep '^Temps' "$dir/verification.txt" || true
+            echo
+            echo '<details><summary>Critères</summary>'
+            echo
+            echo '```'
+            cat "$dir/verification.txt"
+            echo '```'
+            echo
+            echo '</details>'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != "0" ] || [ "$verification" != "0" ]; then
+            echo "--- journal de l'application (fin) ---"
+            tail -n 80 "$dir/app.log" 2> /dev/null || true
+            tail -n 80 "$dir/app.err.log" 2> /dev/null || true
+            echo "::error::Autotest de l'application en échec (application : ${code:-absent}, vérificateur : $verification). Détails dans l'artefact autotest-${RUNNER_OS,,}."
+            exit 1
+          fi
+
+      # Toujours publié : les temps (Windows surtout) restent lisibles à chaque
+      # build. En cas d'échec, les journaux et les données de l'autotest
+      # (journal SQLite, réglages) sont dans le même dossier.
+      - name: Autotest — publier les résultats
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: autotest-${{ matrix.slug }}
+          path: ${{ runner.temp }}/autotest/
+          if-no-files-found: warn
           retention-days: 14
