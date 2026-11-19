@@ -30,14 +30,7 @@ export async function correctText(
   currentAbortController = controller;
 
   const streamTimeoutMs = 120_000;
-  let streamTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  function clearStreamTimeout(): void {
-    if (streamTimeoutId) {
-      clearTimeout(streamTimeoutId);
-      streamTimeoutId = null;
-    }
-  }
+  let streamTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const response = await fetch("/v1/chat/completions", {
@@ -92,7 +85,7 @@ export async function correctText(
         }
 
         if (payload.done) {
-          clearStreamTimeout();
+          clearTimeout(streamTimeoutId);
           return {
             text: typeof payload.text === "string" ? payload.text : cleanLlmOutput(received),
             duration: payload.duration ?? 0,

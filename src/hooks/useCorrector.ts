@@ -125,14 +125,18 @@ export function useCorrector() {
       // apparaîtrait comme une correction, voire comme une faute.
       const signal = abortControllerRef.current.signal;
       const input = prepareInput(textContent);
+      // Avertissements cumulés, affichés ensemble.
       const notices: string[] = [];
+      const notify = (notice: string) => {
+        notices.push(notice);
+        setAnalysisNotice(notices.join(" "));
+      };
       if (input.truncated) {
-        notices.push(
+        notify(
           `Le texte dépasse ${MAX_CONTENT_LENGTH.toLocaleString("fr-FR")} caractères : ` +
             `seuls les ${input.text.length.toLocaleString("fr-FR")} premiers ont été corrigés ` +
             `(sur ${input.originalLength.toLocaleString("fr-FR")}).`,
         );
-        setAnalysisNotice(notices.join(" "));
       }
       const ltPromise: Promise<LTMatch[] | null> = runLanguageTool(input.text, signal).catch(
         () => null,
@@ -160,10 +164,9 @@ export function useCorrector() {
       try {
         const matches = await ltPromise;
         if (matches === null) {
-          notices.push(
+          notify(
             "Le correcteur grammatical est indisponible : l'analyse des fautes est partielle.",
           );
-          setAnalysisNotice(notices.join(" "));
         }
         const result = await analyzeCorrection(input.text, finalText, matches ?? [], signal);
         // L'astuce d'une règle n'est affichée qu'à sa première occurrence.
@@ -179,8 +182,7 @@ export function useCorrector() {
         setStats((prev) => ({ ...prev, modificationCount: entries.length }));
       } catch (analysisError) {
         if (analysisError instanceof Error && analysisError.name === "AbortError") return;
-        notices.push("L'analyse des fautes est indisponible pour ce texte.");
-        setAnalysisNotice(notices.join(" "));
+        notify("L'analyse des fautes est indisponible pour ce texte.");
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
