@@ -35,6 +35,12 @@ pub(crate) fn stop_server(app: &tauri::AppHandle) {
     }
 }
 
+/// Faux une fois le serveur embarqué arrêté par `stop_server`.
+pub(crate) fn server_running(app: &tauri::AppHandle) -> bool {
+    app.try_state::<Sidecar>()
+        .is_some_and(|state| state.0.lock().map(|c| c.is_some()).unwrap_or(false))
+}
+
 /// Port TCP libre sur 127.0.0.1, choisi par le système.
 fn free_port() -> std::io::Result<u16> {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
@@ -142,6 +148,7 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Sortie du serveur → server.log, pour le support.
     let log_for_events = log_path.clone();
     let window_for_events = window.clone();
+    let app_for_events = handle.clone();
     tauri::async_runtime::spawn(async move {
         let mut log = OpenOptions::new()
             .create(true)
@@ -162,11 +169,15 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(file) = log.as_mut() {
                         let _ = writeln!(file, "[grammaria] serveur arrêté : {status:?}");
                     }
-                    show_error(
-                        &window_for_events,
-                        "Le moteur de Grammaria s'est arrêté. Relancez l'application.",
-                        &log_for_events,
-                    );
+                    // Arrêt voulu (fermeture, mise à jour) : pas de message
+                    // d'erreur par-dessus l'interface.
+                    if server_running(&app_for_events) {
+                        show_error(
+                            &window_for_events,
+                            "Le moteur de Grammaria s'est arrêté. Relancez l'application.",
+                            &log_for_events,
+                        );
+                    }
                     break;
                 }
                 _ => {}
@@ -208,7 +219,15 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_opener::init())
+        // Le plugin ne sert qu'à ouvrir la page de téléchargement depuis Rust.
+        // Son script de page, qui intercepte les liens `target="_blank"` pour
+        // les ouvrir par une commande que l'interface n'a pas le droit
+        // d'appeler, est désactivé : les liens gardent leur comportement normal.
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         // Mise à jour : seule une version stable plus récente est proposée.
         .plugin(
             tauri_plugin_updater::Builder::new()

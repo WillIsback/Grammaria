@@ -50,6 +50,7 @@ export function UpdateSettings({ update }: Props) {
             {phase === "idle" && "Aucune recherche pour l’instant."}
             {phase === "checking" && "Recherche en cours…"}
             {phase === "upToDate" && "Grammaria est à jour."}
+            {phase === "noRelease" && "Aucune mise à jour disponible pour le moment."}
             {phase === "available" && `La version ${status.version} est disponible.`}
             {phase === "downloading" && `Téléchargement… ${formatProgress(status)}`}
             {phase === "installing" && "Installation… L’application va redémarrer toute seule."}

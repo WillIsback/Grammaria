@@ -23,6 +23,7 @@ const base: AppUpdateStatus = {
   total: null,
   error: null,
   errorDetail: null,
+  failedStep: null,
   releasePage: "https://github.com/WillIsback/Grammaria/releases/latest",
 };
 const available: AppUpdateStatus = { ...base, phase: "available", version: "0.3.1" };
@@ -256,12 +257,49 @@ describe("UpdateBanner — proposition au démarrage", () => {
 
   it("une installation en échec est signalée et peut être relancée", () => {
     const update = controller(
-      { ...available, phase: "error", error: "La mise à jour n'a pas pu être installée." },
+      {
+        ...available,
+        phase: "error",
+        failedStep: "install",
+        error: "La mise à jour n'a pas pu être installée.",
+      },
       { userInitiated: true },
     );
     render(<UpdateBanner update={update} />);
     expect(screen.getByText("La mise à jour n'a pas pu être installée.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Réessayer" }));
     expect(update.install).toHaveBeenCalledTimes(1);
+    expect(update.check).not.toHaveBeenCalled();
+  });
+
+  it("après une recherche en échec, « Réessayer » relance la recherche, pas l'installation", () => {
+    for (const mode of ["auto", "manual"] as const) {
+      const update = controller(
+        {
+          ...available,
+          mode,
+          phase: "error",
+          failedStep: "check",
+          error: "Impossible de vérifier les mises à jour.",
+        },
+        { userInitiated: true },
+      );
+      const { unmount } = render(<UpdateBanner update={update} />);
+      expect(screen.queryByRole("button", { name: /Installer/ })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Réessayer" }));
+      expect(update.check).toHaveBeenCalledTimes(1);
+      expect(update.install).not.toHaveBeenCalled();
+      unmount();
+    }
+  });
+
+  it("un manifeste introuvable n'affiche ni bandeau ni erreur", () => {
+    const update = controller({ ...base, phase: "noRelease" }, { userInitiated: true });
+    const { container } = render(<UpdateBanner update={update} />);
+    expect(container.textContent).toBe("");
+    render(<UpdateSettings update={update} />);
+    expect(screen.getByRole("status").textContent).toBe(
+      "Aucune mise à jour disponible pour le moment.",
+    );
   });
 });
