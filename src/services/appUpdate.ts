@@ -80,3 +80,22 @@ export function formatProgress(status: Pick<AppUpdateStatus, "downloaded" | "tot
   }
   return `${(status.downloaded / 1_000_000).toFixed(1).replace(".", ",")} Mo`;
 }
+
+/** Vrai pendant une étape que l'application mène seule : recherche, téléchargement, installation. */
+export function isBusy(phase: UpdatePhase): boolean {
+  return phase === "checking" || phase === "downloading" || phase === "installing";
+}
+
+/**
+ * Message du téléchargement ou de l'installation en cours ; null hors de ces
+ * deux étapes. `telechargement` : début du message de téléchargement.
+ */
+export function messagePhase(
+  status: AppUpdateStatus,
+  telechargement = "Téléchargement…",
+): string | null {
+  if (status.phase === "downloading") return `${telechargement} ${formatProgress(status)}`;
+  if (status.phase === "installing")
+    return "Installation… L’application va redémarrer toute seule.";
+  return null;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AppUpdate } from "../hooks/useAppUpdate";
-import { formatProgress } from "../services/appUpdate";
+import { messagePhase } from "../services/appUpdate";
 
 interface Props {
   /** null dans un navigateur : rien n'est affiché. */
@@ -24,7 +24,9 @@ export function UpdateBanner({ update }: Props) {
 
   const { status, userInitiated, check, install, openReleasePage } = update;
   const { phase, mode, version } = status;
-  const busy = phase === "downloading" || phase === "installing";
+  // Téléchargement ou installation en cours : l'application avance seule, sans bouton.
+  const enCours = messagePhase(status, "Téléchargement de la mise à jour…");
+  const busy = enCours !== null;
   const dismissed = version === null || version === dismissedVersion;
   const offered = phase === "available" && !dismissed;
   // Échec d'une étape demandée par l'utilisateur ; une recherche automatique
@@ -46,8 +48,7 @@ export function UpdateBanner({ update }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 max-w-5xl mx-auto px-5 py-2.5">
         <p className="text-sm text-brand-900 dark:text-brand-100 min-w-0">
           {offered && `Grammaria ${version} est disponible.`}
-          {phase === "downloading" && `Téléchargement de la mise à jour… ${formatProgress(status)}`}
-          {phase === "installing" && "Installation… L’application va redémarrer toute seule."}
+          {enCours}
           {failed && status.error}
         </p>
         {!busy && (
