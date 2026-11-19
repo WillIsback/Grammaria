@@ -85,55 +85,61 @@ function rechutesSurmontees(evenements: FaitEvenement[]): number[] {
   return dates.sort((a, b) => a - b);
 }
 
-function series(
-  faits: FaitsBadges,
-  now: number,
-): Record<Exclude<MesureBadge, "noteMoyenne">, Serie> {
-  const textes = faits.textes.filter((t) => t.at <= now).sort((a, b) => a.at - b.at);
-  const evenements = faits.evenements.filter((e) => e.at <= now);
-  const acquises = evenements.filter((e) => e.type === "acquise");
-  return {
-    textes: { dates: textes.map((t) => t.at) },
-    jours: {
-      dates: premieresDates(
-        textes,
+type MesureSerie = Exclude<MesureBadge, "noteMoyenne">;
+
+/**
+ * Séries de chaque mesure, calculées à la demande (et une seule fois) : seules
+ * les mesures des badges évalués coûtent quelque chose.
+ */
+function series(faits: FaitsBadges, now: number): (mesure: MesureSerie) => Serie {
+  let textesTries: LigneTexte[] | undefined;
+  let evenementsDates: FaitEvenement[] | undefined;
+  const textes = () =>
+    (textesTries ??= faits.textes.filter((t) => t.at <= now).sort((a, b) => a.at - b.at));
+  const evenements = () => (evenementsDates ??= faits.evenements.filter((e) => e.at <= now));
+  const acquises = () => evenements().filter((e) => e.type === "acquise");
+  const calculs: Record<MesureSerie, () => number[]> = {
+    textes: () => textes().map((t) => t.at),
+    jours: () =>
+      premieresDates(
+        textes(),
         (t) => jourLocal(t.at),
         (t) => t.at,
       ),
-    },
-    semaines: {
-      dates: premieresDates(
-        textes,
+    semaines: () =>
+      premieresDates(
+        textes(),
         (t) => String(debutSemaine(t.at)),
         (t) => t.at,
       ),
-    },
-    textesSansFaute: {
-      dates: textes
+    textesSansFaute: () =>
+      textes()
         .filter((t) => t.faults === 0 && t.words >= MOTS_MIN_SANS_FAUTE)
         .map((t) => t.at),
-    },
-    reglesAcquises: {
-      dates: premieresDates(
-        acquises,
+    reglesAcquises: () =>
+      premieresDates(
+        acquises(),
         (e) => e.ruleKey,
         (e) => e.at,
       ),
-    },
-    homophonesAcquis: {
-      dates: premieresDates(
-        acquises.filter((e) => e.ruleKey.startsWith(PREFIXE_HOMOPHONES) && e.ruleKey in FICHES),
+    homophonesAcquis: () =>
+      premieresDates(
+        acquises().filter((e) => e.ruleKey.startsWith(PREFIXE_HOMOPHONES) && e.ruleKey in FICHES),
         (e) => e.ruleKey,
         (e) => e.at,
       ),
-    },
-    rechutesSurmontees: { dates: rechutesSurmontees(evenements) },
-    reponsesJustes: {
-      dates: evenements
+    rechutesSurmontees: () => rechutesSurmontees(evenements()),
+    reponsesJustes: () =>
+      evenements()
         .filter((e) => e.type === "reponse_juste")
         .map((e) => e.at)
         .sort((a, b) => a - b),
-    },
+  };
+  const cache = new Map<MesureSerie, Serie>();
+  return (mesure) => {
+    let serie = cache.get(mesure);
+    if (!serie) cache.set(mesure, (serie = { dates: calculs[mesure]() }));
+    return serie;
   };
 }
 
@@ -177,14 +183,20 @@ function evaluerNoteMoyenne(def: DefinitionBadge, faits: FaitsBadges, now: numbe
 }
 
 /**
- * État de chaque badge du catalogue, dans l'ordre du catalogue. Seuls les
- * faits datés au plus tard de `now` sont pris en compte.
+ * État de chaque badge du catalogue (ou de `definitions`, une partie du
+ * catalogue), dans cet ordre. Seuls les faits datés au plus tard de `now`
+ * sont pris en compte. L'état d'un badge ne dépend que des faits : évaluer
+ * une partie du catalogue donne les mêmes états que le catalogue entier.
  */
-export function evaluerBadges(faits: FaitsBadges, now: number): EtatBadge[] {
+export function evaluerBadges(
+  faits: FaitsBadges,
+  now: number,
+  definitions: readonly DefinitionBadge[] = BADGES,
+): EtatBadge[] {
   const parMesure = series(faits, now);
-  return BADGES.map((def) => {
+  return definitions.map((def) => {
     if (def.mesure === "noteMoyenne") return evaluerNoteMoyenne(def, faits, now);
-    const { dates } = parMesure[def.mesure];
+    const { dates } = parMesure(def.mesure);
     return {
       id: def.id,
       rempliLe: dates.length >= def.seuil ? dates[def.seuil - 1] : null,

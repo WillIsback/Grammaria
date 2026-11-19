@@ -10,6 +10,7 @@ import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
+import { ouvrirPiloteBun } from "./journal.driver.bun.ts";
 import { listerModelesAmont } from "./src/utils/modeles.ts";
 import { downstreamHeaders, upstreamHeaders } from "./src/utils/upstream.ts";
 
@@ -30,7 +31,7 @@ const settings = new SettingsStore(
   config.desktop && config.settingsPath ? config.settingsPath : null,
 );
 
-const journal = new Journal(config.journalPath);
+const journal = await Journal.ouvrir(ouvrirPiloteBun(config.journalPath));
 
 const grammar = new GrammarChecker();
 grammar.warmUp();
