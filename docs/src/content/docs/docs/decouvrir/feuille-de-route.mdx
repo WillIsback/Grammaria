@@ -10,13 +10,13 @@ description: "Ce qui est disponible aujourd'hui et ce qui est prévu."
 - Treize fiches de règles.
 - Journal des fautes et note sur 20.
 
-## Phase 2 — prévue
+## Phase 2 — disponible
 
-:::caution
-Rien de ce qui suit n'est encore disponible. Les seuils indiqués sont des choix de conception de départ, à régler sur des données réelles.
+L'objectif est d'intervenir sur les fautes **récurrentes** sans ralentir la correction. La contrainte de conception : une personne pressée ne regarde que le bouton **Copier**. Toute intervention se joue donc à cet endroit. Le mode d'emploi est dans [Corriger un texte](/docs/utiliser/corriger/).
+
+:::note
+Les seuils ci-dessous sont des choix de conception de départ, à régler sur des données réelles.
 :::
-
-L'objectif est d'intervenir sur les fautes **récurrentes** sans ralentir la correction. La contrainte de conception : une personne pressée ne regarde que le bouton **Copier**. Toute intervention se joue donc à cet endroit.
 
 ### Cycle de vie d'une règle
 
@@ -24,9 +24,11 @@ L'objectif est d'intervenir sur les fautes **récurrentes** sans ralentir la cor
 |---|---|---|
 | Observée | première occurrence | aucune |
 | Signalée | 3 occurrences sur 7 jours | une ligne d'astuce près du bouton Copier |
-| Travaillée | la faute persiste après plusieurs astuces | le bouton Copier propose les deux formes |
+| Travaillée | la faute revient après 3 astuces | le bouton Copier propose les deux formes |
 | Acquise | 14 jours d'usage sans faute | message de réussite |
 | Rechute | faute après acquisition | retour à « signalée » |
+
+« 14 jours d'usage » : 14 jours se sont écoulés depuis la dernière faute, et vous avez corrigé au moins 5 textes sur au moins 3 jours différents pendant cette période. Une règle ne devient pas acquise parce que l'application est restée fermée.
 
 ### Le choix sur le bouton Copier
 
@@ -38,4 +40,4 @@ Les interventions sont plafonnées : au plus trois règles travaillées en même
 
 ### Bilan
 
-Un écran de synthèse : note moyenne, règles actives, règles acquises et mots pièges.
+Voir Progression.

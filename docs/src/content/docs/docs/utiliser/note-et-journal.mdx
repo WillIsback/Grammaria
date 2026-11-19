@@ -31,11 +31,17 @@ Pour chaque texte corrigé : la date, le nombre de mots, le nombre de fautes et 
 
 Pour chaque faute : la règle, la catégorie, le mot fautif, la correction et **la phrase** qui contient la faute.
 
+Pour chaque règle : son état (observée, signalée, travaillée ou acquise), le nombre de fautes, les dates de la première et de la dernière faute, le nombre d'astuces et de choix affichés, vos réponses aux choix, et l'historique daté de ses changements d'état. Ces informations servent à décider de ce qui s'affiche près du bouton **Copier** (voir [Corriger un texte](/docs/utiliser/corriger/)). Elles ne contiennent aucun extrait de vos textes.
+
 **Le texte entier n'est jamais enregistré.** Le journal est un fichier SQLite sur votre serveur (`JOURNAL_PATH`) ; rien n'est envoyé ailleurs.
 
 ## Effacer le journal
 
-Dans la barre latérale, section **Journal des fautes**, le bouton **Effacer le journal** supprime définitivement toutes les données après confirmation.
+Dans la barre latérale, section **Journal des fautes**, le bouton **Effacer le journal** supprime définitivement toutes les données après confirmation, y compris l'état des règles : le suivi des fautes récurrentes repart de zéro.
+
+## Mise à jour depuis la version 0.2
+
+Rien à faire. Au premier démarrage, le journal existant est conservé tel quel et l'état des règles est reconstruit à partir des fautes déjà enregistrées.
 
 ## Consulter le bilan
 
@@ -45,4 +51,10 @@ Le bilan n'a pas encore d'écran. Il est accessible par l'API :
 curl "http://localhost:25000/api/journal?days=7"
 ```
 
-La réponse donne la note de la période, les règles et les mots les plus fréquents. Voir la [référence de l'API](/docs/reference/api/).
+La réponse donne la note de la période, les règles et les mots les plus fréquents. L'état de chaque règle se lit de la même façon :
+
+```bash
+curl "http://localhost:25000/api/rules"
+```
+
+Voir la [référence de l'API](/docs/reference/api/).

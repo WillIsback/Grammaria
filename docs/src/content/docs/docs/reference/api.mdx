@@ -58,7 +58,7 @@ Les détections suivent le format de LanguageTool. Erreurs : 400 si le JSON ou l
 
 ### `POST /api/analyze`
 
-Calcule le diff, le croise avec les détections, enregistre le résultat dans le journal et le renvoie.
+Calcule le diff, le croise avec les détections, enregistre le résultat dans le journal, met à jour l'état des règles et renvoie le tout, avec ce qu'il faut afficher près du bouton Copier.
 
 ```json
 {
@@ -76,6 +76,8 @@ Réponse :
 {
   "corrections": [
     {
+      "start": 4,
+      "end": 6,
       "avant": "on",
       "apres": "ont",
       "faults": [{ "ruleKey": "PAIRE:on/ont", "source": "fiche", "counted": true }],
@@ -86,9 +88,117 @@ Réponse :
   "faultCount": 1,
   "unclassifiedCount": 0,
   "score": 0,
-  "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 }
+  "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 },
+  "intervention": null,
+  "reussites": []
 }
 ```
+
+`start` et `end` situent le passage dans le texte d'origine (fin exclue).
+
+`intervention` vaut `null`, ou l'une des deux formes suivantes. Le serveur en choisit au plus une par texte et la compte dans le budget de la règle (une par règle et par jour).
+
+```json
+{
+  "type": "astuce",
+  "ruleKey": "PAIRE:on/ont",
+  "titre": "on / ont",
+  "texte": "Remplacez par « avaient »…"
+}
+```
+
+```json
+{
+  "type": "choix",
+  "ruleKey": "PAIRE:on/ont",
+  "titre": "on / ont",
+  "explication": "Remplacez par « avaient »…",
+  "avant": "Ils ",
+  "apres": " vu le film.",
+  "formes": [
+    { "texte": "on", "correcte": false },
+    { "texte": "ont", "correcte": true }
+  ]
+}
+```
+
+`avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
+
+`reussites` liste les règles devenues « acquises » avec ce texte : `[{ "ruleKey": "PAIRE:on/ont", "titre": "on / ont" }]`.
+
+## Cycle de vie des règles
+
+L'état des règles est mis à jour à chaque `POST /api/analyze`. Les seuils sont définis dans `src/analysis/regles/seuils.ts`, la logique de transition dans `src/analysis/regles/cycle.ts`. Les dates sont en millisecondes depuis 1970.
+
+### `GET /api/rules`
+
+Toutes les règles suivies, de la plus récemment fautive à la plus ancienne.
+
+```json
+{
+  "rules": [
+    {
+      "ruleKey": "PAIRE:on/ont",
+      "label": "on / ont",
+      "categoryName": "Confusion de mots",
+      "fiche": { "titre": "on / ont", "astuce": "Remplacez par « avaient »…" },
+      "state": "travaillee",
+      "stateSince": 1795000000000,
+      "occurrences": 9,
+      "firstFaultAt": 1794000000000,
+      "lastFaultAt": 1795000000000,
+      "tipsShown": 3,
+      "choicesShown": 2,
+      "choicesCorrect": 1,
+      "choicesWrong": 1,
+      "lastSolicitedAt": 1795000000000,
+      "solicitationsThatDay": 1,
+      "acquiredAt": null,
+      "relapses": 0
+    }
+  ],
+  "counts": { "observee": 4, "signalee": 1, "travaillee": 1, "acquise": 0 },
+  "thresholds": { "signalementOccurrences": 3, "signalementFenetreJours": 7, "…": "…" }
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `state` | `observee`, `signalee`, `travaillee` ou `acquise` |
+| `stateSince` | date d'entrée dans l'état courant |
+| `label`, `fiche` | nom lisible de la règle ; `fiche` vaut `null` pour une règle sans fiche |
+| `occurrences` | nombre total de fautes sur la règle |
+| `tipsShown` | astuces affichées depuis la dernière entrée en « signalée » |
+| `choicesShown`, `choicesCorrect`, `choicesWrong` | choix à deux formes proposés, bonnes et mauvaises réponses |
+| `acquiredAt` | date d'acquisition ; `null` si la règle n'est pas acquise |
+| `relapses` | nombre de rechutes (faute après acquisition) |
+| `thresholds` | les seuils en vigueur |
+
+### `GET /api/rules/events?limit=200&ruleKey=…`
+
+Historique daté, du plus récent au plus ancien. `limit` va de 1 à 1000 (200 par défaut) ; `ruleKey` restreint à une règle.
+
+```json
+{
+  "events": [
+    { "id": 12, "ruleKey": "PAIRE:on/ont", "at": 1796300000000, "type": "rechute", "from": "acquise", "to": "signalee" },
+    { "id": 11, "ruleKey": "PAIRE:on/ont", "at": 1796200000000, "type": "acquise", "from": "travaillee", "to": "acquise" },
+    { "id": 10, "ruleKey": "PAIRE:on/ont", "at": 1795000000000, "type": "reponse_juste", "from": null, "to": null }
+  ]
+}
+```
+
+`type` vaut `observee`, `signalee`, `travaillee`, `acquise` ou `rechute` pour un changement d'état (`from` et `to` sont alors renseignés ; `from` est `null` à la première faute), et `astuce`, `choix`, `reponse_juste` ou `reponse_fausse` pour une sollicitation.
+
+### `POST /api/rules/answer`
+
+Enregistre la forme cliquée lors d'un choix à deux formes. L'interface l'appelle après avoir copié le texte ; un échec n'empêche pas la copie.
+
+```json
+{ "ruleKey": "PAIRE:on/ont", "correct": true }
+```
+
+Réponse : `{"recorded": true}`, ou `{"recorded": false}` si aucun choix n'attend de réponse pour cette règle. 400 si le corps est invalide.
 
 ### `GET /api/journal?days=7`
 
@@ -96,7 +206,7 @@ Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illis
 
 ### `DELETE /api/journal`
 
-Efface tout le journal. Réponse : `{"purged": true}`.
+Efface tout le journal et remet à zéro l'état des règles et leur historique. Réponse : `{"purged": true}`.
 
 ## Mots valides
 

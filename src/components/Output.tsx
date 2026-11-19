@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+  FormeChoix,
+  Intervention,
+  InterventionChoix,
+  Reussite,
+} from "../analysis/regles/intervention";
 import type { CorrectionEntry, WeekSummary } from "../types";
 import { visibleText } from "../utils/visibleText";
+import { InterventionMessage } from "./InterventionMessage";
 
 interface Props {
   outputText: string;
@@ -19,7 +26,29 @@ interface Props {
   analysisNotice?: string | null;
   /** Boutons Copier / Réinitialiser dans l'en-tête (écrans larges) plutôt qu'en bas. */
   actionsInHeader?: boolean;
+  /** Astuce ou choix à deux formes décidé par le serveur pour ce texte. */
+  intervention?: Intervention | null;
+  /** Règles devenues « acquises » avec ce texte. */
+  reussites?: Reussite[];
+  /** Forme cliquée lors du choix à deux formes (le texte est déjà copié). */
+  onChoiceAnswer?: (ruleKey: string, correct: boolean) => void;
 }
+
+const COPY_ICON = (
+  <svg
+    aria-hidden="true"
+    className="w-4 h-4 shrink-0"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+  </svg>
+);
 
 function formatScore(score: number): string {
   return score.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
@@ -37,34 +66,72 @@ export function Output({
   week,
   analysisNotice,
   actionsInHeader = false,
+  intervention = null,
+  reussites = [],
+  onChoiceAnswer,
 }: Props) {
   const [correctionsOpen, setCorrectionsOpen] = useState(true);
 
+  // Choix à deux formes : la réponse est liée à l'intervention du texte
+  // courant, une nouvelle correction repart donc d'un choix sans réponse.
+  const [reponse, setReponse] = useState<{ choix: InterventionChoix; forme: FormeChoix } | null>(
+    null,
+  );
+  const choix = intervention?.type === "choix" ? intervention : null;
+  const formeChoisie = reponse && reponse.choix === choix ? reponse.forme : null;
+  const choixEnAttente = choix !== null && formeChoisie === null;
+
+  // Les deux formes disparaissent au clic : le focus clavier revient sur Copier.
+  const copyRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (formeChoisie) copyRef.current?.focus();
+  }, [formeChoisie]);
+
+  const copyClass = `flex items-center justify-center gap-2 py-2.5
+    bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold
+    shadow-sm shadow-brand-500/25 hover:shadow-md hover:shadow-brand-500/30
+    transition-all duration-200 active:scale-[0.98]
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+    focus-visible:outline-brand-500`;
+
   const actions = (
     <>
-      <button
-        type="button"
-        onClick={() => onCopy(outputText)}
-        className={`${actionsInHeader ? "px-4" : "flex-1 px-5"} flex items-center justify-center gap-2 py-2.5
-                    bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold
-                    shadow-sm shadow-brand-500/25 hover:shadow-md hover:shadow-brand-500/30
-                    transition-all duration-200 active:scale-[0.98]`}
-      >
-        <svg
-          aria-hidden="true"
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      {choix && choixEnAttente ? (
+        <div
+          role="group"
+          aria-label="Copier le texte corrigé en choisissant la bonne forme"
+          className={`flex gap-2 min-w-0 ${actionsInHeader ? "" : "flex-1"}`}
         >
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-        </svg>
-        Copier
-      </button>
+          {choix.formes.map((forme) => (
+            <button
+              key={forme.texte}
+              type="button"
+              aria-label={`Copier avec « ${forme.texte} »`}
+              title={`Copier avec « ${forme.texte} »`}
+              onClick={() => {
+                // Un seul clic : le texte corrigé est copié quelle que soit la forme.
+                onCopy(outputText);
+                setReponse({ choix, forme });
+                onChoiceAnswer?.(choix.ruleKey, forme.correcte);
+              }}
+              className={`${actionsInHeader ? "px-3.5 max-w-[11rem]" : "flex-1 px-4"} min-w-0 ${copyClass}`}
+            >
+              {COPY_ICON}
+              <span className="truncate">{forme.texte}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          ref={copyRef}
+          type="button"
+          onClick={() => onCopy(outputText)}
+          className={`${actionsInHeader ? "px-4" : "flex-1 px-5"} ${copyClass}`}
+        >
+          {COPY_ICON}
+          Copier
+        </button>
+      )}
       {!isLoading && (
         <button
           type="button"
@@ -80,12 +147,26 @@ export function Output({
       )}
     </>
   );
+  // Zone de message toujours présente près du bouton Copier, pour que les
+  // lecteurs d'écran annoncent ce qui s'y affiche.
+  const message = (
+    <InterventionMessage
+      intervention={intervention}
+      reussites={reussites}
+      formeChoisie={formeChoisie}
+    />
+  );
+
   return (
     <div className="flex-1 flex flex-col min-w-0 md:border-l border-gray-200/60 dark:border-gray-800/60">
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-2xl mx-auto h-full flex flex-col">
-          <div className="flex items-center justify-between gap-4 mb-4 md:min-h-10">
-            <div className="min-w-0">
+          {/* Avec deux formes longues, les boutons passent à la ligne plutôt que d'être tronqués. */}
+          <div
+            className={`flex items-center justify-between gap-x-4 gap-y-2 mb-4 md:min-h-10
+              ${choixEnAttente ? "flex-wrap" : ""}`}
+          >
+            <div className={choixEnAttente ? "flex-1 basis-0 min-w-[7rem]" : "min-w-0"}>
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                 Résultat corrigé
               </h2>
@@ -94,9 +175,15 @@ export function Output({
               </p>
             </div>
             {actionsInHeader && outputText && (
-              <div className="flex items-center gap-2 shrink-0">{actions}</div>
+              <div
+                className={`flex items-center gap-2 ${choixEnAttente ? "min-w-0 ml-auto" : "shrink-0"}`}
+              >
+                {actions}
+              </div>
             )}
           </div>
+
+          {actionsInHeader && outputText && message}
 
           <div
             className="flex-1 min-h-[320px] lg:min-h-[420px] bg-white dark:bg-gray-800/50 p-5 rounded-2xl
@@ -349,7 +436,12 @@ export function Output({
                 </p>
               )}
 
-              {!actionsInHeader && <div className="mt-3 flex gap-3">{actions}</div>}
+              {!actionsInHeader && (
+                <>
+                  <div className="mt-3">{message}</div>
+                  <div className="mt-3 flex gap-3">{actions}</div>
+                </>
+              )}
             </div>
           )}
         </div>

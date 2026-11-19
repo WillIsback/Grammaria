@@ -8,10 +8,16 @@ import { Toast } from "./components/Toast";
 import { useCorrector } from "./hooks/useCorrector";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { useServerSettings } from "./hooks/useServerSettings";
+import { answerChoice } from "./services/journal";
 import type { ServerSettings } from "./services/settings";
 import { initModel, setCurrentModel } from "./utils/models";
 
 type Pane = "editor" | "output";
+
+/** La copie a déjà eu lieu : un échec d'enregistrement de la réponse est sans conséquence. */
+function recordChoiceAnswer(ruleKey: string, correct: boolean) {
+  answerChoice(ruleKey, correct).catch(() => {});
+}
 
 function App() {
   const {
@@ -184,6 +190,9 @@ function App() {
               isLoadingCorrections={isLoadingCorrections}
               score={analysis?.score}
               week={analysis?.week}
+              intervention={analysis?.intervention}
+              reussites={analysis?.reussites}
+              onChoiceAnswer={recordChoiceAnswer}
               analysisNotice={analysisNotice}
               actionsInHeader={actionsInHeader}
             />
