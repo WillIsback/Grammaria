@@ -23,6 +23,12 @@ export type { RuleHistoryEntry, RuleHistoryType, RuleView, Suivi } from "./journ
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Version du schéma, conservée dans `PRAGMA user_version` : 0 pour une base
+ * v0.2.0, 1 avec le cycle de vie des règles, 2 avec les badges.
+ */
+export const SCHEMA_VERSION = 2;
+
 export interface PeriodSummary {
   texts: number;
   words: number;
@@ -98,9 +104,30 @@ export class Journal {
       CREATE INDEX IF NOT EXISTS idx_faults_word ON faults(word, created_at);
     `);
     this.ruleStore = new RuleStore(this.db);
-    this.ruleStore.migrate();
     this.badges = new BadgeStore(this.db);
-    this.badges.migrate();
+    this.migrate();
+  }
+
+  /**
+   * Crée les tables manquantes et met le schéma à la version courante, en une
+   * transaction. Idempotent. Sur une base v0.2.0, l'état des règles est
+   * reconstruit à partir des fautes journalisées ; sur une base antérieure aux
+   * badges, les badges déjà mérités sont attribués à leur date réelle, sans
+   * notification. Les tables `texts` et `faults` ne sont jamais modifiées.
+   */
+  private migrate(): void {
+    this.ruleStore.createTables();
+    this.badges.createTable();
+    const { user_version: version } = this.db.query("PRAGMA user_version").get() as {
+      user_version: number;
+    };
+    if (version >= SCHEMA_VERSION) return;
+    this.db.transaction(() => {
+      if (version < 1) this.ruleStore.replay();
+      // Attribution rétroactive : le résultat (badges nouveaux) n'est pas annoncé.
+      if (version < 2) this.badges.award();
+      this.db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+    })();
   }
 
   /**

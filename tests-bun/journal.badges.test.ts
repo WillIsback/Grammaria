@@ -3,9 +3,8 @@ import { describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Journal } from "../journal.ts";
+import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { awardBadgesSafely } from "../journal.badges.ts";
-import { SCHEMA_VERSION } from "../journal.rules.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { BADGES } from "../src/analysis/badges/catalogue.ts";
 

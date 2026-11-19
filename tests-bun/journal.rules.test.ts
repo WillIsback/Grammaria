@@ -3,8 +3,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Journal } from "../journal.ts";
-import { SCHEMA_VERSION } from "../journal.rules.ts";
+import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
 
@@ -539,6 +538,75 @@ describe("Journal — migration du schéma", () => {
         ruleKey: ON,
       });
       journal.close();
+    });
+  });
+
+  it("fonctionne sur une base alpha dont les tables des règles et des badges ont user_id", () => {
+    avecBase((path) => {
+      baseV020(path);
+      // Schéma distribué avec une alpha de la v0.3.0, avant le retrait de user_id.
+      const db = new Database(path);
+      db.exec(`
+        CREATE TABLE rule_states (
+          user_id TEXT NOT NULL DEFAULT 'local',
+          rule_key TEXT NOT NULL,
+          state TEXT NOT NULL,
+          state_since INTEGER NOT NULL,
+          occurrences INTEGER NOT NULL,
+          first_fault_at INTEGER NOT NULL,
+          last_fault_at INTEGER NOT NULL,
+          tips_shown INTEGER NOT NULL DEFAULT 0,
+          choices_shown INTEGER NOT NULL DEFAULT 0,
+          choices_correct INTEGER NOT NULL DEFAULT 0,
+          choices_wrong INTEGER NOT NULL DEFAULT 0,
+          last_solicited_at INTEGER,
+          solicitations_that_day INTEGER NOT NULL DEFAULT 0,
+          acquired_at INTEGER,
+          relapses INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (user_id, rule_key)
+        );
+        CREATE TABLE rule_events (
+          id INTEGER PRIMARY KEY,
+          user_id TEXT NOT NULL DEFAULT 'local',
+          rule_key TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          from_state TEXT,
+          to_state TEXT
+        );
+        CREATE TABLE badges (
+          user_id TEXT NOT NULL DEFAULT 'local',
+          badge_id TEXT NOT NULL,
+          obtained_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, badge_id)
+        );
+      `);
+      db.close();
+
+      const journal = new Journal(path);
+      expect(journal.rules().map((r) => [r.ruleKey, r.state, r.occurrences])).toEqual([
+        [ON, "signalee", 3],
+        ["PAIRE:a/à", "observee", 1],
+      ]);
+      expect(journal.badges.obtained().get("premier-texte")).toBe(jour(0));
+      for (const n of [3, 4, 5]) {
+        expect(corriger(journal, FAUTE_ON, jour(n)).intervention?.type).toBe("astuce");
+      }
+      const choix = corriger(journal, FAUTE_ON, jour(6)).intervention;
+      if (choix?.type !== "choix") throw new Error("choix attendu");
+      expect(journal.answerChoice(choix.choiceId, true, jour(6) + 1000)).toBe("recorded");
+      expect(regle(journal)).toMatchObject({ state: "travaillee", occurrences: 7 });
+      // Sept jours d'écriture : le badge s'enregistre dans l'ancienne table.
+      expect(journal.badges.award(jour(6) + 1000).map((b) => b.id)).toEqual(["jours-5"]);
+      expect(journal.badges.obtained().get("jours-5")).toBe(jour(4));
+      journal.close();
+
+      const reouvert = new Journal(path);
+      expect(regle(reouvert)).toMatchObject({ choicesShown: 1, choicesCorrect: 1 });
+      reouvert.purge();
+      expect(reouvert.rules()).toEqual([]);
+      expect(reouvert.badges.obtained().size).toBe(0);
+      reouvert.close();
     });
   });
 

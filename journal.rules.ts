@@ -19,14 +19,6 @@ import {
 } from "./src/analysis/regles/intervention.ts";
 import { JOUR_MS, SEUILS } from "./src/analysis/regles/seuils.ts";
 
-/**
- * Version du schéma, conservée dans `PRAGMA user_version` (0 : base v0.2.0,
- * 1 : cycle de vie des règles, 2 : badges, voir `journal.badges.ts`).
- */
-export const SCHEMA_VERSION = 2;
-/** Version atteinte par la migration des règles ci-dessous. */
-const RULES_SCHEMA_VERSION = 1;
-
 /** Une règle telle que l'expose `GET /api/rules`. */
 export interface RuleView extends RuleState {
   /** Nom lisible : titre de la fiche, sinon message du correcteur grammatical. */
@@ -105,16 +97,11 @@ const SELECT_ETAT = CHAMPS_ETAT.map((c) => `${colonne(c)} AS ${c}`).join(", ");
 export class RuleStore {
   constructor(private db: Database) {}
 
-  /**
-   * Crée les tables de la Phase 2. Idempotent. Sur une base v0.2.0, l'état des
-   * règles est reconstruit en rejouant les fautes déjà journalisées : les
-   * tables `texts` et `faults` ne sont pas modifiées.
-   */
-  migrate(): void {
+  /** Crée les tables de la Phase 2. Idempotent. */
+  createTables(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS rule_states (
-        user_id TEXT NOT NULL DEFAULT 'local',
-        rule_key TEXT NOT NULL,
+        rule_key TEXT NOT NULL PRIMARY KEY,
         state TEXT NOT NULL,
         state_since INTEGER NOT NULL,
         occurrences INTEGER NOT NULL,
@@ -127,12 +114,10 @@ export class RuleStore {
         last_solicited_at INTEGER,
         solicitations_that_day INTEGER NOT NULL DEFAULT 0,
         acquired_at INTEGER,
-        relapses INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (user_id, rule_key)
+        relapses INTEGER NOT NULL DEFAULT 0
       );
       CREATE TABLE IF NOT EXISTS rule_events (
         id INTEGER PRIMARY KEY,
-        user_id TEXT NOT NULL DEFAULT 'local',
         rule_key TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         type TEXT NOT NULL,
@@ -142,24 +127,19 @@ export class RuleStore {
       CREATE INDEX IF NOT EXISTS idx_rule_events_rule ON rule_events(rule_key, created_at);
       CREATE INDEX IF NOT EXISTS idx_rule_events_created ON rule_events(created_at);
     `);
-    const { user_version: version } = this.db.query("PRAGMA user_version").get() as {
-      user_version: number;
-    };
-    if (version >= RULES_SCHEMA_VERSION) return;
-    this.db.transaction(() => {
-      const { n } = this.db.query("SELECT COUNT(*) AS n FROM rule_states").get() as { n: number };
-      if (n === 0) this.replay();
-      this.db.exec(`PRAGMA user_version = ${RULES_SCHEMA_VERSION}`);
-    })();
   }
 
   /**
-   * Rejoue le journal, texte par texte, dans l'ordre chronologique et avec les
-   * dates d'origine : les fautes du texte, puis l'usage (acquisition). Une
-   * règle acquise depuis longtemps l'est donc dès la migration, à sa date
-   * historique, sans message de réussite au premier texte corrigé ensuite.
+   * Migration d'une base v0.2.0 : reconstruit l'état des règles, s'il n'en
+   * existe aucun, en rejouant le journal texte par texte, dans l'ordre
+   * chronologique et avec les dates d'origine : les fautes du texte, puis
+   * l'usage (acquisition). Une règle acquise depuis longtemps l'est donc dès
+   * la migration, à sa date historique, sans message de réussite au premier
+   * texte corrigé ensuite. Les tables `texts` et `faults` ne sont pas modifiées.
    */
-  private replay(): void {
+  replay(): void {
+    const { n } = this.db.query("SELECT COUNT(*) AS n FROM rule_states").get() as { n: number };
+    if (n > 0) return;
     const faults = this.db
       .query(
         `SELECT text_id AS textId, rule_key AS ruleKey, COUNT(*) AS count
