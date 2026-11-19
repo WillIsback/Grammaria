@@ -203,7 +203,9 @@ jobs:
 
       # Le serveur embarqué est un exécutable Bun compilé : on vérifie qu'il
       # démarre et que le correcteur grammatical répond, après une éventuelle
-      # signature (qui modifie le binaire).
+      # signature (qui modifie le binaire). Le « é » est échappé (\u00e9) : sous
+      # Git Bash pour Windows, curl transmet -d dans la page de code Windows,
+      # pas en UTF-8, et le moteur recevait « �tait ».
       - name: Test de fumée du serveur embarqué
         shell: bash
         run: |
@@ -226,7 +228,7 @@ jobs:
           done
           result=$(curl -sf -X POST http://127.0.0.1:25123/api/check \
             -H 'Content-Type: application/json' \
-            -d '{"text":"Les enfants était content."}' || true)
+            -d '{"text":"Les enfants \u00e9tait content."}' || true)
           kill "$pid" || true
           echo "$result" | head -c 300; echo
           if ! echo "$result" | grep -q ACCORD_SUJET_VERBE; then
