@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { BadgeNotice } from "./components/BadgeNotice";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
 import { Output } from "./components/Output";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
+import { useBadgeNotices } from "./hooks/useBadgeNotices";
 import { useCorrector } from "./hooks/useCorrector";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { useServerSettings } from "./hooks/useServerSettings";
@@ -13,11 +15,6 @@ import type { ServerSettings } from "./services/settings";
 import { initModel, setCurrentModel } from "./utils/models";
 
 type Pane = "editor" | "output";
-
-/** La copie a déjà eu lieu : un échec d'enregistrement de la réponse est sans conséquence. */
-function recordChoiceAnswer(ruleKey: string, correct: boolean) {
-  answerChoice(ruleKey, correct).catch(() => {});
-}
 
 function App() {
   const {
@@ -36,6 +33,22 @@ function App() {
     handleCorrect,
     handleReset,
   } = useCorrector();
+
+  // Badges obtenus après une correction ou une réponse au choix à deux formes.
+  const badgeNotices = useBadgeNotices();
+  const { annoncer: annoncerBadges } = badgeNotices;
+  useEffect(() => {
+    annoncerBadges(analysis?.nouveauxBadges);
+  }, [analysis, annoncerBadges]);
+  /** La copie a déjà eu lieu : un échec d'enregistrement de la réponse est sans conséquence. */
+  const recordChoiceAnswer = useCallback(
+    (ruleKey: string, correct: boolean) => {
+      answerChoice(ruleKey, correct)
+        .then(annoncerBadges)
+        .catch(() => {});
+    },
+    [annoncerBadges],
+  );
 
   // À partir de la tablette (md), les actions passent dans l'en-tête de chaque
   // panneau, au-dessus des zones de texte ; sur mobile elles restent en bas.
@@ -201,6 +214,7 @@ function App() {
       </div>
 
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      <BadgeNotice badges={badgeNotices.annonces} onClose={badgeNotices.fermer} />
 
       {error && (
         <div className="bg-red-50/90 dark:bg-red-950/40 border-t border-red-200/70 dark:border-red-800/40 backdrop-blur-sm">
