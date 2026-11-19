@@ -8,6 +8,7 @@ const TEXTE = "Hier, ils ont mangé tous les gâteaux.";
 
 const CHOIX: InterventionChoix = {
   type: "choix",
+  choiceId: 42,
   ruleKey: "PAIRE:on/ont",
   titre: "on / ont",
   explication: "Remplacez par « avaient ».",
@@ -76,7 +77,7 @@ describe.each([
 
     expect(p.onCopy).toHaveBeenCalledTimes(1);
     expect(p.onCopy).toHaveBeenCalledWith(TEXTE);
-    expect(p.onChoiceAnswer).toHaveBeenCalledWith("PAIRE:on/ont", true);
+    expect(p.onChoiceAnswer).toHaveBeenCalledWith(42, true);
     expect(screen.getByRole("status").textContent).toContain("Bonne réponse : « ont ».");
     expect(screen.queryByTestId("intervention-explication")).toBeNull();
   });
@@ -88,7 +89,7 @@ describe.each([
 
     expect(p.onCopy).toHaveBeenCalledTimes(1);
     expect(p.onCopy).toHaveBeenCalledWith(TEXTE);
-    expect(p.onChoiceAnswer).toHaveBeenCalledWith("PAIRE:on/ont", false);
+    expect(p.onChoiceAnswer).toHaveBeenCalledWith(42, false);
     const statut = screen.getByRole("status");
     expect(statut.textContent).toContain("Il fallait écrire « ont », et non « on ».");
     expect(statut.textContent).toContain("Remplacez par « avaient ».");
@@ -112,9 +113,79 @@ describe.each([
     fireEvent.click(screen.getByRole("button", { name: "Copier avec « ont »" }));
     expect(screen.queryByRole("group")).toBeNull();
 
-    rerender(<Output {...props({ actionsInHeader, intervention: { ...CHOIX } })} />);
+    // Nouvelle correction : le résultat se vide, puis le texte et l'analyse arrivent.
+    rerender(<Output {...props({ actionsInHeader, outputText: "" })} />);
+    rerender(<Output {...props({ actionsInHeader })} />);
+    rerender(<Output {...props({ actionsInHeader, intervention: { ...CHOIX, choiceId: 43 } })} />);
     expect(screen.queryByRole("group")).not.toBeNull();
     expect(screen.getByRole("status").textContent).toContain("Quelle forme est la bonne ?");
+  });
+
+  it("relie le groupe des deux formes à la question", () => {
+    render(<Output {...props({ actionsInHeader, intervention: CHOIX })} />);
+    const groupe = screen.getByRole("group");
+    const question = screen.getByTestId("intervention-choix");
+    expect(question.id).not.toBe("");
+    expect(groupe.getAttribute("aria-describedby")).toBe(question.id);
+  });
+
+  it("donne le focus au groupe quand les formes remplacent un bouton Copier qui l'avait", () => {
+    const { rerender } = render(<Output {...props({ actionsInHeader })} />);
+    screen.getByRole("button", { name: "Copier" }).focus();
+
+    rerender(<Output {...props({ actionsInHeader, intervention: CHOIX })} />);
+    const groupe = screen.getByRole("group");
+    // Le groupe, et non l'une des formes : Entrée ne répond pas par mégarde.
+    expect(document.activeElement).toBe(groupe);
+    expect(groupe.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("ne déplace pas le focus quand le bouton Copier ne l'avait pas", () => {
+    const { rerender } = render(<Output {...props({ actionsInHeader })} />);
+    rerender(<Output {...props({ actionsInHeader, intervention: CHOIX })} />);
+    expect(screen.queryByRole("group")).not.toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("ne remplace pas le bouton Copier sous le pointeur", () => {
+    const p = props({ actionsInHeader, onChoiceAnswer: vi.fn() });
+    const { rerender } = render(<Output {...p} />);
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Copier" }));
+
+    rerender(<Output {...p} intervention={CHOIX} />);
+    expect(screen.queryByRole("group")).toBeNull();
+    // Le choix n'est pas proposé cette fois ; l'explication reste lisible.
+    expect(screen.getByRole("status").textContent).toContain(
+      "Astuce · on / ont — Remplacez par « avaient ».",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copier" }));
+    expect(p.onCopy).toHaveBeenCalledWith(TEXTE);
+    expect(p.onChoiceAnswer).not.toHaveBeenCalled();
+
+    // Le pointeur s'éloigne : la décision ne change pas pour ce texte.
+    fireEvent.pointerLeave(screen.getByRole("button", { name: "Copier" }));
+    expect(screen.queryByRole("group")).toBeNull();
+  });
+
+  it("propose le choix quand le pointeur a quitté le bouton Copier", () => {
+    const { rerender } = render(<Output {...props({ actionsInHeader })} />);
+    const copier = screen.getByRole("button", { name: "Copier" });
+    fireEvent.pointerEnter(copier);
+    fireEvent.pointerLeave(copier);
+    rerender(<Output {...props({ actionsInHeader, intervention: CHOIX })} />);
+    expect(screen.queryByRole("group")).not.toBeNull();
+  });
+
+  it("ne propose pas le choix quand le texte a déjà été copié", () => {
+    const p = props({ actionsInHeader });
+    const { rerender } = render(<Output {...p} />);
+    // Copie pendant l'analyse, avant l'arrivée de l'intervention.
+    fireEvent.click(screen.getByRole("button", { name: "Copier" }));
+
+    rerender(<Output {...p} intervention={CHOIX} />);
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Copier" })).not.toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Astuce · on / ont");
   });
 
   it("affiche l'astuce d'une règle signalée sans toucher au bouton Copier", () => {

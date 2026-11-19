@@ -281,14 +281,26 @@ Bun.serve({
         } catch {
           return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers });
         }
-        if (typeof body?.ruleKey !== "string" || typeof body?.correct !== "boolean") {
+        if (!Number.isSafeInteger(body?.choiceId) || typeof body?.correct !== "boolean") {
           return new Response(JSON.stringify({ error: "Invalid payload" }), {
             status: 400,
             headers,
           });
         }
-        const recorded = journal.answerChoice(body.ruleKey, body.correct);
-        return new Response(JSON.stringify({ recorded }), { headers });
+        const result = journal.answerChoice(body.choiceId, body.correct);
+        if (result === "unknown") {
+          return new Response(JSON.stringify({ error: "Unknown choice" }), {
+            status: 404,
+            headers,
+          });
+        }
+        if (result === "conflict") {
+          return new Response(JSON.stringify({ error: "Choice already answered or replaced" }), {
+            status: 409,
+            headers,
+          });
+        }
+        return new Response(JSON.stringify({ recorded: true }), { headers });
       }
 
       if (path === "/api/journal" && req.method === "GET") {

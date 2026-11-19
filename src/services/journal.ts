@@ -28,11 +28,11 @@ export async function analyzeCorrection(
 }
 
 /** Signale au journal la forme cliquée lors du choix à deux formes. */
-export async function answerChoice(ruleKey: string, correct: boolean): Promise<void> {
+export async function answerChoice(choiceId: number, correct: boolean): Promise<void> {
   const response = await fetch("/api/rules/answer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ruleKey, correct }),
+    body: JSON.stringify({ choiceId, correct }),
   });
   if (!response.ok) throw new Error(`Réponse non enregistrée: ${response.status}`);
 }

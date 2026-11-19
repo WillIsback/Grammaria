@@ -24,6 +24,11 @@ export interface InterventionAstuce {
 /** Le bouton Copier remplacé par deux formes (règle « travaillée »). */
 export interface InterventionChoix {
   type: "choix";
+  /**
+   * Identifiant de ce choix précis (événement « choix » de l'historique),
+   * attribué par le journal ; la réponse de l'utilisateur s'y rattache.
+   */
+  choiceId: number;
   ruleKey: string;
   titre: string;
   /** Affichée quand la mauvaise forme est cliquée. */
@@ -36,6 +41,9 @@ export interface InterventionChoix {
 }
 
 export type Intervention = InterventionAstuce | InterventionChoix;
+
+/** Choix décidé par la logique pure, avant que le journal lui donne son identifiant. */
+export type ChoixPropose = Omit<InterventionChoix, "choiceId">;
 
 /** Règle devenue « acquise » avec ce texte : message de réussite. */
 export interface Reussite {
@@ -140,7 +148,7 @@ export function choisirIntervention(
   now: number,
   random: () => number = Math.random,
   seuils: Seuils = SEUILS,
-): Intervention | null {
+): InterventionAstuce | ChoixPropose | null {
   const rang = (c: Candidat) => (c.state.state === "travaillee" ? 0 : 1);
   const eligibles = candidats
     .filter((c) => c.state.state === "signalee" || c.state.state === "travaillee")

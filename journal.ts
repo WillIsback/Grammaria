@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
 import {
+  type AnswerResult,
   type FollowOptions,
   type RuleHistoryEntry,
   RuleStore,
@@ -131,7 +132,16 @@ export class Journal {
           );
         }
       }
-      return this.ruleStore.follow(analysis, Number(lastInsertRowid), now, options);
+      // Le suivi des règles ne doit jamais faire perdre le texte journalisé :
+      // transaction imbriquée (point de sauvegarde), annulée seule en cas d'échec.
+      try {
+        return this.db.transaction(() =>
+          this.ruleStore.follow(analysis, Number(lastInsertRowid), now, options),
+        )();
+      } catch (error) {
+        console.error("[journal] suivi des règles annulé pour ce texte :", error);
+        return { intervention: null, reussites: [] };
+      }
     })();
   }
 
@@ -145,9 +155,9 @@ export class Journal {
     return this.ruleStore.events(options);
   }
 
-  /** Réponse de l'utilisateur au choix à deux formes du bouton Copier. */
-  answerChoice(ruleKey: string, correct: boolean, now: number = Date.now()): boolean {
-    return this.ruleStore.answer(ruleKey, correct, now);
+  /** Réponse de l'utilisateur à un choix à deux formes précis (`choiceId`). */
+  answerChoice(choiceId: number, correct: boolean, now: number = Date.now()): AnswerResult {
+    return this.ruleStore.answer(choiceId, correct, now);
   }
 
   period(days: number, now: number = Date.now()): PeriodSummary {

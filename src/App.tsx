@@ -17,8 +17,8 @@ import { initModel, setCurrentModel } from "./utils/models";
 type Pane = "editor" | "output";
 
 /** La copie a déjà eu lieu : un échec d'enregistrement de la réponse est sans conséquence. */
-function recordChoiceAnswer(ruleKey: string, correct: boolean) {
-  answerChoice(ruleKey, correct).catch(() => {});
+function recordChoiceAnswer(choiceId: number, correct: boolean) {
+  answerChoice(choiceId, correct).catch(() => {});
 }
 
 function App() {

@@ -110,6 +110,7 @@ Réponse :
 ```json
 {
   "type": "choix",
+  "choiceId": 57,
   "ruleKey": "PAIRE:on/ont",
   "titre": "on / ont",
   "explication": "Remplacez par « avaient »…",
@@ -122,7 +123,7 @@ Réponse :
 }
 ```
 
-`avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
+`choiceId` identifie ce choix précis (c'est l'`id` de l'événement `choix` dans l'historique) : il est à renvoyer à `POST /api/rules/answer`. `avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
 
 `reussites` liste les règles devenues « acquises » avec ce texte : `[{ "ruleKey": "PAIRE:on/ont", "titre": "on / ont" }]`.
 
@@ -192,13 +193,19 @@ Historique daté, du plus récent au plus ancien. `limit` va de 1 à 1000 (200 p
 
 ### `POST /api/rules/answer`
 
-Enregistre la forme cliquée lors d'un choix à deux formes. L'interface l'appelle après avoir copié le texte ; un échec n'empêche pas la copie.
+Enregistre la forme cliquée lors d'un choix à deux formes. `choiceId` est celui reçu dans l'intervention. L'interface appelle cette route après avoir copié le texte ; un échec n'empêche pas la copie.
 
 ```json
-{ "ruleKey": "PAIRE:on/ont", "correct": true }
+{ "choiceId": 57, "correct": true }
 ```
 
-Réponse : `{"recorded": true}`, ou `{"recorded": false}` si aucun choix n'attend de réponse pour cette règle. 400 si le corps est invalide.
+Réponse : `{"recorded": true}`. Chaque choix ne reçoit qu'une réponse.
+
+| Code | Cas |
+|---|---|
+| 400 | corps invalide (`choiceId` entier, `correct` booléen) |
+| 404 | aucun choix ne porte cet identifiant |
+| 409 | le choix a déjà reçu sa réponse, ou un choix plus récent l'a remplacé pour la même règle |
 
 ### `GET /api/journal?days=7`
 
