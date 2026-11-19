@@ -19,8 +19,13 @@ import {
 } from "./src/analysis/regles/intervention.ts";
 import { JOUR_MS, SEUILS } from "./src/analysis/regles/seuils.ts";
 
-/** Version du schéma, conservée dans `PRAGMA user_version` (0 : base v0.2.0). */
-export const SCHEMA_VERSION = 1;
+/**
+ * Version du schéma, conservée dans `PRAGMA user_version` (0 : base v0.2.0,
+ * 1 : cycle de vie des règles, 2 : badges, voir `journal.badges.ts`).
+ */
+export const SCHEMA_VERSION = 2;
+/** Version atteinte par la migration des règles ci-dessous. */
+const RULES_SCHEMA_VERSION = 1;
 
 /** Une règle telle que l'expose `GET /api/rules`. */
 export interface RuleView extends RuleState {
@@ -152,11 +157,11 @@ export class RuleStore {
     const { user_version: version } = this.db.query("PRAGMA user_version").get() as {
       user_version: number;
     };
-    if (version >= SCHEMA_VERSION) return;
+    if (version >= RULES_SCHEMA_VERSION) return;
     this.db.transaction(() => {
       const { n } = this.db.query("SELECT COUNT(*) AS n FROM rule_states").get() as { n: number };
       if (n === 0) this.replay();
-      this.db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+      this.db.exec(`PRAGMA user_version = ${RULES_SCHEMA_VERSION}`);
     })();
   }
 

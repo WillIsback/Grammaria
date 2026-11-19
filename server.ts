@@ -9,6 +9,7 @@ import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
+import { awardBadgesSafely } from "./journal.badges.ts";
 import { ETATS_CYCLE } from "./src/analysis/regles/cycle.ts";
 import { SEUILS } from "./src/analysis/regles/seuils.ts";
 import { analyze } from "./src/analysis/analyze.ts";
@@ -207,7 +208,12 @@ Bun.serve({
     }
 
     // === API: Analyse (diff + croisement des détections grammaticales) et journal ===
-    if (path === "/api/analyze" || path === "/api/journal" || RULE_PATHS.has(path)) {
+    if (
+      path === "/api/analyze" ||
+      path === "/api/journal" ||
+      path === "/api/badges" ||
+      RULE_PATHS.has(path)
+    ) {
       const headers = getCorsHeaders(req);
 
       if (req.method === "OPTIONS") {
@@ -248,10 +254,22 @@ Bun.serve({
         // L'état des règles est mis à jour ici ; le serveur décide de ce qui
         // s'affiche près du bouton Copier (astuce, choix à deux formes, réussite).
         const suivi = journal.record(analysis, Date.now(), { original });
+        // Badges : une erreur de calcul n'empêche jamais l'analyse.
+        const nouveauxBadges = awardBadgesSafely(journal.badges);
         return new Response(
-          JSON.stringify({ ...analysis, week: journal.period(SCORE_WINDOW_DAYS), ...suivi }),
+          JSON.stringify({
+            ...analysis,
+            week: journal.period(SCORE_WINDOW_DAYS),
+            ...suivi,
+            nouveauxBadges,
+          }),
           { headers },
         );
+      }
+
+      // Badges de progression : catalogue complet, obtenus ou non.
+      if (path === "/api/badges" && req.method === "GET") {
+        return new Response(JSON.stringify(journal.badges.catalogue()), { headers });
       }
 
       // Cycle de vie des règles : lecture pour le tableau de bord et les badges.
@@ -288,7 +306,8 @@ Bun.serve({
           });
         }
         const recorded = journal.answerChoice(body.ruleKey, body.correct);
-        return new Response(JSON.stringify({ recorded }), { headers });
+        const nouveauxBadges = recorded ? awardBadgesSafely(journal.badges) : [];
+        return new Response(JSON.stringify({ recorded, nouveauxBadges }), { headers });
       }
 
       if (path === "/api/journal" && req.method === "GET") {
