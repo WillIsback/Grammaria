@@ -4,6 +4,12 @@ import { dirname } from "node:path";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
 import {
+  calculerProgression,
+  debutPremiereSemaine,
+  type Progression,
+} from "./src/analysis/progression/calcul.ts";
+import { lireFautes, lireTextes } from "./journal.progress.ts";
+import {
   type AnswerResult,
   type FollowOptions,
   type RuleHistoryEntry,
@@ -192,6 +198,18 @@ export class Journal {
       )
       .all(since) as WordCount[];
     return { days, period: this.period(days, now), unclassified: unclassified.n, rules, words };
+  }
+
+  /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
+  progress(now: number = Date.now()): Progression {
+    return calculerProgression(
+      {
+        texts: lireTextes(this.db),
+        faults: lireFautes(this.db, debutPremiereSemaine(now)),
+        rules: this.rules(),
+      },
+      now,
+    );
   }
 
   /** Efface le journal et remet à zéro l'état des règles. */

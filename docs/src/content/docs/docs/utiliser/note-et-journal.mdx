@@ -45,15 +45,18 @@ Rien à faire. Au premier démarrage, le journal existant est conservé tel quel
 
 ## Consulter le bilan
 
-Le bilan n'a pas encore d'écran. Il est accessible par l'API :
+Le bilan s'affiche dans l'écran **Progression**, ouvert par le bouton en forme de graphique en haut à droite, à côté de **Paramètres** : score de maîtrise, note semaine après semaine, fautes pour 100 mots, règles par état, règles les plus fréquentes et mots pièges. Le mode d'emploi est dans [Progression](/docs/utiliser/progression/).
+
+Les mêmes informations sont accessibles par l'API, en une seule requête :
+
+```bash
+curl "http://localhost:25000/api/progress"
+```
+
+Le bilan d'une période donnée et l'état de chaque règle se lisent ainsi :
 
 ```bash
 curl "http://localhost:25000/api/journal?days=7"
-```
-
-La réponse donne la note de la période, les règles et les mots les plus fréquents. L'état de chaque règle se lit de la même façon :
-
-```bash
 curl "http://localhost:25000/api/rules"
 ```
 

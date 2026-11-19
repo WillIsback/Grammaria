@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
 import { Output } from "./components/Output";
+import { ProgressionScreen } from "./components/progression/ProgressionScreen";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
@@ -51,6 +52,9 @@ function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePane, setActivePane] = useState<Pane>("editor");
+  // Écran « Progression » : affiché par-dessus la correction, qui garde son état.
+  const [progressOpen, setProgressOpen] = useState(false);
+  const closeProgress = useCallback(() => setProgressOpen(false), []);
 
   // Application de bureau : tant qu'aucun modèle n'est configuré, ouvrir les
   // réglages pour que l'utilisateur sache par où commencer.
@@ -126,9 +130,12 @@ function App() {
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
         onOpenSettings={() => setSidebarOpen(true)}
         onOpenPreferences={() => setPreferencesOpen(true)}
+        onOpenProgress={() => setProgressOpen(true)}
+        progressOpen={progressOpen}
       />
 
       <UpdateBanner update={appUpdate} />
+      {progressOpen && <ProgressionScreen onClose={closeProgress} />}
 
       <SettingsDialog
         open={showPreferences}

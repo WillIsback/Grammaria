@@ -45,6 +45,8 @@ grammar.warmUp();
 const MAX_ANALYZE_LENGTH = 20_000;
 /** Routes du cycle de vie des règles. */
 const RULE_PATHS = new Set(["/api/rules", "/api/rules/events", "/api/rules/answer"]);
+/** Écran « Progression » : tout l'écran en une seule requête (issue #15). */
+const PROGRESS_PATH = "/api/progress";
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
 
@@ -207,7 +209,12 @@ Bun.serve({
     }
 
     // === API: Analyse (diff + croisement des détections grammaticales) et journal ===
-    if (path === "/api/analyze" || path === "/api/journal" || RULE_PATHS.has(path)) {
+    if (
+      path === "/api/analyze" ||
+      path === "/api/journal" ||
+      path === PROGRESS_PATH ||
+      RULE_PATHS.has(path)
+    ) {
       const headers = getCorsHeaders(req);
 
       if (req.method === "OPTIONS") {
@@ -301,6 +308,10 @@ Bun.serve({
           });
         }
         return new Response(JSON.stringify({ recorded: true }), { headers });
+      }
+
+      if (path === PROGRESS_PATH && req.method === "GET") {
+        return new Response(JSON.stringify(journal.progress()), { headers });
       }
 
       if (path === "/api/journal" && req.method === "GET") {

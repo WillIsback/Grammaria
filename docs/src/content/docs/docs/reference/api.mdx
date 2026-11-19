@@ -211,6 +211,72 @@ Réponse : `{"recorded": true}`. Chaque choix ne reçoit qu'une réponse.
 
 Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illisible, 1 pour une valeur inférieure à 1) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
 
+### `GET /api/progress`
+
+Tout l'écran **Progression** en une seule requête, calculé depuis le journal par `src/analysis/progression/calcul.ts` (réglages dans `reglages.ts`). Les semaines vont du lundi 0 h au lundi suivant, heure locale du serveur ; la dernière est la semaine en cours. L'état des règles est celui qui est enregistré : « acquise » n'est réévalué qu'à un `POST /api/analyze`. Mêmes contrôles que les autres routes du journal (en-tête `Host` et origine en mode bureau, CORS) ; 405 pour une autre méthode que `GET` ou `OPTIONS`.
+
+Réponse (extrait, deux semaines sur douze) :
+
+```json
+{
+  "generatedAt": 1795115893520,
+  "empty": false,
+  "weeks": 12,
+  "since": 1788134400000,
+  "mastery": {
+    "score": 68,
+    "level": "En bonne voie",
+    "quality": 81,
+    "rulesShare": 50,
+    "acquired": 2,
+    "inCycle": 4,
+    "recent": { "texts": 24, "words": 1343 },
+    "minimum": { "texts": 5, "words": 300 },
+    "weights": { "quality": 0.6, "rules": 0.4 },
+    "recentWeeks": 4
+  },
+  "totals": { "texts": 65, "words": 3884, "faults": 98, "score": 15, "faultsPer100": 2.52 },
+  "period": { "texts": 65, "words": 3884, "faults": 98, "score": 15, "faultsPer100": 2.52 },
+  "recent": { "texts": 24, "words": 1343, "faults": 26, "score": 16.1, "faultsPer100": 1.94 },
+  "previous": { "texts": 26, "words": 1547, "faults": 39, "score": 15, "faultsPer100": 2.52 },
+  "trend": "baisse",
+  "series": [
+    { "start": 1788134400000, "end": 1788739200000, "texts": 0, "words": 0, "faults": 0, "score": null, "faultsPer100": null },
+    { "start": 1788739200000, "end": 1789344000000, "texts": 3, "words": 252, "faults": 5, "score": 16, "faultsPer100": 1.98 }
+  ],
+  "rules": {
+    "counts": { "observee": 2, "signalee": 0, "travaillee": 2, "acquise": 2 },
+    "active": [
+      { "ruleKey": "PAIRE:et/est", "label": "et / est", "categoryName": "Confusion de mots", "state": "travaillee", "stateSince": 1794900000000, "occurrences": 15, "lastFaultAt": 1795000000000, "acquiredAt": null }
+    ],
+    "acquired": [
+      { "ruleKey": "PAIRE:on/ont", "label": "on / ont", "categoryName": "Confusion de mots", "state": "acquise", "stateSince": 1792600000000, "occurrences": 11, "lastFaultAt": 1791300000000, "acquiredAt": 1792600000000 }
+    ]
+  },
+  "frequentRules": [
+    { "ruleKey": "PAIRE:a/à", "label": "a / à", "categoryName": "Confusion de mots", "count": 17, "state": "travaillee" }
+  ],
+  "trapWords": [{ "word": "apareil", "replacement": "appareil", "count": 14 }]
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `empty` | `true` quand le journal ne contient aucun texte |
+| `since` | début de la première des `weeks` semaines affichées |
+| `mastery.score` | score de maîtrise de 0 à 100 ; `null` tant que la fenêtre récente compte moins de `minimum.texts` textes ou `minimum.words` mots |
+| `mastery.quality` | note moyenne des `recentWeeks` dernières semaines, ramenée sur 100 |
+| `mastery.rulesShare` | part (sur 100) des règles acquises parmi les règles entrées dans le cycle (`inCycle` : signalées, travaillées, acquises) ; `null` s'il n'y en a aucune, le score vaut alors la qualité seule |
+| `totals`, `period`, `recent`, `previous` | depuis le premier texte, sur les semaines affichées, sur les `recentWeeks` dernières semaines, et sur les semaines d'avant de même durée |
+| `faultsPer100`, `score` | fautes pour 100 mots et note sur 20 ; `null` sans aucun mot |
+| `trend` | `baisse`, `hausse` ou `stable` pour les fautes pour 100 mots (`recent` contre `previous`) ; `null` si l'une des périodes n'a aucun mot |
+| `series` | une entrée par semaine, de la plus ancienne à la plus récente |
+| `rules.active`, `rules.acquired` | règles signalées ou travaillées (les plus récemment fautives d'abord), et règles acquises (les plus récemment acquises d'abord) |
+| `frequentRules` | les huit règles les plus fréquentes sur les semaines affichées, hors `FR_SPELLING_RULE` ; `state` vaut `null` pour une règle hors cycle |
+| `trapWords` | les dix mots le plus souvent mal orthographiés (`FR_SPELLING_RULE`) sur les semaines affichées, en minuscules, avec la correction la plus fréquente |
+
+Score : `arrondi(100 × (0,6 × qualité + 0,4 × part des règles acquises))`, qualité et part étant comprises entre 0 et 1 avant arrondi (qualité = note récente / 20). Sans règle entrée dans le cycle : `arrondi(100 × qualité)`. Explication en langage simple dans [Progression](/docs/utiliser/progression/).
+
 ### `DELETE /api/journal`
 
 Efface tout le journal et remet à zéro l'état des règles et leur historique. Réponse : `{"purged": true}`.

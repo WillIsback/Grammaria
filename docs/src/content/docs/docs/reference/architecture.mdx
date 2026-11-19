@@ -22,6 +22,7 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 | `grammar.ts`, `grammar.worker.ts` | Correcteur grammatical intégré : règles françaises de LanguageTool exécutées dans un worker |
 | `journal.ts` | Journal SQLite (`bun:sqlite`) |
 | `journal.rules.ts` | État des règles et historique dans la base du journal ; migration du schéma |
+| `journal.progress.ts` | Lecture du journal pour l'écran Progression (requêtes en lecture seule) |
 | `config.ts` | Lecture des variables d'environnement |
 | `telemetry.ts` | Initialisation d'OpenTelemetry |
 | `src/analysis/diff.ts` | Diff au niveau du mot |
@@ -31,6 +32,9 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`).
 | `src/analysis/regles/seuils.ts` | Seuils du cycle de vie des règles |
 | `src/analysis/regles/cycle.ts` | Cycle de vie d'une règle : transitions (fonction pure) |
 | `src/analysis/regles/intervention.ts` | Choix de l'astuce ou des deux formes à afficher |
+| `src/analysis/progression/reglages.ts` | Réglages de l'écran Progression (score de maîtrise, fenêtres, minimums) |
+| `src/analysis/progression/calcul.ts` | Calcul de l'écran Progression à partir des lignes du journal (fonction pure, horloge injectée) |
+| `src/components/progression/` | Écran Progression et ses graphiques SVG |
 | `src/hooks/useCorrector.ts` | Orchestration côté interface |
 | `src/utils/prompt.ts` | Construction du prompt |
 | `vite.config.ts` | Toute la configuration de l'outillage |
