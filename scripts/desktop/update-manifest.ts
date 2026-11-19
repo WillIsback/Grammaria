@@ -7,11 +7,13 @@
  * l'installeur Windows NSIS et l'AppImage se mettent à jour seuls ; le MSI et
  * le .deb n'y figurent pas.
  *
- * Usage : bun scripts/desktop/update-manifest.ts <dossier des paquets> <tag> <propriétaire/dépôt>
+ * Usage (Node ≥ 22.18, qui exécute ce module TypeScript tel quel ; Bun convient aussi) :
+ *   node scripts/desktop/update-manifest.ts <dossier des paquets> <tag> <propriétaire/dépôt>
  * Lancé par .github/workflows/release.yml, pour les versions stables uniquement.
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 /** Une signature de mise à jour : nom du fichier `.sig` et son contenu. */
 export interface SignatureFile {
@@ -88,7 +90,8 @@ export function buildUpdateManifest(options: {
   return { version, pub_date: options.pubDate.toISOString(), platforms };
 }
 
-if (import.meta.main) {
+// Lancé directement (pas importé par les tests). `import.meta.main` n'existe pas sous Node 22.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [dir, tag, repository] = process.argv.slice(2);
   if (!dir || !tag || !repository) {
     throw new Error("Usage : update-manifest.ts <dossier des paquets> <tag> <propriétaire/dépôt>");
