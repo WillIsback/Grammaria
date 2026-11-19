@@ -130,13 +130,17 @@ impl Status {
         self.failed_step = Some(step);
     }
 
-    /// Démarre une recherche, sauf si une étape est déjà en cours.
-    fn begin_check(&mut self) -> bool {
-        let busy = matches!(
+    /// Vrai pendant une recherche, un téléchargement ou une installation.
+    fn busy(&self) -> bool {
+        matches!(
             self.phase,
             Phase::Checking | Phase::Downloading | Phase::Installing
-        );
-        if self.mode == Mode::Inactive || busy {
+        )
+    }
+
+    /// Démarre une recherche, sauf si une étape est déjà en cours.
+    fn begin_check(&mut self) -> bool {
+        if self.mode == Mode::Inactive || self.busy() {
             return false;
         }
         self.phase = Phase::Checking;
@@ -179,11 +183,7 @@ impl Status {
     /// Démarre l'installation : seulement en mode automatique, avec une mise à
     /// jour trouvée, et jamais pendant une recherche ou une installation.
     fn begin_install(&mut self, has_pending: bool) -> bool {
-        let busy = matches!(
-            self.phase,
-            Phase::Checking | Phase::Downloading | Phase::Installing
-        );
-        if self.mode != Mode::Auto || busy || !has_pending {
+        if self.mode != Mode::Auto || self.busy() || !has_pending {
             return false;
         }
         self.phase = Phase::Downloading;
@@ -272,18 +272,18 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
     // Sous Windows, l'installeur remplace le serveur embarqué : on l'arrête
     // juste avant, sinon son exécutable est encore verrouillé.
     let app_for_exit = app.clone();
-    let found = match app
-        .updater_builder()
-        .timeout(CHECK_TIMEOUT)
-        .on_before_exit(move || {
-            crate::stop_server(&app_for_exit);
-            app_for_exit.cleanup_before_exit();
-        })
-        .build()
-    {
-        Ok(updater) => updater.check().await,
-        Err(error) => Err(error),
-    };
+    let found = async {
+        app.updater_builder()
+            .timeout(CHECK_TIMEOUT)
+            .on_before_exit(move || {
+                crate::stop_server(&app_for_exit);
+                app_for_exit.cleanup_before_exit();
+            })
+            .build()?
+            .check()
+            .await
+    }
+    .await;
 
     Ok(state.update(|inner| {
         let (outcome, update) = match found {
@@ -313,15 +313,13 @@ pub async fn update_check(app: AppHandle, state: State<'_, UpdateState>) -> Resu
 /// Rend la main tout de suite : l'interface suit l'avancement par `update_status`.
 #[tauri::command]
 pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
-    let update = state.update(|inner| {
-        let update = inner.pending.clone();
-        if inner.status.begin_install(update.is_some()) {
-            update
+    let Some(update) = state.update(|inner| {
+        if inner.status.begin_install(inner.pending.is_some()) {
+            inner.pending.clone()
         } else {
             None
         }
-    });
-    let Some(update) = update else {
+    }) else {
         return state.status();
     };
 
