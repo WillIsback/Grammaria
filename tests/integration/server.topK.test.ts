@@ -31,4 +31,12 @@ describe("chat completion top_k (issue #12)", () => {
     // No literal top_k value in the params block (e.g. top_k: 0)
     expect(block).not.toMatch(/top_k:\s*\d+/);
   });
+
+  // Application de bureau : des API compatibles OpenAI refusent top_k. La
+  // valeur par défaut (-1, désactivé) n'est donc pas envoyée.
+  it("n'envoie top_k que s'il est activé (> 0)", () => {
+    expect(chatCompletionParamsBlock()).toMatch(
+      /\.\.\.\(config\.llmTopK > 0 \? \{ top_k: config\.llmTopK \} : \{\}\)/,
+    );
+  });
 });

@@ -61,3 +61,32 @@ describe("server.ts — correcteur grammatical intégré", () => {
     expect(serverSource).toMatch(/text\.length > MAX_ANALYZE_LENGTH/);
   });
 });
+
+// Application de bureau : serveur local, réglages modifiables depuis l'interface.
+describe("server.ts — mode bureau", () => {
+  it("écoute sur l'interface configurée (127.0.0.1 pour le bureau)", () => {
+    expect(serverSource).toMatch(/hostname:\s*config\.host/);
+  });
+
+  it("filtre chaque requête (Host et origine) avant tout traitement", () => {
+    const fetchStart = serverSource.indexOf("async fetch(req");
+    const guard = serverSource.indexOf("rejectForeignRequest(req, url)", fetchStart);
+    const firstRoute = serverSource.indexOf('if (path === "/api/', fetchStart);
+    expect(guard).toBeGreaterThan(fetchStart);
+    expect(guard).toBeLessThan(firstRoute);
+  });
+
+  it("ne modifie les réglages que s'ils sont éditables, puis reconnecte le LLM", () => {
+    const block = serverSource.slice(serverSource.indexOf('if (path === "/api/settings")'));
+    expect(block.slice(0, 1200)).toMatch(/if \(!settings\.editable\)/);
+    expect(block.slice(0, 1200)).toMatch(
+      /settings\.update\(await req\.json\(\)\);\s*connectLlm\(\);/,
+    );
+  });
+
+  it("les réglages ne sont éditables qu'en mode bureau", () => {
+    expect(serverSource).toMatch(
+      /new SettingsStore\(\s*config\.desktop && config\.settingsPath \? config\.settingsPath : null,?\s*\)/,
+    );
+  });
+});

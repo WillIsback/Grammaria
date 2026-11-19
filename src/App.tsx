@@ -6,7 +6,9 @@ import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
 import { useCorrector } from "./hooks/useCorrector";
 import { useMediaQuery } from "./hooks/useMediaQuery";
-import { initModel } from "./utils/models";
+import { useServerSettings } from "./hooks/useServerSettings";
+import type { ServerSettings } from "./services/settings";
+import { initModel, setCurrentModel } from "./utils/models";
 
 type Pane = "editor" | "output";
 
@@ -40,6 +42,25 @@ function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePane, setActivePane] = useState<Pane>("editor");
+
+  // Application de bureau : tant qu'aucun modèle n'est configuré, ouvrir les
+  // réglages pour que l'utilisateur sache par où commencer.
+  const { serverSettings, setServerSettings } = useServerSettings();
+  const [modelsReloadKey, setModelsReloadKey] = useState(0);
+  const needsLlmSetup = serverSettings?.editable === true && !serverSettings.configured;
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  const settingsOpen = sidebarOpen || (needsLlmSetup && !setupDismissed);
+
+  const handleServerSettingsSaved = useCallback(
+    (saved: ServerSettings) => {
+      setServerSettings(saved);
+      // Nouveau serveur : son modèle par défaut remplace l'ancien choix.
+      setCurrentModel("auto");
+      void initModel();
+      setModelsReloadKey((k) => k + 1);
+    },
+    [setServerSettings],
+  );
 
   // Sur mobile, un seul panneau est visible : afficher le résultat dès le
   // lancement, pour que le texte et le bouton Copier apparaissent sans
@@ -119,8 +140,14 @@ function App() {
         <Sidebar
           settings={settings}
           setSettings={setSettings}
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
+          open={settingsOpen}
+          onClose={() => {
+            setSidebarOpen(false);
+            setSetupDismissed(true);
+          }}
+          serverSettings={serverSettings}
+          onServerSettingsSaved={handleServerSettingsSaved}
+          modelsReloadKey={modelsReloadKey}
         />
 
         <main className="flex flex-1 min-w-0 overflow-hidden">

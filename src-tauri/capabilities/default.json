@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Aucune commande Tauri n'est exposée : l'interface parle au serveur local en HTTP.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
