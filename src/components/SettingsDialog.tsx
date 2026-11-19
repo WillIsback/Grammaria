@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import type { AppUpdate } from "../hooks/useAppUpdate";
 import type { ServerSettings } from "../services/settings";
 import { getCurrentModel, subscribeToModelChange } from "../utils/models";
 import { LlmSettings } from "./LlmSettings";
 import { ModelSelector } from "./ModelSelector";
+import { UpdateSettings } from "./UpdateSettings";
 
-/** Rubriques du menu Paramètres. Une seule pour l'instant : l'IA. */
-type Section = "ia";
+/** Rubriques du menu Paramètres. « Mises à jour » n'existe que dans l'application de bureau. */
+type Section = "ia" | "mises-a-jour";
 
-const SECTIONS: { id: Section; label: string }[] = [{ id: "ia", label: "IA" }];
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: "ia", label: "IA" },
+  { id: "mises-a-jour", label: "Mises à jour" },
+];
 
 interface Props {
   open: boolean;
@@ -17,6 +22,8 @@ interface Props {
   onServerSettingsSaved: (settings: ServerSettings) => void;
   /** Incrémenté quand le serveur du modèle change, pour recharger la liste des modèles. */
   modelsReloadKey: number;
+  /** Mise à jour de l'application de bureau ; absent ou null dans un navigateur. */
+  appUpdate?: AppUpdate | null;
 }
 
 /**
@@ -30,8 +37,10 @@ export function SettingsDialog({
   serverSettings,
   onServerSettingsSaved,
   modelsReloadKey,
+  appUpdate = null,
 }: Props) {
   const [section, setSection] = useState<Section>("ia");
+  const sections = SECTIONS.filter(({ id }) => id !== "mises-a-jour" || appUpdate !== null);
   const [currentModel, setCurrentModelState] = useState(getCurrentModel);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -98,7 +107,7 @@ export function SettingsDialog({
             className="flex sm:flex-col gap-1 p-3 sm:w-40 shrink-0 border-b sm:border-b-0 sm:border-r
               border-gray-200/70 dark:border-gray-800/70"
           >
-            {SECTIONS.map(({ id, label }) => (
+            {sections.map(({ id, label }) => (
               <button
                 key={id}
                 type="button"
@@ -129,6 +138,7 @@ export function SettingsDialog({
                 />
               </section>
             )}
+            {section === "mises-a-jour" && appUpdate && <UpdateSettings update={appUpdate} />}
           </div>
         </div>
       </div>

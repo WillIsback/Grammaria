@@ -5,6 +5,8 @@ import { Output } from "./components/Output";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { useAppUpdate } from "./hooks/useAppUpdate";
 import { useCorrector } from "./hooks/useCorrector";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { useServerSettings } from "./hooks/useServerSettings";
@@ -48,6 +50,8 @@ function App() {
   // réglages pour que l'utilisateur sache par où commencer.
   const { serverSettings, setServerSettings } = useServerSettings();
   const [modelsReloadKey, setModelsReloadKey] = useState(0);
+  // Application de bureau : recherche d'une mise à jour au démarrage.
+  const appUpdate = useAppUpdate();
   const needsLlmSetup = serverSettings?.editable === true && !serverSettings.configured;
   // Menu Paramètres → IA : ouvert d'office tant qu'aucun modèle n'est configuré.
   const [preferencesOpen, setPreferencesOpen] = useState(false);
@@ -118,12 +122,15 @@ function App() {
         onOpenPreferences={() => setPreferencesOpen(true)}
       />
 
+      <UpdateBanner update={appUpdate} />
+
       <SettingsDialog
         open={showPreferences}
         onClose={closePreferences}
         serverSettings={serverSettings}
         onServerSettingsSaved={handleServerSettingsSaved}
         modelsReloadKey={modelsReloadKey}
+        appUpdate={appUpdate}
       />
 
       <div className="md:hidden px-4 pt-3">
