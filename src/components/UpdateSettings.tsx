@@ -1,12 +1,11 @@
 import type { AppUpdate } from "../hooks/useAppUpdate";
 import { isBusy, messagePhase } from "../services/appUpdate";
+import { sectionTitle } from "./Sidebar";
 
 interface Props {
   update: AppUpdate;
 }
 
-const sectionTitle =
-  "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 const primaryButton =
   "px-3 py-2 rounded-xl text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white " +
   "disabled:opacity-60 transition-colors";

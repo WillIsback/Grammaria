@@ -6,6 +6,7 @@ import type {
   Reussite,
 } from "../analysis/regles/intervention";
 import type { CorrectionEntry, WeekSummary } from "../types";
+import { nombre } from "../utils/format";
 import { visibleText } from "../utils/visibleText";
 import { Icon, Spinner } from "./Icon";
 import { InterventionMessage } from "./InterventionMessage";
@@ -66,10 +67,6 @@ function StatCard({
       {children}
     </div>
   );
-}
-
-function formatScore(score: number): string {
-  return score.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 }
 
 export function Output({
@@ -412,13 +409,13 @@ export function Output({
                 >
                   Note de ce texte :{" "}
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {formatScore(score)}/20
+                    {nombre(score)}/20
                   </span>
                   {week && typeof week.score === "number" && (
                     <>
                       {" · "}Moyenne sur 7 jours :{" "}
                       <span className="font-semibold text-gray-900 dark:text-white">
-                        {formatScore(week.score)}/20
+                        {nombre(week.score)}/20
                       </span>{" "}
                       ({week.texts} {week.texts > 1 ? "textes" : "texte"})
                     </>
