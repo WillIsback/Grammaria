@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_call:
 
+env:
+  # Version de Playwright du contrôle du correcteur du bureau (cache du Chromium).
+  PLAYWRIGHT_VERSION: "1.63.0"
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -32,6 +36,39 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Correcteur de l'application de bureau (Worker et archive des règles,
+      # dist/bureau/lt/), tel qu'il est livré, vérifié dans Chromium sous la
+      # CSP stricte du bureau contre tests/fixtures/correcteur/reference.json.
+      # Le script attend Playwright et son Chromium déjà installés (il ne
+      # télécharge rien) ; Playwright n'est pas une dépendance du projet :
+      # installé à part (NODE_PATH), avec le seul Chromium headless shell, mis
+      # en cache par version.
+      - name: Build du bureau
+        run: npm run build:bureau
+
+      - name: Cache Chromium (Playwright)
+        id: cache-chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}-chromium-headless-shell
+
+      - name: Installer Playwright et Chromium
+        env:
+          CACHE_HIT: ${{ steps.cache-chromium.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/playwright" --no-save --no-package-lock \
+            --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
+          if [ "$CACHE_HIT" != "true" ]; then
+            "$RUNNER_TEMP/playwright/node_modules/.bin/playwright" install --only-shell chromium
+          fi
+
+      - name: Correcteur du bureau dans Chromium (CSP stricte)
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/playwright/node_modules"
+          npm run test:correcteur-bureau
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
