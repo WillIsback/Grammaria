@@ -94,4 +94,6 @@ Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
 Le correcteur grammatical intégré s'appuie sur [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de [LanguageTool](https://languagetool.org), eux-mêmes sous GPL-3.0-or-later : l'ensemble est donc publié sous cette licence.
 
+La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
+
 Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector), publié sous licence MIT. Sa notice d'origine est conservée dans [LICENSE-MIT](LICENSE-MIT).
