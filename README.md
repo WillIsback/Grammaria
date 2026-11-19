@@ -83,6 +83,8 @@ Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/
 
 ## Origine et licence
 
-Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector). Licence MIT.
+Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
-Le correcteur grammatical intégré s'appuie sur [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de LanguageTool distribué sous licence GPL-3.0-or-later.
+Le correcteur grammatical intégré s'appuie sur [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de [LanguageTool](https://languagetool.org), eux-mêmes sous GPL-3.0-or-later : l'ensemble est donc publié sous cette licence.
+
+Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector), publié sous licence MIT. Sa notice d'origine est conservée dans [LICENSE-MIT](LICENSE-MIT).
