@@ -305,6 +305,13 @@ jobs:
             exit 1
           fi
 
+      # Les tests Rust (base, réglages, relais du modèle, journal technique,
+      # capability) tournent ici, sur les deux systèmes : c'est le seul job qui
+      # dispose des dépendances de compilation de l'application.
+      - name: Tests Rust
+        working-directory: src-tauri
+        run: cargo test --locked
+
       # Vérifie les fichiers réellement livrés : les deux installateurs, et les
       # exécutables extraits du MSI (installation administrative, rien n'est
       # installé). Tauri signe les copies qu'il embarque, pas les fichiers de
