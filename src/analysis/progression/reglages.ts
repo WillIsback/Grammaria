@@ -69,5 +69,3 @@ export const PROGRESSION = {
     { minimum: 0, libelle: "Les bases à consolider" },
   ],
 } as const;
-
-export const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000;

@@ -5,8 +5,7 @@ import type { Progression } from "../src/analysis/progression/calcul.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import type { LTMatch } from "../src/types.ts";
 import { lancerServeur, type ServeurDeTest } from "./serveur.ts";
-
-const DAY = 24 * 60 * 60 * 1000;
+import { DAY, FAUTE_ON as TEXTE_FAUTE_ON } from "./helpers.ts";
 
 /** Faute de frappe signalée par le correcteur grammatical sur « apareil ». */
 function fauteDeFrappe() {
@@ -26,8 +25,7 @@ function fauteDeFrappe() {
   return analyze(original, "Mon appareil est en panne depuis ce matin.", [match]);
 }
 
-const FAUTE_ON = () =>
-  analyze("Hier, ils on mangé tous les gâteaux.", "Hier, ils ont mangé tous les gâteaux.", []);
+const FAUTE_ON = () => analyze(...TEXTE_FAUTE_ON, []);
 
 describe("Journal.progress", () => {
   it("lit textes, fautes et règles du journal pour l'écran Progression", () => {

@@ -19,7 +19,7 @@ const J0 = new Date(2026, 2, 12, 12).getTime();
 
 /** Catalogue : 3 textes corrigés sur 3 jours, un sans-faute. */
 function catalogue() {
-  const textes = [0, 1, 2].map((n) => ({ at: J0 + n * DAY, mots: 40, fautes: n === 2 ? 0 : 1 }));
+  const textes = [0, 1, 2].map((n) => ({ at: J0 + n * DAY, words: 40, faults: n === 2 ? 0 : 1 }));
   const etats = evaluerBadges({ textes, evenements: [] }, J0 + 3 * DAY);
   return vueCatalogue(
     etats,

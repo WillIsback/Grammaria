@@ -1,25 +1,11 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { Journal } from "../journal.ts";
-import { SCHEMA_VERSION } from "../journal.rules.ts";
+import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
-
-const DAY = 24 * 60 * 60 * 1000;
-/** Midi, heure locale : un décalage d'un jour change toujours de jour calendaire. */
-const J0 = new Date(2026, 9, 1, 12).getTime();
-const jour = (n: number) => J0 + n * DAY;
+import { avecBase, corriger, DAY, FAUTE_ON, jour, SANS_FAUTE } from "./helpers.ts";
 
 const ON = "PAIRE:on/ont";
-const FAUTE_ON = ["Hier, ils on mangé tous les gâteaux.", "Hier, ils ont mangé tous les gâteaux."];
-const SANS_FAUTE = ["Tout va bien aujourd'hui.", "Tout va bien aujourd'hui."];
-
-function corriger(journal: Journal, [original, corrige]: string[], now: number, random = () => 0) {
-  return journal.record(analyze(original, corrige, []), now, { original, random });
-}
 
 const regle = (journal: Journal, ruleKey = ON) =>
   journal.rules().find((r) => r.ruleKey === ruleKey);
@@ -314,9 +300,7 @@ describe("Journal — cycle de vie des règles", () => {
   });
 
   it("ne conserve jamais le texte entier dans les tables du cycle", () => {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-rules-"));
-    try {
-      const path = join(dir, "journal.db");
+    avecBase((path) => {
       const journal = new Journal(path);
       rendreTravaillee(journal);
       journal.close();
@@ -328,9 +312,7 @@ describe("Journal — cycle de vie des règles", () => {
       db.close();
       expect(lignes).not.toContain("gâteaux");
       expect(lignes).toContain(ON);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    });
   });
 
   it("« Effacer le journal » remet aussi à zéro l'état des règles", () => {
@@ -414,15 +396,6 @@ describe("Journal — migration du schéma", () => {
     // Usage sans faute : un texte par jour à partir du jour 3.
     for (let i = 0; i < textesSansFaute; i++) ajouter(jour(3 + i), []);
     db.close();
-  }
-
-  function avecBase(test: (path: string) => void): void {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-migration-"));
-    try {
-      test(join(dir, "journal.db"));
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
   }
 
   const contenu = (path: string) => {
@@ -539,6 +512,75 @@ describe("Journal — migration du schéma", () => {
         ruleKey: ON,
       });
       journal.close();
+    });
+  });
+
+  it("fonctionne sur une base alpha dont les tables des règles et des badges ont user_id", () => {
+    avecBase((path) => {
+      baseV020(path);
+      // Schéma distribué avec une alpha de la v0.3.0, avant le retrait de user_id.
+      const db = new Database(path);
+      db.exec(`
+        CREATE TABLE rule_states (
+          user_id TEXT NOT NULL DEFAULT 'local',
+          rule_key TEXT NOT NULL,
+          state TEXT NOT NULL,
+          state_since INTEGER NOT NULL,
+          occurrences INTEGER NOT NULL,
+          first_fault_at INTEGER NOT NULL,
+          last_fault_at INTEGER NOT NULL,
+          tips_shown INTEGER NOT NULL DEFAULT 0,
+          choices_shown INTEGER NOT NULL DEFAULT 0,
+          choices_correct INTEGER NOT NULL DEFAULT 0,
+          choices_wrong INTEGER NOT NULL DEFAULT 0,
+          last_solicited_at INTEGER,
+          solicitations_that_day INTEGER NOT NULL DEFAULT 0,
+          acquired_at INTEGER,
+          relapses INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (user_id, rule_key)
+        );
+        CREATE TABLE rule_events (
+          id INTEGER PRIMARY KEY,
+          user_id TEXT NOT NULL DEFAULT 'local',
+          rule_key TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          from_state TEXT,
+          to_state TEXT
+        );
+        CREATE TABLE badges (
+          user_id TEXT NOT NULL DEFAULT 'local',
+          badge_id TEXT NOT NULL,
+          obtained_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, badge_id)
+        );
+      `);
+      db.close();
+
+      const journal = new Journal(path);
+      expect(journal.rules().map((r) => [r.ruleKey, r.state, r.occurrences])).toEqual([
+        [ON, "signalee", 3],
+        ["PAIRE:a/à", "observee", 1],
+      ]);
+      expect(journal.badges.obtained().get("premier-texte")).toBe(jour(0));
+      for (const n of [3, 4, 5]) {
+        expect(corriger(journal, FAUTE_ON, jour(n)).intervention?.type).toBe("astuce");
+      }
+      const choix = corriger(journal, FAUTE_ON, jour(6)).intervention;
+      if (choix?.type !== "choix") throw new Error("choix attendu");
+      expect(journal.answerChoice(choix.choiceId, true, jour(6) + 1000)).toBe("recorded");
+      expect(regle(journal)).toMatchObject({ state: "travaillee", occurrences: 7 });
+      // Sept jours d'écriture : le badge s'enregistre dans l'ancienne table.
+      expect(journal.badges.award(jour(6) + 1000).map((b) => b.id)).toEqual(["jours-5"]);
+      expect(journal.badges.obtained().get("jours-5")).toBe(jour(4));
+      journal.close();
+
+      const reouvert = new Journal(path);
+      expect(regle(reouvert)).toMatchObject({ choicesShown: 1, choicesCorrect: 1 });
+      reouvert.purge();
+      expect(reouvert.rules()).toEqual([]);
+      expect(reouvert.badges.obtained().size).toBe(0);
+      reouvert.close();
     });
   });
 

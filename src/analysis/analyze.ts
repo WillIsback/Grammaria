@@ -4,7 +4,7 @@ import { countWords, diffHunks, type Hunk } from "./diff";
 import { detecterConfusion, FICHES, type Fiche } from "./fiches";
 import { noteSur20 } from "./score";
 
-export interface Fault {
+interface Fault {
   /** Clé stable de la règle : fiche interne ou identifiant LanguageTool. */
   ruleKey: string;
   source: "fiche" | "lt" | "accord";

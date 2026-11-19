@@ -73,7 +73,7 @@ export interface Transition {
   to: EtatCycle;
 }
 
-export interface TransitionResult {
+interface TransitionResult {
   state: RuleState;
   transitions: Transition[];
 }
@@ -92,11 +92,24 @@ export function jourLocal(timestamp: number): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
+/** Vrai si la règle a déjà été sollicitée le jour calendaire de `now`. */
+function solliciteeCeJour(state: RuleState, now: number): boolean {
+  return state.lastSolicitedAt !== null && jourLocal(state.lastSolicitedAt) === jourLocal(now);
+}
+
 /** Vrai si le budget du jour autorise encore une astuce ou un choix pour la règle. */
 export function peutSolliciter(state: RuleState, now: number, seuils: Seuils = SEUILS): boolean {
-  if (state.lastSolicitedAt === null) return true;
-  if (jourLocal(state.lastSolicitedAt) !== jourLocal(now)) return true;
-  return state.solicitationsThatDay < seuils.sollicitationsParRegleEtParJour;
+  return (
+    !solliciteeCeJour(state, now) ||
+    state.solicitationsThatDay < seuils.sollicitationsParRegleEtParJour
+  );
+}
+
+/** Nombre de règles dans chaque état du cycle, dans l'ordre de `ETATS_CYCLE`. */
+export function compterEtats(rules: readonly { state: EtatCycle }[]): Record<EtatCycle, number> {
+  const counts = Object.fromEntries(ETATS_CYCLE.map((etat) => [etat, 0]));
+  for (const rule of rules) counts[rule.state]++;
+  return counts as Record<EtatCycle, number>;
 }
 
 function nouvelEtat(ruleKey: string, now: number): RuleState {
@@ -119,12 +132,10 @@ function nouvelEtat(ruleKey: string, now: number): RuleState {
 }
 
 function solliciter(state: RuleState, now: number): RuleState {
-  const memeJour =
-    state.lastSolicitedAt !== null && jourLocal(state.lastSolicitedAt) === jourLocal(now);
   return {
     ...state,
     lastSolicitedAt: now,
-    solicitationsThatDay: memeJour ? state.solicitationsThatDay + 1 : 1,
+    solicitationsThatDay: solliciteeCeJour(state, now) ? state.solicitationsThatDay + 1 : 1,
   };
 }
 

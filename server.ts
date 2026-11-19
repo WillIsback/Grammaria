@@ -10,7 +10,7 @@ import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
 import { Journal } from "./journal.ts";
 import { awardBadgesSafely } from "./journal.badges.ts";
-import { ETATS_CYCLE } from "./src/analysis/regles/cycle.ts";
+import { compterEtats } from "./src/analysis/regles/cycle.ts";
 import { SEUILS } from "./src/analysis/regles/seuils.ts";
 import { analyze } from "./src/analysis/analyze.ts";
 import { parsePeriodDays } from "./src/analysis/score.ts";
@@ -264,10 +264,7 @@ Bun.serve({
       // Cycle de vie des règles : lecture pour le tableau de bord et les badges.
       if (path === "/api/rules" && req.method === "GET") {
         const rules = journal.rules();
-        const counts = Object.fromEntries(
-          ETATS_CYCLE.map((etat) => [etat, rules.filter((r) => r.state === etat).length]),
-        );
-        return json({ rules, counts, thresholds: SEUILS }, headers);
+        return json({ rules, counts: compterEtats(rules), thresholds: SEUILS }, headers);
       }
 
       if (path === "/api/rules/events" && req.method === "GET") {

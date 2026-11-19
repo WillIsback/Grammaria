@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   appliquerEvenement,
+  compterEtats,
   entreDansLeCycle,
   ETATS_CYCLE,
   jourLocal,
@@ -90,6 +91,18 @@ describe("fautes qui entrent dans le cycle", () => {
   it("écarte le style, la typographie et la détection générique des fautes de frappe", () => {
     expect(entreDansLeCycle({ ruleKey: "STYLE_X", counted: false })).toBe(false);
     expect(entreDansLeCycle({ ruleKey: "FR_SPELLING_RULE", counted: true })).toBe(false);
+  });
+});
+
+describe("comptage des règles par état", () => {
+  it("compte chaque état, dans l'ordre du cycle, zéro compris", () => {
+    const counts = compterEtats([
+      { state: "signalee" },
+      { state: "acquise" },
+      { state: "signalee" },
+    ]);
+    expect(counts).toEqual({ observee: 0, signalee: 2, travaillee: 0, acquise: 1 });
+    expect(Object.keys(counts)).toEqual([...ETATS_CYCLE]);
   });
 });
 

@@ -11,6 +11,17 @@ export interface Fiche {
   astuce: string;
 }
 
+/**
+ * Nom lisible d'une règle sans fiche : message du correcteur grammatical,
+ * sinon sa catégorie, sinon la clé de la règle.
+ */
+export function libelleSansFiche(
+  ruleKey: string,
+  faute?: { message: string; categoryName: string } | null,
+): string {
+  return faute?.message || faute?.categoryName || ruleKey;
+}
+
 export const FICHES: Record<string, Fiche> = {
   "PAIRE:a/à": {
     titre: "a / à",
