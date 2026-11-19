@@ -4,7 +4,13 @@
 //! compilé (sidecar `grammaria-server`) sur un port local libre, attend qu'il
 //! réponde, puis affiche son interface. Le serveur est le même que la version
 //! web : correcteur grammatical intégré, journal SQLite, relais vers le LLM.
-//! Seule la mise à jour de l'application vit ici (module `update`).
+//! La mise à jour de l'application vit ici (module `update`).
+//!
+//! Prêts pour la version sans serveur (page embarquée, issue #18), et sans
+//! effet tant que l'interface passe par le serveur (aucune capability ne les
+//! autorise encore) : accès SQLite au journal (`db`), réglages et mots valides
+//! (`store`), relais du modèle en streaming (`llm`). Ils utilisent les mêmes
+//! fichiers du dossier de données que le serveur.
 
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
@@ -17,6 +23,9 @@ use tauri::{Manager, RunEvent, Url, WebviewWindow};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
+mod db;
+mod llm;
+mod store;
 mod update;
 
 /// Délai maximal de démarrage du serveur (chargement des règles compris).
@@ -114,14 +123,14 @@ fn start_server(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         ("PORT", port.to_string()),
         ("GRAMMARIA_DIST_DIR", path(resources.join("dist"))),
         ("GRAMMARIA_LT_RESOURCES", path(resources.join("lt"))),
-        ("JOURNAL_PATH", path(data_dir.join("grammaria.db"))),
+        ("JOURNAL_PATH", path(data_dir.join(db::JOURNAL_FILE))),
         (
             "GRAMMARIA_SETTINGS_PATH",
-            path(data_dir.join("settings.json")),
+            path(data_dir.join(store::SETTINGS_FILE)),
         ),
         (
             "GRAMMARIA_VALID_WORDS_PATH",
-            path(data_dir.join("valid-words.json")),
+            path(data_dir.join(store::VALID_WORDS_FILE)),
         ),
         // Aucun LLM par défaut : l'utilisateur le choisit dans les réglages.
         // Le raisonnement du modèle reste coupé par défaut (LLM_DISABLE_THINKING
@@ -232,9 +241,25 @@ pub fn run() {
             update::update_check,
             update::update_install,
             update::update_open_release_page,
+            db::db_read,
+            db::db_read_many,
+            db::db_batch,
+            store::settings_get,
+            store::settings_set,
+            store::valid_words_get,
+            store::valid_words_add,
+            llm::llm_models,
+            llm::llm_chat,
+            llm::llm_cancel,
         ])
         .setup(|app| {
             app.manage(update::UpdateState::new(app));
+            // Mêmes fichiers que le serveur : les données sont reprises telles
+            // quelles. La base n'est ouverte qu'au premier appel de `db_*`.
+            let data_dir = app.path().app_data_dir()?;
+            app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
+            app.manage(store::Store::new(&data_dir));
+            app.manage(llm::Llm::new()?);
             start_server(app)
         })
         .build(tauri::generate_context!())
@@ -249,6 +274,36 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::js_string;
+
+    /// Texte entre `start` et la première occurrence de `end` qui suit.
+    fn between<'a>(text: &'a str, start: &str, end: &str) -> &'a str {
+        let from = text.find(start).expect("début trouvé") + start.len();
+        let to = from + text[from..].find(end).expect("fin trouvée");
+        &text[from..to]
+    }
+
+    /// Une commande enregistrée mais absente de la liste de `build.rs` serait
+    /// refusée à toute page ; une commande listée mais pas enregistrée
+    /// produirait une permission vide. Les deux listes doivent coïncider.
+    #[test]
+    fn les_commandes_enregistrees_sont_celles_declarees_dans_build_rs() {
+        let build = include_str!("../build.rs");
+        let mut declared: Vec<&str> = between(build, "commands(&[", "]")
+            .split(',')
+            .map(|name| name.trim().trim_matches('"'))
+            .filter(|name| !name.is_empty())
+            .collect();
+        let lib = include_str!("lib.rs");
+        let mut registered: Vec<&str> = between(lib, "generate_handler![", "]")
+            .split(',')
+            .filter_map(|path| path.trim().rsplit("::").next())
+            .filter(|name| !name.is_empty())
+            .collect();
+        declared.sort_unstable();
+        registered.sort_unstable();
+        assert_eq!(declared, registered);
+        assert_eq!(declared.len(), 14);
+    }
 
     /// Le texte affiché par `show_error` (chemin du journal compris) ne doit
     /// jamais pouvoir sortir de la chaîne littérale ni casser le script.
