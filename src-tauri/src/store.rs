@@ -19,6 +19,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use crate::logs;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -476,7 +477,9 @@ pub async fn settings_set(
     store: State<'_, Store>,
     update: Value,
 ) -> Result<PublicSettings, String> {
-    store.update_settings(&update)
+    store
+        .update_settings(&update)
+        .inspect_err(|error| logs::echec_commande("settings_set", error))
 }
 
 /// Liste des mots valides.
@@ -491,7 +494,9 @@ pub async fn valid_words_add(
     store: State<'_, Store>,
     word: Option<Value>,
 ) -> Result<Vec<String>, String> {
-    store.add_valid_word(word.as_ref())
+    store
+        .add_valid_word(word.as_ref())
+        .inspect_err(|error| logs::echec_commande("valid_words_add", error))
 }
 
 #[cfg(test)]

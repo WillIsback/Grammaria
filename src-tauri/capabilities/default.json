@@ -18,6 +18,7 @@
     "allow-valid-words-add",
     "allow-llm-models",
     "allow-llm-chat",
-    "allow-llm-cancel"
+    "allow-llm-cancel",
+    "allow-log-page"
   ]
 }

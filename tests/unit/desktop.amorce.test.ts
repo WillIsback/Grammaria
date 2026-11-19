@@ -133,6 +133,11 @@ describe("amorce du bureau", () => {
         "analyse des fautes sera partielle",
       ),
     );
+    // Échec du chargement noté dans le journal technique (grammaria.log).
+    expect(tauri.journalTechnique).toContainEqual({
+      niveau: "erreur",
+      message: expect.stringMatching(/^Correcteur impossible à charger : /),
+    });
     document.querySelector<HTMLButtonElement>('[data-testid="bandeau-bureau"] button')!.click();
     expect(document.querySelector('[data-testid="bandeau-bureau"]')).toBeNull();
   });
@@ -166,7 +171,8 @@ describe("porte de l'autotest", () => {
     const apres = tauri.commandes();
     expect(apres).toContain("autotest_config");
     // Après le refus d'autotest_config : ni lot, ni réglages, ni modèle, ni résultats.
-    const suite = apres.slice(apres.indexOf("autotest_config") + 1);
+    // (Le journal technique, log_page, peut noter l'absence de Worker dans jsdom.)
+    const suite = apres.slice(apres.indexOf("autotest_config") + 1).filter((c) => c !== "log_page");
     expect(suite).toEqual([]);
     expect(tauri.reglages.llmTarget).toBe("");
   });

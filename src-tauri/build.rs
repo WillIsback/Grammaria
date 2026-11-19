@@ -20,6 +20,7 @@ fn main() {
             "llm_models",
             "llm_chat",
             "llm_cancel",
+            "log_page",
             "autotest_config",
             "autotest_terminer",
         ]));

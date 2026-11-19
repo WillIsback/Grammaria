@@ -41,6 +41,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::logs;
 use rusqlite::config::DbConfig;
 use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::limits::Limit;
@@ -485,12 +486,15 @@ pub async fn db_read(
         )
     })
     .await
+    .inspect_err(|error| logs::echec_commande("db_read", error))
 }
 
 /// Plusieurs lectures dans un même instantané, en un aller-retour.
 #[tauri::command]
 pub async fn db_read_many(db: State<'_, Db>, queries: Vec<Query>) -> Result<Vec<Vec<Row>>, String> {
-    db.run(move |guarded| read_many(guarded, &queries)).await
+    db.run(move |guarded| read_many(guarded, &queries))
+        .await
+        .inspect_err(|error| logs::echec_commande("db_read_many", error))
 }
 
 /// Un lot d'écritures dans une transaction : tout ou rien.
@@ -499,7 +503,9 @@ pub async fn db_batch(
     db: State<'_, Db>,
     statements: Vec<Statement>,
 ) -> Result<Vec<StatementResult>, String> {
-    db.run(move |guarded| batch(guarded, &statements)).await
+    db.run(move |guarded| batch(guarded, &statements))
+        .await
+        .inspect_err(|error| logs::echec_commande("db_batch", error))
 }
 
 #[cfg(test)]

@@ -9,8 +9,9 @@
 //! Rust ne fournit que ce que la page ne peut pas faire seule, par des commandes que seule la
 //! capability locale `capabilities/default.json` autorise : accès SQLite au journal (`db`),
 //! réglages, clé API et mots valides (`store`), relais du modèle en streaming (`llm`), mise à
-//! jour de l'application (`update`). Les fichiers du dossier de données sont ceux de
-//! l'ancienne version (serveur embarqué) : les données sont reprises telles quelles.
+//! jour de l'application (`update`), journal technique `grammaria.log` (`logs`). Les
+//! fichiers du dossier de données sont ceux de la version 0.2 : les données sont reprises
+//! telles quelles.
 
 use std::fs;
 
@@ -19,6 +20,7 @@ use tauri::{Manager, WebviewWindowBuilder};
 mod autotest;
 mod db;
 mod llm;
+mod logs;
 mod store;
 mod update;
 
@@ -65,6 +67,7 @@ pub fn run() {
             llm::llm_models,
             llm::llm_chat,
             llm::llm_cancel,
+            logs::log_page,
             // Inertes sans GRAMMARIA_AUTOTEST_OUT (voir autotest.rs).
             autotest::autotest_config,
             autotest::autotest_terminer,
@@ -79,6 +82,18 @@ pub fn run() {
                 Some(autotest) => autotest.preparer_dossier_donnees()?,
                 None => app.path().app_data_dir()?,
             };
+            // Journal technique (`grammaria.log`) : dossier de journaux de
+            // l'application, celui de l'ancien `server.log`. Autotest : à côté
+            // des données isolées.
+            let log_dir = match &autotest {
+                Some(_) => data_dir.join("logs"),
+                None => app.path().app_log_dir()?,
+            };
+            logs::initialiser(&log_dir, &app.package_info().version.to_string());
+            installer_journal_des_paniques();
+            if autotest.is_some() {
+                logs::ecrire(logs::Niveau::Info, "application", "Mode autotest.");
+            }
             fs::create_dir_all(&data_dir)?;
             app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
             app.manage(store::Store::new(&data_dir));
@@ -107,8 +122,23 @@ pub fn run() {
             fenetre.build()?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("impossible de démarrer Grammaria");
+        .build(tauri::generate_context!())
+        .expect("impossible de démarrer Grammaria")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                logs::ecrire(logs::Niveau::Info, "application", "Fermeture.");
+            }
+        });
+}
+
+/// Une panique est notée dans le journal technique avant le comportement
+/// habituel (message sur la sortie d'erreur, arrêt du fil).
+fn installer_journal_des_paniques() {
+    let precedent = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        logs::ecrire(logs::Niveau::Erreur, "panique", &info.to_string());
+        precedent(info);
+    }));
 }
 
 #[cfg(test)]
@@ -146,7 +176,7 @@ mod tests {
             .collect();
         declared.sort_unstable();
         assert_eq!(declared, commandes_enregistrees());
-        assert_eq!(declared.len(), 16);
+        assert_eq!(declared.len(), 17);
     }
 
     fn json(text: &str) -> Value {
@@ -182,7 +212,7 @@ mod tests {
             .collect();
         attendues.sort_unstable();
         assert_eq!(permissions, attendues);
-        assert_eq!(permissions.len(), 14);
+        assert_eq!(permissions.len(), 15);
     }
 
     /// Une seule capability, déclarée explicitement : un fichier ajouté au

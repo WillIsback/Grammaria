@@ -10,7 +10,8 @@
 //! La fin et l'erreur du flux passent PAR LE CHANNEL, après le dernier
 //! fragment : la réponse de `invoke` peut devancer les derniers messages.
 //!
-//! Rien n'est journalisé : ni la clé, ni les textes, ni les en-têtes.
+//! Seules les erreurs vont au journal technique (`logs`) : statut et message, la
+//! clé masquée ; jamais les textes ni les en-têtes.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -23,6 +24,7 @@ use tauri::ipc::Channel;
 use tauri::State;
 use tokio::sync::oneshot;
 
+use crate::logs;
 use crate::store::{Store, Upstream};
 
 /// Établissement de la connexion (TCP et TLS).
@@ -455,7 +457,53 @@ impl SseParser {
 /// `GET /v1/models` du serveur des réglages (JSON tel quel).
 #[tauri::command]
 pub async fn llm_models(store: State<'_, Store>, llm: State<'_, Llm>) -> Result<Value, LlmError> {
-    llm.models(store.upstream()).await
+    let upstream = store.upstream();
+    let cle = upstream
+        .as_ref()
+        .map(|u| u.api_key.clone())
+        .unwrap_or_default();
+    llm.models(upstream)
+        .await
+        .inspect_err(|error| journaliser("llm_models", error, &cle))
+}
+
+/// Erreur du relais dans le journal technique : statut et message (corps de la
+/// réponse amont, tronqué et masqué), jamais la clé ni le texte envoyé. Une
+/// annulation (bouton « Arrêter ») n'est pas une erreur.
+fn journaliser(commande: &str, error: &LlmError, cle: &str) {
+    if error.cancelled {
+        return;
+    }
+    let statut = error.status.map_or_else(
+        || "sans réponse".to_string(),
+        |status| format!("HTTP {status}"),
+    );
+    logs::ecrire_masque(
+        logs::Niveau::Erreur,
+        commande,
+        &format!(
+            "Relais du modèle ({statut}) : {}",
+            message_sans_entree(&error.message)
+        ),
+        &[cle],
+    );
+}
+
+/// Message d'erreur amont sans la requête qu'il recopierait : une erreur de
+/// validation (FastAPI, vLLM…) cite la valeur refusée (`"input": …`), qui peut
+/// contenir le texte de l'utilisateur. Le message est coupé à cet endroit et
+/// borné à 300 caractères.
+fn message_sans_entree(message: &str) -> String {
+    let coupe = ["\"input\"", "'input'", "\"messages\"", "\"content\""]
+        .iter()
+        .filter_map(|cle| message.find(cle))
+        .min()
+        .unwrap_or(message.len());
+    let mut texte: String = message[..coupe].chars().take(300).collect();
+    if texte.len() < message.len() {
+        texte.push('…');
+    }
+    texte
 }
 
 /// Correction en streaming : fragments, puis fin ou erreur, par `on_event`.
@@ -467,11 +515,19 @@ pub async fn llm_chat(
     body: Value,
     on_event: Channel<LlmEvent>,
 ) -> Result<(), String> {
+    let upstream = store.upstream();
+    let cle = upstream
+        .as_ref()
+        .map(|u| u.api_key.clone())
+        .unwrap_or_default();
     let last = llm
-        .chat(request_id, store.upstream(), body, |event| {
+        .chat(request_id, upstream, body, |event| {
             on_event.send(event).is_ok()
         })
         .await;
+    if let LlmEvent::Error(error) = &last {
+        journaliser("llm_chat", error, &cle);
+    }
     on_event.send(last).map_err(|error| error.to_string())
 }
 
@@ -935,5 +991,17 @@ mod tests {
             serde_json::to_value(LlmEvent::Error(LlmError::cancelled())).unwrap(),
             json!({ "event": "error", "data": { "message": "Requête annulée.", "cancelled": true } })
         );
+    }
+
+    /// Le journal technique ne reçoit pas la requête qu'un message d'erreur amont recopie.
+    #[test]
+    fn le_message_journalise_ne_recopie_pas_la_requete() {
+        let pydantic = r#"{"detail":[{"type":"extra_forbidden","loc":["body","x"],"msg":"Extra inputs are not permitted","input":{"messages":[{"role":"user","content":"Mon texte privé"}]}}]}"#;
+        let journalise = message_sans_entree(pydantic);
+        assert!(!journalise.contains("Mon texte privé"));
+        assert!(journalise.contains("Extra inputs are not permitted"));
+        assert!(journalise.ends_with('…'));
+        assert_eq!(message_sans_entree("HTTP 503"), "HTTP 503");
+        assert_eq!(message_sans_entree(&"é".repeat(400)).chars().count(), 301);
     }
 }
