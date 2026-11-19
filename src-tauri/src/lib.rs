@@ -15,7 +15,8 @@
 
 use std::fs;
 
-use tauri::{Manager, WebviewWindowBuilder};
+use tauri::webview::NewWindowResponse;
+use tauri::{Manager, Url, WebviewWindowBuilder};
 
 mod autotest;
 mod db;
@@ -109,7 +110,33 @@ pub fn run() {
                 .find(|w| w.label == "main")
                 .ok_or("fenêtre principale absente de tauri.conf.json")?
                 .clone();
-            let mut fenetre = WebviewWindowBuilder::from_config(app, &config)?;
+            let mut fenetre = WebviewWindowBuilder::from_config(app, &config)?
+                // La fenêtre n'affiche que la page embarquée : un lien ou un
+                // script ne peut pas la faire naviguer ailleurs (la page
+                // garderait l'accès aux commandes), ni ouvrir une autre fenêtre.
+                // La page de téléchargement s'ouvre dans le navigateur du
+                // système par une commande Rust (`update_open_release_page`).
+                .on_navigation(|url| {
+                    let autorisee = navigation_autorisee(url);
+                    if !autorisee {
+                        logs::commande_masquee(
+                            logs::Niveau::Avertissement,
+                            "fenêtre",
+                            &format!("Navigation refusée vers {}.", origine(url)),
+                            &[],
+                        );
+                    }
+                    autorisee
+                })
+                .on_new_window(|url, _| {
+                    logs::commande_masquee(
+                        logs::Niveau::Avertissement,
+                        "fenêtre",
+                        &format!("Nouvelle fenêtre refusée ({}).", origine(&url)),
+                        &[],
+                    );
+                    NewWindowResponse::Deny
+                });
             if let Some(autotest) = autotest {
                 app.add_capability(autotest::CAPABILITY)?;
                 app.manage(autotest);
@@ -133,6 +160,27 @@ pub fn run() {
         });
 }
 
+/// Vrai si la fenêtre peut afficher `url` : seulement l'origine de la page
+/// embarquée, que Tauri sert par son protocole (`tauri://localhost` sous Linux
+/// et macOS, `http://tauri.localhost` sous Windows, `https://tauri.localhost`
+/// avec `useHttpsScheme`). Sans `devUrl` dans tauri.conf.json, le
+/// développement utilise les mêmes adresses.
+fn navigation_autorisee(url: &Url) -> bool {
+    match (url.scheme(), url.host_str()) {
+        ("tauri", Some("localhost")) => url.port().is_none(),
+        ("http" | "https", Some("tauri.localhost")) => url.port().is_none(),
+        _ => false,
+    }
+}
+
+/// Origine d'une adresse, pour le journal (ni chemin ni paramètres).
+fn origine(url: &Url) -> String {
+    match url.host_str() {
+        Some(hote) => format!("{}://{hote}", url.scheme()),
+        None => format!("{}:", url.scheme()),
+    }
+}
+
 /// Une panique est notée dans le journal technique avant le comportement
 /// habituel (message sur la sortie d'erreur, arrêt du fil).
 fn installer_journal_des_paniques() {
@@ -145,7 +193,43 @@ fn installer_journal_des_paniques() {
 
 #[cfg(test)]
 mod tests {
+    use super::{navigation_autorisee, origine};
     use serde_json::Value;
+
+    #[test]
+    fn seule_la_page_embarquee_peut_etre_affichee() {
+        let url = |texte: &str| tauri::Url::parse(texte).expect("URL valide");
+        for permise in [
+            "tauri://localhost",
+            "tauri://localhost/index.html",
+            "tauri://localhost/progression?jours=7#haut",
+            "http://tauri.localhost/",
+            "https://tauri.localhost/index.html",
+        ] {
+            assert!(navigation_autorisee(&url(permise)), "{permise}");
+        }
+        for refusee in [
+            "https://exemple.fr/",
+            "http://localhost:1420/",
+            "http://127.0.0.1:25000/",
+            "tauri://localhost.exemple.fr/",
+            "tauri://autre/",
+            "http://tauri.localhost:8080/",
+            "http://tauri.localhost.exemple.fr/",
+            "file:///etc/passwd",
+            "data:text/html,<script>alert(1)</script>",
+            "javascript:alert(1)",
+            "about:blank",
+            "blob:tauri://localhost/1234",
+        ] {
+            assert!(!navigation_autorisee(&url(refusee)), "{refusee}");
+        }
+        assert_eq!(
+            origine(&url("https://exemple.fr/chemin?secret=1")),
+            "https://exemple.fr"
+        );
+        assert_eq!(origine(&url("data:text/html,x")), "data:");
+    }
 
     /// Texte entre `start` et la première occurrence de `end` qui suit.
     fn between<'a>(text: &'a str, start: &str, end: &str) -> &'a str {
