@@ -11,6 +11,9 @@
  *
  * Journal impossible à ouvrir : message lisible à la place de l'interface. Correcteur
  * impossible à charger : bandeau, l'interface reste utilisable (analyse des fautes partielle).
+ *
+ * Autotest (variable GRAMMARIA_AUTOTEST_OUT, voir src-tauri/src/autotest.rs) : la page
+ * d'autotest (autotest.ts, chunk à part) est chargée et exécutée après le rendu.
  */
 import { creerGestionnaire } from "../../api/handler.ts";
 import { Journal } from "../../journal.ts";
@@ -20,6 +23,13 @@ import { afficherBandeau, afficherErreur } from "./ecran-erreur.ts";
 import { creerPiloteTauri } from "./journal.driver.tauri.ts";
 import { installerPont } from "./pont.ts";
 import { apiTauri, messageErreur } from "./tauri.ts";
+
+declare global {
+  interface Window {
+    /** Posé par l'application (script d'initialisation) seulement en mode autotest. */
+    __GRAMMARIA_AUTOTEST__?: boolean;
+  }
+}
 
 export async function amorcer(rendre: () => void): Promise<void> {
   const api = apiTauri();
@@ -46,8 +56,8 @@ export async function amorcer(rendre: () => void): Promise<void> {
   }
 
   const correcteur = new CorrecteurBureau();
-  installerPont(creerGestionnaire(dependancesBureau({ api, journal, correcteur })));
-  void correcteur.prechauffer().catch((error: unknown) => {
+  const pont = installerPont(creerGestionnaire(dependancesBureau({ api, journal, correcteur })));
+  const prechauffage = correcteur.prechauffer().catch((error: unknown) => {
     console.error("[Bureau] Correcteur indisponible :", error);
     afficherBandeau(
       `${messageErreur(error)}. Les corrections restent possibles, mais l'analyse des fautes sera partielle.`,
@@ -55,4 +65,9 @@ export async function amorcer(rendre: () => void): Promise<void> {
   });
 
   rendre();
+
+  if (window.__GRAMMARIA_AUTOTEST__ === true) {
+    const { lancerAutotest } = await import("./autotest.ts");
+    await lancerAutotest({ api, correcteur, pont, prechauffage });
+  }
 }

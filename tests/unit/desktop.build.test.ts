@@ -122,9 +122,18 @@ describe("build de l'interface du bureau (vp build --mode bureau-interface)", ()
   it("aucune construction qui évalue du code (CSP sans unsafe-eval)", () => {
     // L'import dynamique, interdit dans le Worker (un seul fichier), charge ici l'amorce et
     // les chunks de l'interface, servis par l'application (script-src 'self').
+    // Seule exception : le témoin volontaire de la page d'autotest (chunk à part, jamais chargé
+    // hors du mode autotest), qui vérifie que la CSP bloque bien l'évaluation de code.
     for (const f of fichiers(dossier).filter((p) => p.endsWith(".js"))) {
-      const interdites = constructionsInterdites(readFileSync(f, "utf8"));
-      expect(interdites.filter((c) => c.nom !== "import dynamique")).toEqual([]);
+      const interdites = constructionsInterdites(readFileSync(f, "utf8")).filter(
+        (c) => c.nom !== "import dynamique",
+      );
+      if (/[\\/]autotest-[\w-]+\.js$/.test(f)) {
+        expect(interdites.map((c) => c.nom)).toEqual(["Function(…)"]);
+        expect(interdites[0].extrait).toContain("Function(`return 1`)");
+      } else {
+        expect(interdites).toEqual([]);
+      }
     }
   });
 });

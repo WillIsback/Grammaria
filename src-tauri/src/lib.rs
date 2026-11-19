@@ -14,8 +14,9 @@
 
 use std::fs;
 
-use tauri::Manager;
+use tauri::{Manager, WebviewWindowBuilder};
 
+mod autotest;
 mod db;
 mod llm;
 mod store;
@@ -64,16 +65,46 @@ pub fn run() {
             llm::llm_models,
             llm::llm_chat,
             llm::llm_cancel,
+            // Inertes sans GRAMMARIA_AUTOTEST_OUT (voir autotest.rs).
+            autotest::autotest_config,
+            autotest::autotest_terminer,
         ])
         .setup(|app| {
             app.manage(update::UpdateState::new(app));
+            let autotest = autotest::Autotest::depuis_env();
             // Mêmes fichiers que l'ancienne version : les données sont reprises
             // telles quelles. La base n'est ouverte qu'au premier appel de `db_*`.
-            let data_dir = app.path().app_data_dir()?;
+            // Autotest : dossier neuf, jamais celui de l'utilisateur.
+            let data_dir = match &autotest {
+                Some(autotest) => autotest.preparer_dossier_donnees()?,
+                None => app.path().app_data_dir()?,
+            };
             fs::create_dir_all(&data_dir)?;
             app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
             app.manage(store::Store::new(&data_dir));
             app.manage(llm::Llm::new()?);
+
+            // La fenêtre est créée ici (`create: false` dans tauri.conf.json)
+            // pour n'ajouter le drapeau d'autotest qu'en mode autotest.
+            let config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|w| w.label == "main")
+                .ok_or("fenêtre principale absente de tauri.conf.json")?
+                .clone();
+            let mut fenetre = WebviewWindowBuilder::from_config(app, &config)?;
+            if let Some(autotest) = autotest {
+                app.add_capability(autotest::CAPABILITY)?;
+                app.manage(autotest);
+                autotest::Autotest::surveiller(app.handle());
+                fenetre = fenetre
+                    .initialization_script(autotest::SCRIPT_INITIALISATION)
+                    // Stockage de la WebView (localStorage, cache) isolé lui aussi.
+                    .data_directory(data_dir.join("webview"));
+            }
+            fenetre.build()?;
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -115,7 +146,7 @@ mod tests {
             .collect();
         declared.sort_unstable();
         assert_eq!(declared, commandes_enregistrees());
-        assert_eq!(declared.len(), 14);
+        assert_eq!(declared.len(), 16);
     }
 
     fn json(text: &str) -> Value {
@@ -142,12 +173,16 @@ mod tests {
             .map(|p| p.as_str().expect("chaîne").to_string())
             .collect();
         permissions.sort_unstable();
+        // Toutes les commandes, sauf celles de l'autotest (capability ajoutée
+        // à l'exécution, en mode autotest seulement).
         let mut attendues: Vec<String> = commandes_enregistrees()
             .iter()
+            .filter(|commande| !commande.starts_with("autotest_"))
             .map(|commande| format!("allow-{}", commande.replace('_', "-")))
             .collect();
         attendues.sort_unstable();
         assert_eq!(permissions, attendues);
+        assert_eq!(permissions.len(), 14);
     }
 
     /// Une seule capability, déclarée explicitement : un fichier ajouté au
@@ -159,6 +194,17 @@ mod tests {
             conf["app"]["security"]["capabilities"],
             serde_json::json!(["default"])
         );
+    }
+
+    /// La fenêtre est créée par `setup` (drapeau d'autotest éventuel) : la
+    /// configuration ne doit pas la créer une seconde fois.
+    #[test]
+    fn la_fenetre_principale_est_creee_par_setup() {
+        let conf = json(include_str!("../tauri.conf.json"));
+        let fenetres = conf["app"]["windows"].as_array().expect("fenêtres");
+        assert_eq!(fenetres.len(), 1);
+        assert_eq!(fenetres[0]["label"], "main");
+        assert_eq!(fenetres[0]["create"], false);
     }
 
     /// La politique de sécurité de la page : rien que l'application elle-même

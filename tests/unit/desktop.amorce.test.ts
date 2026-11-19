@@ -137,3 +137,37 @@ describe("amorce du bureau", () => {
     expect(document.querySelector('[data-testid="bandeau-bureau"]')).toBeNull();
   });
 });
+
+describe("porte de l'autotest", () => {
+  const fetchOrigine = window.fetch;
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="root"><textarea></textarea></div>';
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    delete (window as { __TAURI__?: unknown }).__TAURI__;
+    delete window.__GRAMMARIA_AUTOTEST__;
+    window.fetch = fetchOrigine;
+    vi.restoreAllMocks();
+  });
+
+  it("sans le drapeau posé par l'application, l'autotest n'est pas chargé", async () => {
+    const tauri = tauriSimule();
+    (window as { __TAURI__?: unknown }).__TAURI__ = { core: tauri.api };
+    await amorcer(() => {});
+    expect(tauri.commandes()).not.toContain("autotest_config");
+  });
+
+  it("drapeau présent mais autotest refusé par l'application : rien n'est exécuté", async () => {
+    const tauri = tauriSimule();
+    (window as { __TAURI__?: unknown }).__TAURI__ = { core: tauri.api };
+    window.__GRAMMARIA_AUTOTEST__ = true;
+    await amorcer(() => {});
+    const apres = tauri.commandes();
+    expect(apres).toContain("autotest_config");
+    // Après le refus d'autotest_config : ni lot, ni réglages, ni modèle, ni résultats.
+    const suite = apres.slice(apres.indexOf("autotest_config") + 1);
+    expect(suite).toEqual([]);
+    expect(tauri.reglages.llmTarget).toBe("");
+  });
+});
