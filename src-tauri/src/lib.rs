@@ -126,6 +126,8 @@ pub fn run() {
         .expect("impossible de démarrer Grammaria")
         .run(|_app, event| {
             if let tauri::RunEvent::Exit = event {
+                // Décompte d'erreurs répétées encore en attente, puis fermeture.
+                logs::vider();
                 logs::ecrire(logs::Niveau::Info, "application", "Fermeture.");
             }
         });

@@ -568,14 +568,15 @@ fn journaliser(commande: &str, error: &LlmError, cle: Option<&str>) {
     }
     // Aucun modèle configuré (premier lancement) : un état, pas une panne.
     let Some(cle) = cle else {
-        logs::ecrire(logs::Niveau::Info, commande, "Aucun modèle configuré.");
+        logs::commande_masquee(logs::Niveau::Info, commande, "Aucun modèle configuré.", &[]);
         return;
     };
     let statut = error.status.map_or_else(
         || "sans réponse".to_string(),
         |status| format!("HTTP {status}"),
     );
-    logs::ecrire_masque(
+    // Débit limité et répétitions regroupées, comme les autres commandes.
+    logs::commande_masquee(
         logs::Niveau::Erreur,
         commande,
         &format!(
