@@ -19,7 +19,7 @@ semver = "1"
 serde = { version = "1", features = ["derive"] }
 # Requis par tauri::generate_context! dès que tauri.conf.json configure un plugin ;
 # sert aussi aux commandes (JSON du journal, des réglages et du modèle).
-serde_json = "1"
+serde_json = { version = "1", features = ["raw_value"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
