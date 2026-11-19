@@ -43,7 +43,7 @@ export interface RegleSuivie {
   acquiredAt: number | null;
 }
 
-export interface EntreeProgression {
+interface EntreeProgression {
   texts: LigneTexte[];
   /** Fautes comptées depuis le début de la première semaine affichée. */
   faults: LigneFaute[];
@@ -51,7 +51,7 @@ export interface EntreeProgression {
 }
 
 /** Agrégat d'un ensemble de textes. */
-export interface Volume {
+interface Volume {
   texts: number;
   words: number;
   faults: number;
@@ -70,7 +70,7 @@ export interface Semaine extends Volume {
 
 export type Tendance = "baisse" | "hausse" | "stable";
 
-export interface ScoreMaitrise {
+interface ScoreMaitrise {
   /** Score de 0 à 100 ; null tant qu'il n'y a pas assez de textes récents. */
   score: number | null;
   /** Libellé du palier (« Bonne maîtrise »…) ; null sans score. */
@@ -92,7 +92,7 @@ export interface ScoreMaitrise {
 /** Règle affichée dans les listes de l'écran (champs de `RegleSuivie` seulement). */
 export type RegleResumee = RegleSuivie;
 
-export interface RegleFrequente {
+interface RegleFrequente {
   ruleKey: string;
   label: string;
   categoryName: string;
@@ -101,7 +101,7 @@ export interface RegleFrequente {
   state: EtatCycle | null;
 }
 
-export interface MotPiege {
+interface MotPiege {
   /** Forme fautive, en minuscules. */
   word: string;
   /** Bonne forme : la correction la plus fréquente pour ce mot. */

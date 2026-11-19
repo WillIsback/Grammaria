@@ -73,7 +73,7 @@ export interface Transition {
   to: EtatCycle;
 }
 
-export interface TransitionResult {
+interface TransitionResult {
   state: RuleState;
   transitions: Transition[];
 }

@@ -15,7 +15,7 @@ export interface Hunk {
 const TOKEN_RE = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*|\s+|[^\s\p{L}\p{N}]/gu;
 const WORD_RE = /[\p{L}\p{N}]/u;
 
-export function tokenize(text: string): string[] {
+function tokenize(text: string): string[] {
   return text.match(TOKEN_RE) ?? [];
 }
 

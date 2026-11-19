@@ -1,5 +1,5 @@
 /** Points retirés pour une faute par tranche de 100 mots. */
-export const POINTS_PAR_FAUTE_POUR_100_MOTS = 2;
+const POINTS_PAR_FAUTE_POUR_100_MOTS = 2;
 
 /**
  * Note sur 20 calculée sur la densité de fautes, pour qu'un texte long ne soit

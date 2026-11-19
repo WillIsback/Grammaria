@@ -43,7 +43,7 @@ export interface InterventionChoix {
 export type Intervention = InterventionAstuce | InterventionChoix;
 
 /** Choix décidé par la logique pure, avant que le journal lui donne son identifiant. */
-export type ChoixPropose = Omit<InterventionChoix, "choiceId">;
+type ChoixPropose = Omit<InterventionChoix, "choiceId">;
 
 /** Règle devenue « acquise » avec ce texte : message de réussite. */
 export interface Reussite {
