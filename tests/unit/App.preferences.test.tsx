@@ -1,37 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { mockerApp } from "./helpers/appMocks";
 
-vi.mock("../../src/hooks/useCorrector", () => ({
-  useCorrector: () => ({
-    textContent: "",
-    setTextContent: vi.fn(),
-    outputText: "",
-    corrections: [],
-    analysis: null,
-    analysisNotice: null,
-    settings: {
-      mode: "formel",
-      fixGrammar: true,
-      fixSpelling: true,
-      fixSyntax: true,
-      fixStyle: true,
-    },
-    setSettings: vi.fn(),
-    isLoading: false,
-    isLoadingCorrections: false,
-    error: null,
-    stats: { processingTime: 0, modificationCount: 0 },
-    handleCorrect: vi.fn(),
-    handleReset: vi.fn(),
-  }),
-}));
-vi.mock("../../src/utils/models", () => ({
-  initModel: vi.fn(),
-  getCurrentModel: () => "m",
-  setCurrentModel: vi.fn(),
-  subscribeToModelChange: () => () => {},
-  fetchModels: vi.fn().mockResolvedValue([]),
-}));
+mockerApp();
 
 const { default: App } = await import("../../src/App");
 

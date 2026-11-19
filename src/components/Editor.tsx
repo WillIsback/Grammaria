@@ -1,3 +1,5 @@
+import { Icon } from "./Icon";
+
 interface Props {
   text: string;
   onChange: (text: string) => void;
@@ -46,19 +48,10 @@ export function Editor({ text, onChange, onCorrect, isLoading, actionsInHeader =
         </span>
       ) : (
         <span className="flex items-center gap-2">
-          <svg
-            aria-hidden="true"
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <Icon className="w-4 h-4">
             <path d="M5 12h14" />
             <path d="m12 5 7 7-7 7" />
-          </svg>
+          </Icon>
           Corriger
         </span>
       )}

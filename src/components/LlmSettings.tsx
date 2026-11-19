@@ -1,13 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { saveServerSettings, type ServerSettings } from "../services/settings";
+import { sectionTitle } from "./Sidebar";
 
 interface Props {
   settings: ServerSettings;
   onSaved: (settings: ServerSettings) => void;
 }
 
-const sectionTitle =
-  "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 const input =
   "w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 " +
   "text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 " +

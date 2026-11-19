@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AppUpdate } from "../hooks/useAppUpdate";
 import type { ServerSettings } from "../services/settings";
 import { getCurrentModel, subscribeToModelChange } from "../utils/models";
+import { CloseButton } from "./Icon";
 import { LlmSettings } from "./LlmSettings";
 import { ModelSelector } from "./ModelSelector";
 import { UpdateSettings } from "./UpdateSettings";
@@ -80,25 +81,7 @@ export function SettingsDialog({
           <h2 id="settings-title" className="text-sm font-semibold text-gray-900 dark:text-white">
             Paramètres
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer les paramètres"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400
-              hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200
-              transition-colors"
-          >
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton label="Fermer les paramètres" onClick={onClose} />
         </div>
 
         <div className="flex flex-col sm:flex-row min-h-0 flex-1">

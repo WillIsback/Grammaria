@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type {
   FormeChoix,
   Intervention,
@@ -7,6 +7,7 @@ import type {
 } from "../analysis/regles/intervention";
 import type { CorrectionEntry, WeekSummary } from "../types";
 import { visibleText } from "../utils/visibleText";
+import { Icon, Spinner } from "./Icon";
 import { InterventionMessage } from "./InterventionMessage";
 
 interface Props {
@@ -35,20 +36,37 @@ interface Props {
 }
 
 const COPY_ICON = (
-  <svg
-    aria-hidden="true"
-    className="w-4 h-4 shrink-0"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <Icon className="w-4 h-4 shrink-0">
     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-  </svg>
+  </Icon>
 );
+
+/** Carte de statistique sous le résultat (temps, nombre de corrections). */
+function StatCard({
+  icon,
+  label,
+  children,
+}: {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="bg-white dark:bg-gray-800/80 p-3.5 rounded-xl border border-gray-200/60
+        dark:border-gray-700/60 shadow-subtle"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {icon}
+        <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+          {label}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 function formatScore(score: number): string {
   return score.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
@@ -257,18 +275,9 @@ export function Output({
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
                 <div className="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center mb-4">
-                  <svg
-                    aria-hidden="true"
-                    className="w-7 h-7 text-brand-400 dark:text-brand-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <Icon className="w-7 h-7 text-brand-400 dark:text-brand-500" strokeWidth={1.5}>
                     <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  </Icon>
                 </div>
                 <p className="text-sm text-gray-400 dark:text-gray-500 max-w-[220px]">
                   Le texte corrigé apparaîtra ici
@@ -279,22 +288,7 @@ export function Output({
 
           {isLoadingCorrections && !outputText && (
             <div className="mt-5 flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
-              <svg
-                aria-hidden="true"
-                className="w-4 h-4 animate-spin text-brand-500"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
+              <Spinner className="w-4 h-4 text-brand-500" />
               Correction en cours…
             </div>
           )}
@@ -302,101 +296,41 @@ export function Output({
           {outputText && (
             <div className="animate-slide-up">
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <div
-                  className="bg-white dark:bg-gray-800/80 p-3.5 rounded-xl border border-gray-200/60
-                    dark:border-gray-700/60 shadow-subtle"
+                <StatCard
+                  label="Temps"
+                  icon={
+                    <Icon className="w-3.5 h-3.5 text-gray-400">
+                      <path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </Icon>
+                  }
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg
-                      aria-hidden="true"
-                      className="w-3.5 h-3.5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Temps
-                    </span>
-                  </div>
                   <p className="text-xl font-semibold text-gray-900 dark:text-white tabular-nums">
                     {stats.processingTime}
                     <span className="text-sm font-normal text-gray-400 ml-0.5">ms</span>
                   </p>
-                </div>
+                </StatCard>
 
-                <div
-                  className="bg-white dark:bg-gray-800/80 p-3.5 rounded-xl border border-gray-200/60
-                    dark:border-gray-700/60 shadow-subtle"
+                <StatCard
+                  label="Corrections"
+                  icon={
+                    <Icon className="w-3.5 h-3.5 text-brand-500">
+                      <path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </Icon>
+                  }
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg
-                      aria-hidden="true"
-                      className="w-3.5 h-3.5 text-brand-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-                      />
-                    </svg>
-                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Corrections
-                    </span>
-                  </div>
                   {isLoadingCorrections ? (
-                    <svg
-                      aria-hidden="true"
-                      className="w-5 h-5 mt-0.5 animate-spin text-brand-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
+                    <Spinner className="w-5 h-5 mt-0.5 text-brand-500" />
                   ) : (
                     <p className="text-xl font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
                       {stats.modificationCount}
                     </p>
                   )}
-                </div>
+                </StatCard>
               </div>
 
               {isLoadingCorrections && (
                 <div className="mt-5 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                  <svg
-                    aria-hidden="true"
-                    className="w-3.5 h-3.5 animate-spin text-brand-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
+                  <Spinner className="w-3.5 h-3.5 text-brand-500" />
                   <span className="uppercase tracking-wider font-semibold">
                     Analyse des corrections…
                   </span>
@@ -413,16 +347,11 @@ export function Output({
                     <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                       Corrections ({corrections.length})
                     </span>
-                    <svg
-                      aria-hidden="true"
+                    <Icon
                       className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${correctionsOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                      <path d="M19 9l-7 7-7-7" />
+                    </Icon>
                   </button>
                   {correctionsOpen && (
                     <div

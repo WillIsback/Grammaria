@@ -3,6 +3,7 @@ import { BadgeGallery } from "./components/BadgeGallery";
 import { BadgeNotice } from "./components/BadgeNotice";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
+import { Icon, WARNING_PATH } from "./components/Icon";
 import { Output } from "./components/Output";
 import { ProgressionScreen } from "./components/progression/ProgressionScreen";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -135,12 +136,7 @@ function App() {
   }, [textContent, handleCorrect]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    window.document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
   useEffect(() => {
@@ -167,11 +163,7 @@ function App() {
 
   const handleCopySuccess = (text: string) => {
     void navigator.clipboard.writeText(text);
-    setToast({
-      id: `copy-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      message: "Texte copié dans le presse-papier",
-      type: "success",
-    });
+    setToast({ message: "Texte copié dans le presse-papier", type: "success" });
   };
 
   return (
@@ -293,18 +285,9 @@ function App() {
           <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto px-5 py-3.5">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
-                <svg
-                  aria-hidden="true"
-                  className="w-3.5 h-3.5 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Icon className="w-3.5 h-3.5 text-red-500">
+                  <path d={WARNING_PATH} />
+                </Icon>
               </div>
               <p className="text-sm text-red-700 dark:text-red-300 break-words">{error}</p>
             </div>
