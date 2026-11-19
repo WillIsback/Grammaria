@@ -1,24 +1,11 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
-
-const DAY = 24 * 60 * 60 * 1000;
-/** Midi, heure locale : un décalage d'un jour change toujours de jour calendaire. */
-const J0 = new Date(2026, 9, 1, 12).getTime();
-const jour = (n: number) => J0 + n * DAY;
+import { avecBase, corriger, DAY, FAUTE_ON, jour, SANS_FAUTE } from "./helpers.ts";
 
 const ON = "PAIRE:on/ont";
-const FAUTE_ON = ["Hier, ils on mangé tous les gâteaux.", "Hier, ils ont mangé tous les gâteaux."];
-const SANS_FAUTE = ["Tout va bien aujourd'hui.", "Tout va bien aujourd'hui."];
-
-function corriger(journal: Journal, [original, corrige]: string[], now: number, random = () => 0) {
-  return journal.record(analyze(original, corrige, []), now, { original, random });
-}
 
 const regle = (journal: Journal, ruleKey = ON) =>
   journal.rules().find((r) => r.ruleKey === ruleKey);
@@ -313,9 +300,7 @@ describe("Journal — cycle de vie des règles", () => {
   });
 
   it("ne conserve jamais le texte entier dans les tables du cycle", () => {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-rules-"));
-    try {
-      const path = join(dir, "journal.db");
+    avecBase((path) => {
       const journal = new Journal(path);
       rendreTravaillee(journal);
       journal.close();
@@ -327,9 +312,7 @@ describe("Journal — cycle de vie des règles", () => {
       db.close();
       expect(lignes).not.toContain("gâteaux");
       expect(lignes).toContain(ON);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    });
   });
 
   it("« Effacer le journal » remet aussi à zéro l'état des règles", () => {
@@ -413,15 +396,6 @@ describe("Journal — migration du schéma", () => {
     // Usage sans faute : un texte par jour à partir du jour 3.
     for (let i = 0; i < textesSansFaute; i++) ajouter(jour(3 + i), []);
     db.close();
-  }
-
-  function avecBase(test: (path: string) => void): void {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-migration-"));
-    try {
-      test(join(dir, "journal.db"));
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
   }
 
   const contenu = (path: string) => {

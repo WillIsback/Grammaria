@@ -1,30 +1,19 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { awardBadgesSafely } from "../journal.badges.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { BADGES } from "../src/analysis/badges/catalogue.ts";
+import { avecBase, corriger as journaliser, FAUTE_ON, jour, SANS_FAUTE } from "./helpers.ts";
 
-const DAY = 24 * 60 * 60 * 1000;
-/**
- * Midi, heure locale : un décalage d'un jour change toujours de jour
- * calendaire. Date passée : la migration évalue les badges à l'heure réelle.
- */
-const J0 = new Date(2025, 0, 6, 12).getTime();
-const jour = (n: number) => J0 + n * DAY;
-
-const FAUTE_ON = ["Hier, ils on mangé tous les gâteaux.", "Hier, ils ont mangé tous les gâteaux."];
-const COURT = ["Tout va bien aujourd'hui.", "Tout va bien aujourd'hui."];
 /** Texte de plus de 30 mots, sans faute. */
 const LONG = Array(2).fill(
   "Nous vous remercions pour votre message et nous vous confirmons la réunion de jeudi prochain à dix heures dans la grande salle du deuxième étage avec toute l'équipe du projet.",
 );
 
-function corriger(journal: Journal, [original, corrige]: string[], now: number) {
-  journal.record(analyze(original, corrige, []), now, { original, random: () => 0 });
+/** Journalise un texte, puis renvoie les badges qu'il fait obtenir. */
+function corriger(journal: Journal, texte: string[], now: number) {
+  journaliser(journal, texte, now);
   return journal.badges.award(now);
 }
 
@@ -35,20 +24,11 @@ const obtenus = (journal: Journal, now: number) =>
     .badges.filter((b) => b.obtenu)
     .map((b) => [b.id, b.obtenuLe]);
 
-function avecBase(test: (path: string) => void): void {
-  const dir = mkdtempSync(join(tmpdir(), "grammaria-badges-"));
-  try {
-    test(join(dir, "journal.db"));
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
 describe("Journal — badges", () => {
   it("annonce le premier badge à la première correction, une seule fois", () => {
     const journal = new Journal(":memory:");
-    expect(ids(corriger(journal, COURT, jour(0)))).toEqual(["premier-texte"]);
-    expect(corriger(journal, COURT, jour(0) + 1000)).toEqual([]);
+    expect(ids(corriger(journal, SANS_FAUTE, jour(0)))).toEqual(["premier-texte"]);
+    expect(corriger(journal, SANS_FAUTE, jour(0) + 1000)).toEqual([]);
     expect(obtenus(journal, jour(1))).toEqual([["premier-texte", jour(0)]]);
   });
 
@@ -61,9 +41,9 @@ describe("Journal — badges", () => {
     const journal = new Journal(":memory:");
     for (const n of [0, 1, 2]) corriger(journal, FAUTE_ON, jour(n));
     for (const n of [3, 4, 5, 6])
-      expect(ids(corriger(journal, COURT, jour(n)))).not.toContain("premiere-regle");
+      expect(ids(corriger(journal, SANS_FAUTE, jour(n)))).not.toContain("premiere-regle");
     // 14 jours après la dernière faute, sur 5 textes et plus de 3 jours d'utilisation.
-    expect(ids(corriger(journal, COURT, jour(16)))).toContain("premiere-regle");
+    expect(ids(corriger(journal, SANS_FAUTE, jour(16)))).toContain("premiere-regle");
     expect(journal.rules()[0].state).toBe("acquise");
     expect(journal.badges.obtained().get("premiere-regle")).toBe(jour(16));
   });
@@ -81,7 +61,7 @@ describe("Journal — badges", () => {
 
   it("expose le catalogue complet avec la progression de chaque badge", () => {
     const journal = new Journal(":memory:");
-    for (let n = 0; n < 3; n++) corriger(journal, COURT, jour(n));
+    for (let n = 0; n < 3; n++) corriger(journal, SANS_FAUTE, jour(n));
     const catalogue = journal.badges.catalogue(jour(3));
     expect(catalogue.total).toBe(BADGES.length);
     expect(catalogue.obtenus).toBe(1);
@@ -102,7 +82,7 @@ describe("Journal — badges", () => {
     journal.purge();
     expect(journal.badges.obtained().size).toBe(0);
     // Après l'effacement, le premier badge peut de nouveau être obtenu.
-    expect(ids(corriger(journal, COURT, jour(1)))).toEqual(["premier-texte"]);
+    expect(ids(corriger(journal, SANS_FAUTE, jour(1)))).toEqual(["premier-texte"]);
   });
 
   it("n'interrompt jamais l'analyse si le calcul des badges échoue", () => {

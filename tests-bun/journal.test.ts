@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { Journal } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
+import { DAY } from "./helpers.ts";
 
-const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 10, 18);
 
 function sample() {
