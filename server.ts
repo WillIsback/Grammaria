@@ -32,7 +32,18 @@ const settings = new SettingsStore(
   config.desktop && config.settingsPath ? config.settingsPath : null,
 );
 
-const journal = await Journal.ouvrir(ouvrirPiloteBun(config.journalPath));
+// Journal impossible à ouvrir (créé par une version plus récente, fichier
+// abîmé, dossier interdit) : arrêt net avec la cause, sans pile d'appels.
+async function ouvrirJournal(): Promise<Journal> {
+  try {
+    return await Journal.ouvrir(ouvrirPiloteBun(config.journalPath));
+  } catch (error) {
+    const cause = error instanceof Error ? error.message : String(error);
+    console.error(`[Journal] Impossible d'ouvrir ${config.journalPath} : ${cause}`);
+    process.exit(1);
+  }
+}
+const journal = await ouvrirJournal();
 
 const grammar = new GrammarChecker();
 grammar.warmUp();

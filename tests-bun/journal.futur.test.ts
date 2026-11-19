@@ -99,6 +99,11 @@ describe("Journal d'une version future de Grammaria", () => {
       const sortie = await new Response(processus.stderr).text();
       expect(code).not.toBe(0);
       expect(sortie).toContain("Ce journal a été créé par une version plus récente de Grammaria");
+      // Arrêt propre : code 1, la cause sur une ligne, pas de pile d'appels.
+      expect(code).toBe(1);
+      expect(sortie).toContain(`[Journal] Impossible d'ouvrir ${path} : `);
+      expect(sortie).not.toMatch(/^\s+at /m);
+      expect(sortie).not.toContain("JournalFuturError");
       expect(tables(path)).toEqual(["nouveautes"]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
