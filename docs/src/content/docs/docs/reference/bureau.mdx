@@ -9,7 +9,7 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 
 1. **La page est embarquée.** L'interface est construite dans `dist/bureau` (`npm run build:bureau`) et servie par Tauri lui-même, sous l'origine `tauri://localhost` (`http://tauri.localhost` sous Windows).
 2. **La logique métier est la même que sur le serveur web.** Au chargement, `src/desktop/amorce.ts` remplace `window.fetch` pour les seules routes `/api/*` et `/v1/*` de la page et les confie au gestionnaire d'API partagé avec le serveur, `api/handler.ts`. L'interface ne fait pas la différence avec la version web.
-3. **Le correcteur grammatical tourne dans la page**, dans un Web Worker (`src/desktop/lt.worker.ts`), avec les règles françaises de LanguageTool rangées dans une archive (`dist/bureau/lt/fr.pack`). Les règles se chargent en 4 secondes environ au lancement ; les contrôles suivants prennent autour de 0,2 seconde.
+3. **Le correcteur grammatical tourne dans la page**, dans un Web Worker (`src/desktop/lt.worker.ts`), avec les règles françaises de LanguageTool rangées dans une archive (`dist/bureau/lt/fr.pack`). Les règles se chargent en 4 à 5 secondes au lancement ; les contrôles suivants prennent autour de 0,2 seconde.
 4. **Rust ne fournit que ce que la page ne peut pas faire seule**, par des commandes (`src-tauri/src/`) :
 
 | Module | Rôle |
@@ -20,12 +20,16 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 | `update.rs` | Mise à jour de l'application |
 | `logs.rs` | Journal technique `grammaria.log` |
 
-Le journal, les réglages, la clé API et les mots valides de la version 0.2.x sont repris tels quels (mêmes fichiers, même dossier). Les préférences d'affichage (mode de correction et types de corrections de la barre latérale) étaient gardées par la page elle-même ; l'origine de la page ayant changé, elles ne sont pas reprises.
+Le journal, les réglages, la clé API et les mots valides de la version 0.2.x sont repris tels quels (mêmes fichiers, même dossier). Les préférences d'affichage (mode de correction et types de corrections de la barre latérale) étaient gardées par la page elle-même ; l'origine de la page ayant changé, elles ne sont pas reprises. Un `settings.json` de la version 0.2 (sans `settingsVersion`) est relu sans son réglage « Couper le raisonnement du modèle », qui revient à sa valeur par défaut (coupé) ; le fichier n'est réécrit qu'au prochain enregistrement des réglages.
 
 ## Sécurité de la page
 
 - **Une seule capability, locale.** `src-tauri/capabilities/default.json` autorise la fenêtre `main`, pour la page embarquée seulement, à appeler les commandes de l'application, une par une : ni les commandes de Tauri (`core:default`), ni celles des plugins, ni aucune origine distante. La liste des commandes est aussi déclarée dans `src-tauri/build.rs` ; un test Rust vérifie que les commandes enregistrées, celles de `build.rs` et celles de la capability coïncident.
 - **Une politique de sécurité stricte** (`tauri.conf.json`) : la page ne charge que ses propres fichiers, sans `unsafe-eval` ni ressource distante. Elle ne joint jamais le modèle elle-même : tout passe par `llm.rs`. La police Inter est embarquée : aucune requête vers Google.
+- **Une fenêtre verrouillée sur la page embarquée** (`lib.rs`) : toute navigation vers une autre origine et toute nouvelle fenêtre sont refusées, et notées dans le journal technique (origine seule). La page de téléchargement d'une mise à jour s'ouvre dans le navigateur du système, par une commande Rust dont l'adresse est fixe.
+- **Un relais du modèle borné** (`llm.rs`, `store.rs`) : l'adresse du modèle ne doit contenir ni identifiants (`utilisateur:motdepasse@`), ni paramètres (`?…`), ni fragment (`#…`) ; le `/v1` final est facultatif. Une redirection du serveur du modèle n'est suivie que vers la même origine, et un événement du flux est limité à 8 Mio.
+- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
+- **Un journal d'une version plus récente n'est jamais ouvert.** Si `grammaria.db` porte une version de schéma (`PRAGMA user_version`) supérieure à celle que l'application connaît, elle affiche l'écran d'erreur « Ce journal a été créé par une version plus récente de Grammaria » et n'écrit rien ; le serveur web refuse de démarrer avec le même message.
 
 ## Journal technique
 
@@ -38,7 +42,7 @@ L'application écrit `grammaria.log` dans son dossier de journaux :
 
 Il contient le démarrage (version, système) et la fermeture, les erreurs des commandes (journal, réglages, relais du modèle : statut et message), un fichier de réglages illisible au démarrage (`settings.json` ou `valid-words.json` : son nom seulement, les valeurs par défaut s'appliquent), les étapes de la mise à jour, le chargement du correcteur, les erreurs de la page (erreurs JavaScript non interceptées, promesses rejetées) et une ligne par correction terminée : durée totale, délai avant le premier mot, nombre de fragments de raisonnement, raisonnement coupé ou non.
 
-Il ne contient jamais la clé API, les en-têtes d'authentification, le texte de l'utilisateur ni le contenu des corrections : chaque ligne est en plus filtrée pour masquer tout ce qui ressemble à un secret. Au-delà de 1 Mio, le fichier devient `grammaria.log.1` et un nouveau commence. La page n'écrit que par une seule commande, `log_page`, dont le débit et la taille des messages sont limités.
+Il ne contient jamais la clé API, les en-têtes d'authentification, le texte de l'utilisateur ni le contenu des corrections : chaque ligne est en plus filtrée pour masquer tout ce qui ressemble à un secret. Au-delà de 1 Mio, le fichier devient `grammaria.log.1` et un nouveau commence. La page n'écrit que par une seule commande, `log_page`, dont le débit et la taille des messages sont limités. Les erreurs des commandes le sont aussi : une erreur identique à la précédente n'est pas réécrite mais comptée (« répété N fois »).
 
 ## Variables d'environnement
 
@@ -70,7 +74,7 @@ Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm 
 
 | Commande | Ce qu'elle vérifie |
 |---|---|
-| `cargo test` (dans `src-tauri/`) | Commandes Rust, capability, politique de sécurité, journal technique |
+| `cargo test` (dans `src-tauri/`) | Commandes Rust, capability, politique de sécurité, journal technique. À lancer après `npm run build:bureau` : la compilation exige la page embarquée (`dist/bureau`), que `npm run build` (version web) efface |
 | `npm run test:correcteur-bureau` | Le correcteur livré (`dist/bureau/lt/`), dans Chromium sous la politique de sécurité du bureau : détections identiques à la référence du serveur, aucune construction qui évalue du code. À lancer après `npm run build:bureau` |
 | `npm run reference:correcteur` | Régénère la référence (`tests/fixtures/correcteur/reference.json`) avec le correcteur du serveur. Nécessite Bun |
 

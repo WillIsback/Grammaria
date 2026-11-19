@@ -22,10 +22,11 @@ Les paquets Windows sont signés : Windows affiche l'éditeur au lieu d'un avert
 
 ## Premier lancement
 
-1. Au démarrage, Grammaria charge ses règles de grammaire, en 4 secondes environ. Si vous corrigez un texte tout de suite, le premier contrôle de grammaire attend donc la fin de ce chargement ; les suivants prennent autour de 0,2 seconde.
+1. Au démarrage, Grammaria charge ses règles de grammaire, en 4 à 5 secondes. Si vous corrigez un texte tout de suite, le premier contrôle de grammaire attend donc la fin de ce chargement ; les suivants prennent autour de 0,2 seconde.
 2. Le menu **Paramètres → IA** s'ouvre de lui-même : dans **Serveur du modèle**, indiquez l'adresse de votre modèle, puis **Enregistrer**. Ce menu reste accessible à tout moment par le bouton ⚙️ de l'en-tête, à côté du thème clair/sombre.
    - Ollama sur le même ordinateur : `http://localhost:11434`.
    - API compatible OpenAI : son adresse, par exemple `https://api.mistral.ai`, et votre clé API.
+   - L'adresse s'écrit sans identifiants ni paramètres (`https://utilisateur:motdepasse@…` et `…?cle=…` sont refusés) ; le `/v1` final est facultatif.
 3. Dans la même rubrique, choisissez le modèle dans la liste **Modèle LLM**, fermez le menu, puis corrigez votre premier texte.
 
 La case **Couper le raisonnement du modèle** est cochée par défaut. Un modèle qui raisonne (Qwen3 servi par vLLM ou SGLang, par exemple) réfléchit sinon plusieurs secondes avant d'écrire, sans rien afficher. Si le serveur du modèle refuse ce réglage, Grammaria renvoie la requête sans lui. Le [journal technique](#journal-technique) indique pour chaque correction le délai avant le premier mot et le nombre de fragments de raisonnement reçus.
@@ -41,10 +42,6 @@ Vos textes ne sont envoyés qu'au modèle que vous avez choisi. L'analyse gramma
 
 Rien n'est jamais installé sans votre accord. Vos réglages et votre journal sont conservés.
 
-### Depuis la version 0.2
-
-La version 0.3 reprend votre journal des fautes, vos réglages du modèle, votre clé API et vos mots ajoutés au dictionnaire. Seules les préférences de la barre latérale (mode de correction et types de corrections) reviennent à leurs valeurs par défaut : choisissez-les à nouveau une fois.
-
 Vous pouvez aussi lancer la recherche vous-même : bouton ⚙️ de l'en-tête, rubrique **Mises à jour**, puis **Rechercher une mise à jour**. La rubrique affiche la version installée.
 
 | Paquet installé | Mise à jour |
@@ -55,6 +52,10 @@ Vous pouvez aussi lancer la recherche vous-même : bouton ⚙️ de l'en-tête, 
 | Windows, MSI (parc géré) | Grammaria vous prévient ; la nouvelle version est déployée par votre administrateur. |
 
 Seules les versions stables sont proposées, jamais les versions d'essai. Si la rubrique indique que les mises à jour automatiques ne sont pas encore actives, téléchargez la nouvelle version dans la page [Releases](https://github.com/WillIsback/Grammaria/releases) et installez-la par-dessus l'ancienne.
+
+### Depuis la version 0.2
+
+La version 0.3 reprend votre journal des fautes, vos réglages du modèle, votre clé API et vos mots ajoutés au dictionnaire. Seuls reviennent à leurs valeurs par défaut les préférences de la barre latérale (mode de correction et types de corrections) et la case **Couper le raisonnement du modèle** (cochée) : choisissez-les à nouveau une fois.
 
 ## Où sont mes données ?
 
@@ -74,7 +75,7 @@ En cas de problème, le support peut vous demander le journal technique, `gramma
 | Windows | `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` |
 | Linux | `~/.local/share/fr.willisback.grammaria/logs/` |
 
-Il note le démarrage de l'application, les erreurs (par exemple un modèle injoignable), les mises à jour et la durée de chaque correction. Il ne contient ni vos textes, ni les corrections, ni votre clé API. Sa taille est limitée : au-delà de 1 Mio, il est renommé `grammaria.log.1` et un nouveau fichier commence.
+Il note le démarrage et la fermeture de l'application, les erreurs (par exemple un modèle injoignable ou un fichier de réglages illisible), les mises à jour et la durée de chaque correction. Il ne contient ni vos textes, ni les corrections, ni votre clé API. Sa taille est limitée : au-delà de 1 Mio, il est renommé `grammaria.log.1` et un nouveau fichier commence.
 
 ## Configuration requise
 
