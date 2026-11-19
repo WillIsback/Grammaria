@@ -7,8 +7,10 @@
  * `journal.driver.bun.ts` (serveur, `bun:sqlite`) et les commandes Rust du
  * bureau (`db_read`, `db_read_many`, `db_batch`), derrière un pont asynchrone.
  *
- * Ce fichier ne contient que des types : aucun import de Bun ni de Node, il se
- * compile pour le navigateur.
+ * Ce fichier contient les types et les règles communes aux pilotes (une
+ * instruction par entrée, pas de transaction dans un lot, lecture seule pour
+ * `read`, erreurs « Conflit : » et « Instruction i : ») : aucun import de Bun
+ * ni de Node, il se compile pour le navigateur.
  */
 
 export type SqlValue = string | number | null;
@@ -62,11 +64,28 @@ export class ExpectChangesError extends Error {
     readonly expected: number,
     readonly actual: number,
   ) {
+    // Même préfixe que le pilote Rust : « Conflit : ».
     super(
-      `expectChanges : l'instruction ${index} du lot a modifié ${actual} ligne(s) au lieu de ${expected}`,
+      `Conflit : l'instruction ${index} du lot a modifié ${actual} ligne(s) au lieu de ${expected}`,
     );
     this.name = "ExpectChangesError";
   }
+}
+
+/** Message d'une erreur reçue d'un pilote (une `Error`, ou une chaîne pour `invoke`). */
+function message(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) return String(error.message);
+  return String(error);
+}
+
+/**
+ * Vrai si un lot a été refusé parce qu'un `expectChanges` n'était pas
+ * respecté : même réponse quel que soit le pilote (`Conflit : …`).
+ */
+export function estConflit(error: unknown): boolean {
+  return error instanceof ExpectChangesError || message(error).startsWith("Conflit :");
 }
 
 /** Valeur d'un paramètre de lot, `{ $rowid: n }` remplacé par le résultat de l'instruction n. */
@@ -78,7 +97,104 @@ export function resoudreParametre(
   if (param === null || typeof param !== "object") return param;
   const n = param.$rowid;
   if (!Number.isInteger(n) || n < 0 || n >= index || n >= resultats.length) {
-    throw new Error(`$rowid ${n} invalide pour l'instruction ${index} du lot`);
+    throw new Error(`$rowid ${n} invalide : il doit désigner une instruction antérieure du lot`);
   }
   return resultats[n].lastInsertRowid;
+}
+
+/*
+ * Règles communes aux deux pilotes, appliquées par le pilote Rust du bureau et
+ * reproduites par le pilote Bun, pour qu'un écart se voie dans les tests.
+ */
+
+/** Pragmas lisibles par `read` et `readMany`. */
+export const PRAGMAS_LISIBLES: readonly string[] = [
+  "user_version",
+  "schema_version",
+  "journal_mode",
+  "foreign_keys",
+  "table_info",
+  "table_list",
+  "index_list",
+  "index_info",
+];
+
+/**
+ * Supprime chaînes, identifiants entre délimiteurs et commentaires d'une
+ * instruction : il ne reste que les mots-clés et la ponctuation.
+ */
+function squelette(sql: string): string {
+  let out = "";
+  for (let i = 0; i < sql.length;) {
+    const c = sql[i];
+    const fin = c === "'" ? "'" : c === '"' ? '"' : c === "`" ? "`" : c === "[" ? "]" : null;
+    if (fin) {
+      const j = sql.indexOf(fin, i + 1);
+      i = j < 0 ? sql.length : j + 1;
+      out += " ? ";
+    } else if (sql.startsWith("--", i)) {
+      const j = sql.indexOf("\n", i);
+      i = j < 0 ? sql.length : j + 1;
+      out += " ";
+    } else if (sql.startsWith("/*", i)) {
+      const j = sql.indexOf("*/", i + 2);
+      i = j < 0 ? sql.length : j + 2;
+      out += " ";
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
+}
+
+/**
+ * Vérifie qu'une entrée ne contient qu'UNE instruction SQL et la renvoie
+ * sans commentaires ni chaînes, en majuscules, sans le `;` final.
+ */
+function uneSeuleInstruction(sql: string): string {
+  const s = squelette(sql).trim().replace(/;\s*$/, "");
+  if (!s) throw new Error("instruction vide");
+  if (s.includes(";")) throw new Error("une seule instruction SQL par entrée");
+  return s.toUpperCase();
+}
+
+const INTERDITES = /^(BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE|ATTACH|DETACH|VACUUM)\b/;
+
+/** Refuse ce qu'un pilote n'accepte pas en lecture (`read`, `readMany`). */
+export function verifierLecture(sql: string): void {
+  const s = uneSeuleInstruction(sql);
+  if (/^(SELECT|WITH)\b/.test(s)) {
+    // Un SELECT n'écrit pas ; un WITH peut précéder une écriture.
+    if (/^WITH\b/.test(s) && /\b(INSERT|UPDATE|DELETE|REPLACE)\b/.test(s)) {
+      throw new Error("read : instruction d'écriture refusée");
+    }
+    return;
+  }
+  const pragma = s.match(/^PRAGMA\s+(\w+)\s*(\(\s*[^)]*\))?$/);
+  if (pragma && PRAGMAS_LISIBLES.includes(pragma[1].toLowerCase())) return;
+  throw new Error("read : seules les requêtes de lecture sont acceptées");
+}
+
+/** Refuse ce qu'un pilote n'accepte pas dans un lot (`batch`). */
+export function verifierEcriture(sql: string): void {
+  const s = uneSeuleInstruction(sql);
+  if (INTERDITES.test(s)) {
+    throw new Error("le lot est la transaction : BEGIN, SAVEPOINT, ATTACH… sont refusés");
+  }
+  if (/^PRAGMA\b/.test(s) && !/^PRAGMA\s+USER_VERSION\s*=\s*\d+$/.test(s)) {
+    throw new Error("seul PRAGMA user_version peut être écrit");
+  }
+  if (/^CREATE\s+VIRTUAL\b/.test(s)) throw new Error("tables virtuelles refusées");
+  if (/\bSQLITE_(MASTER|SCHEMA)\b/.test(s) && !/^(SELECT|WITH)\b/.test(s)) {
+    throw new Error("sqlite_master est protégé en écriture");
+  }
+}
+
+/** Paramètre accepté par les pilotes : null, nombre, texte, booléen (0/1). Pas de BLOB. */
+export function verifierParametre(valeur: unknown): SqlValue {
+  if (valeur === null || typeof valeur === "string") return valeur;
+  if (typeof valeur === "number" && Number.isFinite(valeur)) return valeur;
+  if (typeof valeur === "boolean") return valeur ? 1 : 0;
+  throw new Error(`paramètre refusé : ${typeof valeur}`);
 }

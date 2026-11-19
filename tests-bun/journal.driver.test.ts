@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { BunJournalDriver, ouvrirPiloteBun } from "../journal.driver.bun.ts";
-import { ExpectChangesError } from "../journal.driver.ts";
+import { estConflit, ExpectChangesError } from "../journal.driver.ts";
 import { avecBase } from "./helpers.ts";
 
 function piloteAvecTables(path = ":memory:"): BunJournalDriver {
@@ -160,5 +160,130 @@ describe("Pilote bun:sqlite du journal", () => {
       expect(await pilote.read("PRAGMA foreign_keys")).toEqual([{ foreign_keys: 1 }]);
       pilote.close();
     });
+  });
+});
+
+describe("Pilote bun:sqlite — mêmes refus que le pilote Rust du bureau", () => {
+  /** Message d'erreur d'un lot d'une seule instruction refusé ; null s'il passe. */
+  const refus = async (
+    pilote: BunJournalDriver,
+    sql: string,
+    params?: (string | number | null)[],
+  ) => ((await echec(pilote.batch([{ sql, params }]))) as Error | null)?.message ?? null;
+
+  it("une seule instruction SQL par entrée, en lecture comme en écriture", async () => {
+    const pilote = piloteAvecTables();
+    expect(await refus(pilote, "DELETE FROM parents; DELETE FROM enfants")).toStartWith(
+      "Instruction 0 : ",
+    );
+    expect(String(await echec(pilote.read("SELECT 1; DELETE FROM parents")))).toContain(
+      "une seule instruction",
+    );
+    // Un `;` final, ou dans une chaîne ou un commentaire, reste une seule instruction.
+    expect(await refus(pilote, "INSERT INTO parents (nom) VALUES ('a;b');")).toBeNull();
+    expect(
+      await refus(pilote, "INSERT INTO parents (nom) VALUES ('c') -- ; DROP TABLE x"),
+    ).toBeNull();
+    expect(await pilote.read("SELECT nom FROM parents WHERE nom = 'a;b';")).toEqual([
+      { nom: "a;b" },
+    ]);
+  });
+
+  it("refuse BEGIN, COMMIT, ROLLBACK, SAVEPOINT, RELEASE dans un lot : le lot est la transaction", async () => {
+    const pilote = piloteAvecTables();
+    for (const sql of [
+      "BEGIN",
+      "BEGIN IMMEDIATE",
+      "COMMIT",
+      "END",
+      "ROLLBACK",
+      "SAVEPOINT s",
+      "RELEASE s",
+      "  begin transaction",
+    ]) {
+      const erreur = await echec(
+        pilote.batch([{ sql: "INSERT INTO parents (nom) VALUES ('x')" }, { sql }]),
+      );
+      expect(String(erreur)).toContain("Instruction 1 : ");
+    }
+    expect(await pilote.read("SELECT COUNT(*) AS n FROM parents")).toEqual([{ n: 0 }]);
+  });
+
+  it("n'écrit que le pragma user_version ; refuse ATTACH, VACUUM, tables virtuelles, sqlite_master", async () => {
+    const pilote = piloteAvecTables();
+    expect(await refus(pilote, "PRAGMA user_version = 7")).toBeNull();
+    expect(await pilote.read("PRAGMA user_version")).toEqual([{ user_version: 7 }]);
+    for (const sql of [
+      "PRAGMA foreign_keys = OFF",
+      "PRAGMA journal_mode = DELETE",
+      "ATTACH DATABASE ':memory:' AS autre",
+      "VACUUM",
+      "CREATE VIRTUAL TABLE v USING fts5(x)",
+      "UPDATE sqlite_master SET sql = ''",
+    ]) {
+      expect(await refus(pilote, sql)).toStartWith("Instruction 0 : ");
+    }
+    expect(await pilote.read("PRAGMA foreign_keys")).toEqual([{ foreign_keys: 1 }]);
+    // sqlite_master reste lisible ; un pragma hors de la liste ne l'est pas.
+    expect((await pilote.read("SELECT name FROM sqlite_master WHERE type = 'table'")).length).toBe(
+      2,
+    );
+    expect(String(await echec(pilote.read("PRAGMA cache_size")))).toContain("Instruction 0 : ");
+  });
+
+  it("préfixe les erreurs : « Conflit : » pour expectChanges, « Instruction i : » sinon", async () => {
+    const pilote = piloteAvecTables();
+    const conflit = await echec(
+      pilote.batch([
+        { sql: "INSERT INTO parents (nom) VALUES ('a')" },
+        { sql: "DELETE FROM parents WHERE nom = 'absent'", expectChanges: 1 },
+      ]),
+    );
+    expect(String((conflit as Error).message)).toStartWith("Conflit : ");
+    expect(estConflit(conflit)).toBe(true);
+    // Le pilote Rust renvoie une chaîne à travers invoke : même classement.
+    expect(estConflit("Conflit : l'instruction 1 du lot")).toBe(true);
+    const autre = await echec(
+      pilote.batch([
+        { sql: "INSERT INTO parents (nom) VALUES ('a')" },
+        { sql: "INSERT INTO parents (nom) VALUES ('a')" },
+      ]),
+    );
+    expect((autre as Error).message).toStartWith("Instruction 1 : ");
+    expect(estConflit(autre)).toBe(false);
+    expect(
+      String(await echec(pilote.readMany([{ sql: "SELECT 1" }, { sql: "SELECT * FROM absente" }]))),
+    ).toContain("Instruction 1 : ");
+  });
+
+  it("accepte null, entiers, réels, texte et booléens (0/1) ; refuse les BLOB", async () => {
+    const pilote = piloteAvecTables();
+    pilote.db.exec("CREATE TABLE valeurs (v)");
+    const valeurs = [null, 3, 2.5, "texte", true, false];
+    await pilote.batch(
+      valeurs.map((v) => ({ sql: "INSERT INTO valeurs (v) VALUES (?)", params: [v as never] })),
+    );
+    expect((await pilote.read<{ v: unknown }>("SELECT v FROM valeurs")).map((r) => r.v)).toEqual([
+      null,
+      3,
+      2.5,
+      "texte",
+      1,
+      0,
+    ]);
+    expect(
+      await refus(pilote, "INSERT INTO valeurs (v) VALUES (?)", [new Uint8Array([1]) as never]),
+    ).toStartWith("Instruction 0 : ");
+  });
+
+  it("compte 0 ligne modifiée pour une instruction de schéma", async () => {
+    const pilote = piloteAvecTables();
+    const resultats = await pilote.batch([
+      { sql: "INSERT INTO parents (nom) VALUES ('a')" },
+      { sql: "CREATE TABLE IF NOT EXISTS autre (x)" },
+      { sql: "CREATE INDEX IF NOT EXISTS idx_autre ON autre(x)" },
+      { sql: "PRAGMA user_version = 1" },
+    ]);
+    expect(resultats.map((r) => r.changes)).toEqual([1, 0, 0, 0]);
   });
 });

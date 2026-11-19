@@ -1,4 +1,4 @@
-import type { JournalDriver, Query, Statement } from "./journal.driver.ts";
+import { estConflit, type JournalDriver, type Query, type Statement } from "./journal.driver.ts";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { FICHES, type Fiche, libelleSansFiche } from "./src/analysis/fiches.ts";
 import {
@@ -594,9 +594,9 @@ export class RuleStore {
     try {
       await this.driver.batch(gardees);
     } catch (error) {
-      // Lot refusé : conflit si le choix a reçu sa réponse entre-temps.
-      const relu = await lire();
-      if (relu.choix && (relu.n > 0 || !relu.state)) return "conflict";
+      // `expectChanges` non respecté (« Conflit : », même erreur pour les deux
+      // pilotes) : le choix a reçu sa réponse ou a été remplacé entre-temps.
+      if (estConflit(error)) return "conflict";
       throw error;
     }
     return "recorded";
