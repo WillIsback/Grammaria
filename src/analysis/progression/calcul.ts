@@ -9,7 +9,7 @@
  * L'état des règles est repris tel qu'il est enregistré : l'état « acquise »
  * n'est réévalué qu'au moment d'une analyse (`POST /api/analyze`).
  */
-import type { EtatCycle } from "../regles/cycle";
+import { compterEtats, type EtatCycle } from "../regles/cycle";
 import { libelleSansFiche } from "../fiches";
 import { noteSur20 } from "../score";
 import { PROGRESSION } from "./reglages";
@@ -89,16 +89,8 @@ export interface ScoreMaitrise {
   recentWeeks: number;
 }
 
-export interface RegleResumee {
-  ruleKey: string;
-  label: string;
-  categoryName: string;
-  state: EtatCycle;
-  stateSince: number;
-  occurrences: number;
-  lastFaultAt: number;
-  acquiredAt: number | null;
-}
+/** Règle affichée dans les listes de l'écran (champs de `RegleSuivie` seulement). */
+export type RegleResumee = RegleSuivie;
 
 export interface RegleFrequente {
   ruleKey: string;
@@ -239,6 +231,7 @@ export function scoreMaitrise(recent: Volume, rules: RegleSuivie[]): ScoreMaitri
   };
 }
 
+/** Ne garde que les champs de `RegleSuivie` (une `RuleView` en porte davantage). */
 function resumer(r: RegleSuivie): RegleResumee {
   return {
     ruleKey: r.ruleKey,
@@ -341,14 +334,6 @@ export function calculerProgression(entree: EntreeProgression, now: number): Pro
   const previous = volume(entre(debutPrecedent, debutRecent));
   const faults = entree.faults.filter((f) => f.at >= since && f.at < finCourante);
 
-  const counts: Record<EtatCycle, number> = {
-    observee: 0,
-    signalee: 0,
-    travaillee: 0,
-    acquise: 0,
-  };
-  for (const rule of entree.rules) counts[rule.state]++;
-
   const active = entree.rules
     .filter((x) => x.state === "signalee" || x.state === "travaillee")
     .sort((a, b) => b.lastFaultAt - a.lastFaultAt || a.ruleKey.localeCompare(b.ruleKey))
@@ -374,7 +359,7 @@ export function calculerProgression(entree: EntreeProgression, now: number): Pro
     previous,
     trend: tendance(recent, previous),
     series,
-    rules: { counts, active, acquired },
+    rules: { counts: compterEtats(entree.rules), active, acquired },
     frequentRules: reglesFrequentes(faults, entree.rules),
     trapWords: motsPieges(faults),
   };

@@ -11,6 +11,7 @@
  * mérités reçoivent donc leur vraie date, et non celle de la mise à jour.
  */
 import { FICHES } from "../fiches";
+import { debutSemaine, type LigneTexte, volume } from "../progression/calcul";
 import { jourLocal } from "../regles/cycle";
 import { JOUR_MS } from "../regles/seuils";
 import { noteSur20 } from "../score";
@@ -23,13 +24,6 @@ import {
   PREFIXE_HOMOPHONES,
 } from "./catalogue";
 
-/** Un texte corrigé, tel que l'enregistre la table `texts`. */
-export interface FaitTexte {
-  at: number;
-  mots: number;
-  fautes: number;
-}
-
 /** Un événement de l'historique des règles utile aux badges (`rule_events`). */
 export interface FaitEvenement {
   ruleKey: string;
@@ -39,7 +33,7 @@ export interface FaitEvenement {
 
 /** Faits du journal sur lesquels reposent les badges. */
 export interface FaitsBadges {
-  textes: FaitTexte[];
+  textes: LigneTexte[];
   /** Dans l'ordre où ils ont été enregistrés. */
   evenements: FaitEvenement[];
 }
@@ -58,13 +52,6 @@ export interface EtatBadge {
    * `valeur / seuil` (badge à plusieurs conditions).
    */
   ratio?: number;
-}
-
-/** Lundi de la semaine locale du timestamp : clé d'une semaine calendaire. */
-export function semaineLocale(timestamp: number): string {
-  const d = new Date(timestamp);
-  const decalage = (d.getDay() + 6) % 7; // lundi = 0
-  return jourLocal(new Date(d.getFullYear(), d.getMonth(), d.getDate() - decalage).getTime());
 }
 
 /** Dates triées des éléments qui comptent : la valeur est leur nombre. */
@@ -117,12 +104,14 @@ function series(
     semaines: {
       dates: premieresDates(
         textes,
-        (t) => semaineLocale(t.at),
+        (t) => String(debutSemaine(t.at)),
         (t) => t.at,
       ),
     },
     textesSansFaute: {
-      dates: textes.filter((t) => t.fautes === 0 && t.mots >= MOTS_MIN_SANS_FAUTE).map((t) => t.at),
+      dates: textes
+        .filter((t) => t.faults === 0 && t.words >= MOTS_MIN_SANS_FAUTE)
+        .map((t) => t.at),
     },
     reglesAcquises: {
       dates: premieresDates(
@@ -148,17 +137,6 @@ function series(
   };
 }
 
-/** Moyenne d'une fenêtre de textes : note sur 20 de la somme des fautes et des mots. */
-function moyenne(textes: FaitTexte[]): number | null {
-  let mots = 0;
-  let fautes = 0;
-  for (const t of textes) {
-    mots += t.mots;
-    fautes += t.fautes;
-  }
-  return noteSur20(fautes, mots);
-}
-
 /**
  * Badge de note moyenne : première fin de fenêtre glissante (à chaque texte)
  * où la fenêtre compte assez de textes et atteint la note visée.
@@ -172,11 +150,11 @@ function evaluerNoteMoyenne(def: DefinitionBadge, faits: FaitsBadges, now: numbe
   let mots = 0;
   let fautes = 0;
   for (let fin = 0; fin < textes.length && rempliLe === null; fin++) {
-    mots += textes[fin].mots;
-    fautes += textes[fin].fautes;
+    mots += textes[fin].words;
+    fautes += textes[fin].faults;
     while (textes[debut].at <= textes[fin].at - fenetre) {
-      mots -= textes[debut].mots;
-      fautes -= textes[debut].fautes;
+      mots -= textes[debut].words;
+      fautes -= textes[debut].faults;
       debut++;
     }
     const note = noteSur20(fautes, mots);
@@ -186,7 +164,8 @@ function evaluerNoteMoyenne(def: DefinitionBadge, faits: FaitsBadges, now: numbe
   }
 
   const recents = textes.filter((t) => t.at > now - fenetre);
-  const note = moyenne(recents);
+  // Note sur 20 de la somme des fautes et des mots de la fenêtre.
+  const { score: note } = volume(recents);
   const n = recents.length;
   const manque = Math.max(0, NOTE_MOYENNE.textesMin - n);
   const detail =

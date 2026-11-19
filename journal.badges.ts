@@ -4,7 +4,6 @@ import {
   evaluerBadges,
   type FaitEvenement,
   type FaitsBadges,
-  type FaitTexte,
 } from "./src/analysis/badges/evaluation.ts";
 import {
   annonce,
@@ -12,6 +11,8 @@ import {
   type CatalogueBadges,
   vueCatalogue,
 } from "./src/analysis/badges/vue.ts";
+import type { LigneTexte } from "./src/analysis/progression/calcul.ts";
+
 /**
  * Badges obtenus, dans la base du journal : une ligne par badge avec sa date
  * d'obtention (table `badges`). Toute la logique est dans
@@ -20,7 +21,11 @@ import {
  * seul l'effacement du journal le supprime.
  */
 export class BadgeStore {
-  constructor(private db: Database) {}
+  /** `textes` lit la table `texts`, partagée avec l'écran « Progression ». */
+  constructor(
+    private db: Database,
+    private textes: () => LigneTexte[],
+  ) {}
 
   /** Crée la table `badges`. Idempotent. */
   createTable(): void {
@@ -34,19 +39,13 @@ export class BadgeStore {
 
   /** Faits du journal utiles aux badges. */
   facts(): FaitsBadges {
-    const textes = this.db
-      .query(
-        `SELECT created_at AS at, word_count AS mots, fault_count AS fautes
-         FROM texts ORDER BY created_at, id`,
-      )
-      .all() as FaitTexte[];
     const evenements = this.db
       .query(
         `SELECT rule_key AS ruleKey, created_at AS at, type FROM rule_events
          WHERE type IN ('acquise', 'rechute', 'reponse_juste') ORDER BY id`,
       )
       .all() as FaitEvenement[];
-    return { textes, evenements };
+    return { textes: this.textes(), evenements };
   }
 
   /** Badges obtenus, par identifiant, avec leur date d'obtention. */

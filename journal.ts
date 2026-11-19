@@ -7,9 +7,12 @@ import { BadgeStore } from "./journal.badges.ts";
 import {
   calculerProgression,
   debutPremiereSemaine,
+  type LigneFaute,
+  type LigneTexte,
   type Progression,
 } from "./src/analysis/progression/calcul.ts";
-import { lireFautes, lireTextes } from "./journal.progress.ts";
+import { JOUR_MS } from "./src/analysis/regles/seuils.ts";
+import type { WeekSummary } from "./src/types.ts";
 import {
   type AnswerResult,
   type FollowOptions,
@@ -21,20 +24,11 @@ import {
 
 export type { RuleHistoryEntry, RuleHistoryType, RuleView, Suivi } from "./journal.rules.ts";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
  * Version du schéma, conservée dans `PRAGMA user_version` : 0 pour une base
  * v0.2.0, 1 avec le cycle de vie des règles, 2 avec les badges.
  */
 export const SCHEMA_VERSION = 2;
-
-export interface PeriodSummary {
-  texts: number;
-  words: number;
-  faults: number;
-  score: number | null;
-}
 
 export interface RuleCount {
   ruleKey: string;
@@ -51,7 +45,7 @@ export interface WordCount {
 
 export interface JournalSummary {
   days: number;
-  period: PeriodSummary;
+  period: WeekSummary;
   unclassified: number;
   rules: RuleCount[];
   words: WordCount[];
@@ -104,7 +98,7 @@ export class Journal {
       CREATE INDEX IF NOT EXISTS idx_faults_word ON faults(word, created_at);
     `);
     this.ruleStore = new RuleStore(this.db);
-    this.badges = new BadgeStore(this.db);
+    this.badges = new BadgeStore(this.db, () => this.texts());
     this.migrate();
   }
 
@@ -198,19 +192,19 @@ export class Journal {
     return this.ruleStore.answer(choiceId, correct, now);
   }
 
-  period(days: number, now: number = Date.now()): PeriodSummary {
+  period(days: number, now: number = Date.now()): WeekSummary {
     const row = this.db
       .query(
         `SELECT COUNT(*) AS texts, COALESCE(SUM(word_count), 0) AS words,
                 COALESCE(SUM(fault_count), 0) AS faults
          FROM texts WHERE created_at > ?`,
       )
-      .get(now - days * DAY_MS) as { texts: number; words: number; faults: number };
+      .get(now - days * JOUR_MS) as { texts: number; words: number; faults: number };
     return { ...row, score: noteSur20(row.faults, row.words) };
   }
 
   summary(days: number, now: number = Date.now()): JournalSummary {
-    const since = now - days * DAY_MS;
+    const since = now - days * JOUR_MS;
     const unclassified = this.db
       .query("SELECT COALESCE(SUM(unclassified_count), 0) AS n FROM texts WHERE created_at > ?")
       .get(since) as { n: number };
@@ -232,16 +226,30 @@ export class Journal {
     return { days, period: this.period(days, now), unclassified: unclassified.n, rules, words };
   }
 
+  /**
+   * Tous les textes corrigés (date, mots, fautes), du plus ancien au plus
+   * récent : pour l'écran « Progression » et pour les badges.
+   */
+  private texts(): LigneTexte[] {
+    return this.db
+      .query(
+        `SELECT created_at AS at, word_count AS words, fault_count AS faults
+         FROM texts ORDER BY created_at, id`,
+      )
+      .all() as LigneTexte[];
+  }
+
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
   progress(now: number = Date.now()): Progression {
-    return calculerProgression(
-      {
-        texts: lireTextes(this.db),
-        faults: lireFautes(this.db, debutPremiereSemaine(now)),
-        rules: this.rules(),
-      },
-      now,
-    );
+    // Seules les fautes comptées des semaines affichées servent.
+    const faults = this.db
+      .query(
+        `SELECT created_at AS at, rule_key AS ruleKey, word, replacement, message,
+                category_name AS categoryName
+         FROM faults WHERE counted = 1 AND created_at >= ? ORDER BY created_at`,
+      )
+      .all(debutPremiereSemaine(now)) as LigneFaute[];
+    return calculerProgression({ texts: this.texts(), faults, rules: this.rules() }, now);
   }
 
   /** Efface le journal, remet à zéro l'état des règles et retire les badges. */

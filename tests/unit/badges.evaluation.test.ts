@@ -12,18 +12,17 @@ import {
   evaluerBadges,
   type FaitEvenement,
   type FaitsBadges,
-  type FaitTexte,
-  semaineLocale,
 } from "../../src/analysis/badges/evaluation";
 import { vueCatalogue } from "../../src/analysis/badges/vue";
+import { debutSemaine, type LigneTexte } from "../../src/analysis/progression/calcul";
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Lundi 5 octobre 2026, midi, heure locale. */
 const J0 = new Date(2026, 9, 5, 12).getTime();
 const jour = (n: number) => J0 + n * DAY;
 
-const texte = (at: number, fautes = 1, mots = 50): FaitTexte => ({ at, fautes, mots });
-const faits = (textes: FaitTexte[] = [], evenements: FaitEvenement[] = []): FaitsBadges => ({
+const texte = (at: number, faults = 1, words = 50): LigneTexte => ({ at, faults, words });
+const faits = (textes: LigneTexte[] = [], evenements: FaitEvenement[] = []): FaitsBadges => ({
   textes,
   evenements,
 });
@@ -107,8 +106,8 @@ describe("Évaluation des badges — régularité cumulative", () => {
   });
 
   it("compte les semaines distinctes, du lundi au dimanche", () => {
-    expect(semaineLocale(jour(0))).toBe(semaineLocale(jour(6)));
-    expect(semaineLocale(jour(6))).not.toBe(semaineLocale(jour(7)));
+    expect(debutSemaine(jour(0))).toBe(debutSemaine(jour(6)));
+    expect(debutSemaine(jour(6))).not.toBe(debutSemaine(jour(7)));
     // Lundi et dimanche de la même semaine, puis trois autres semaines, non consécutives.
     const textes = [0, 6, 14, 35, 70].map((n) => texte(jour(n)));
     expect(evaluer(faits(textes), jour(80), "semaines-4")).toMatchObject({
