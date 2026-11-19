@@ -1,10 +1,13 @@
 interface Props {
   theme: "light" | "dark";
   onToggleTheme: () => void;
+  /** Barre des réglages de correction (mobile et tablette). */
   onOpenSettings: () => void;
+  /** Menu Paramètres (rubrique IA : serveur et choix du modèle). */
+  onOpenPreferences: () => void;
 }
 
-export function Header({ theme, onToggleTheme, onOpenSettings }: Props) {
+export function Header({ theme, onToggleTheme, onOpenSettings, onOpenPreferences }: Props) {
   const isDark = theme === "dark";
 
   return (
@@ -46,7 +49,7 @@ export function Header({ theme, onToggleTheme, onOpenSettings }: Props) {
               hover:bg-gray-100 dark:hover:bg-gray-800
               hover:text-gray-700 dark:hover:text-gray-200
               transition-all duration-200"
-            aria-label="Ouvrir les réglages"
+            aria-label="Réglages de correction"
           >
             <svg
               aria-hidden="true"
@@ -59,6 +62,32 @@ export function Header({ theme, onToggleTheme, onOpenSettings }: Props) {
               strokeLinejoin="round"
             >
               <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenPreferences}
+            className="w-9 h-9 rounded-xl flex items-center justify-center
+              text-gray-500 dark:text-gray-400
+              hover:bg-gray-100 dark:hover:bg-gray-800
+              hover:text-gray-700 dark:hover:text-gray-200
+              transition-all duration-200"
+            aria-label="Paramètres"
+            title="Paramètres"
+          >
+            <svg
+              aria-hidden="true"
+              className="w-[18px] h-[18px]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
 

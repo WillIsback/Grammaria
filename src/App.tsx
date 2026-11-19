@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Editor } from "./components/Editor";
 import { Header } from "./components/Header";
 import { Output } from "./components/Output";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Toast } from "./components/Toast";
 import { useCorrector } from "./hooks/useCorrector";
@@ -48,12 +49,21 @@ function App() {
   const { serverSettings, setServerSettings } = useServerSettings();
   const [modelsReloadKey, setModelsReloadKey] = useState(0);
   const needsLlmSetup = serverSettings?.editable === true && !serverSettings.configured;
+  // Menu Paramètres → IA : ouvert d'office tant qu'aucun modèle n'est configuré.
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [setupDismissed, setSetupDismissed] = useState(false);
-  const settingsOpen = sidebarOpen || (needsLlmSetup && !setupDismissed);
+  const showPreferences = preferencesOpen || (needsLlmSetup && !setupDismissed);
+  const closePreferences = useCallback(() => {
+    setPreferencesOpen(false);
+    setSetupDismissed(true);
+  }, []);
 
   const handleServerSettingsSaved = useCallback(
     (saved: ServerSettings) => {
       setServerSettings(saved);
+      // Le menu ouvert d'office au premier lancement reste ouvert après
+      // l'enregistrement : le choix du modèle est dans la même rubrique.
+      setPreferencesOpen(true);
       // Nouveau serveur : son modèle par défaut remplace l'ancien choix.
       setCurrentModel("auto");
       void initModel();
@@ -105,6 +115,15 @@ function App() {
         theme={theme}
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
         onOpenSettings={() => setSidebarOpen(true)}
+        onOpenPreferences={() => setPreferencesOpen(true)}
+      />
+
+      <SettingsDialog
+        open={showPreferences}
+        onClose={closePreferences}
+        serverSettings={serverSettings}
+        onServerSettingsSaved={handleServerSettingsSaved}
+        modelsReloadKey={modelsReloadKey}
       />
 
       <div className="md:hidden px-4 pt-3">
@@ -140,14 +159,8 @@ function App() {
         <Sidebar
           settings={settings}
           setSettings={setSettings}
-          open={settingsOpen}
-          onClose={() => {
-            setSidebarOpen(false);
-            setSetupDismissed(true);
-          }}
-          serverSettings={serverSettings}
-          onServerSettingsSaved={handleServerSettingsSaved}
-          modelsReloadKey={modelsReloadKey}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
 
         <main className="flex flex-1 min-w-0 overflow-hidden">
