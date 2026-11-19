@@ -1,22 +1,13 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { purgeJournal } from "../services/journal";
-import type { ServerSettings } from "../services/settings";
 import type { CorrectionMode, CorrectionSettings } from "../types";
-import { getCurrentModel, subscribeToModelChange } from "../utils/models";
-import { LlmSettings } from "./LlmSettings";
-import { ModelSelector } from "./ModelSelector";
 
 interface Props {
   settings: CorrectionSettings;
   setSettings: (settings: CorrectionSettings) => void;
   open: boolean;
   onClose: () => void;
-  /** Réglages du serveur : la section « Serveur du modèle » n'apparaît que s'ils sont modifiables. */
-  serverSettings?: ServerSettings | null;
-  onServerSettingsSaved?: (settings: ServerSettings) => void;
-  /** Incrémenté quand le serveur du modèle change, pour recharger la liste des modèles. */
-  modelsReloadKey?: number;
 }
 
 const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
@@ -29,22 +20,8 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
 const sectionTitle =
   "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 
-export function Sidebar({
-  settings,
-  setSettings,
-  open,
-  onClose,
-  serverSettings,
-  onServerSettingsSaved,
-  modelsReloadKey,
-}: Props) {
+export function Sidebar({ settings, setSettings, open, onClose }: Props) {
   const modeKeys = Object.keys(modeLabels) as CorrectionMode[];
-  const [currentModel, setCurrentModelState] = useState(getCurrentModel);
-
-  useEffect(() => {
-    return subscribeToModelChange(setCurrentModelState);
-  }, []);
-
   const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
 
   const handlePurge = async () => {
@@ -153,10 +130,6 @@ export function Sidebar({
           </button>
         </div>
 
-        {serverSettings?.editable && onServerSettingsSaved && (
-          <LlmSettings settings={serverSettings} onSaved={onServerSettingsSaved} />
-        )}
-
         <div className="mb-6">
           <h2 className={sectionTitle}>Mode de correction</h2>
 
@@ -234,12 +207,6 @@ export function Sidebar({
             ))}
           </div>
         </div>
-
-        <ModelSelector
-          currentModel={currentModel}
-          onModelSelect={setCurrentModelState}
-          reloadKey={modelsReloadKey}
-        />
 
         <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
           <h2 className={sectionTitle}>Journal des fautes</h2>

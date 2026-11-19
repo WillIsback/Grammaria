@@ -21,10 +21,10 @@ Les paquets Windows sont signés : Windows affiche l'éditeur au lieu d'un avert
 ## Premier lancement
 
 1. Au démarrage, Grammaria charge ses règles de grammaire, en quelques secondes.
-2. Les réglages s'ouvrent sur **Serveur du modèle** : indiquez l'adresse de votre modèle, puis **Enregistrer**.
+2. Le menu **Paramètres → IA** s'ouvre de lui-même : dans **Serveur du modèle**, indiquez l'adresse de votre modèle, puis **Enregistrer**. Ce menu reste accessible à tout moment par le bouton ⚙️ de l'en-tête, à côté du thème clair/sombre.
    - Ollama sur le même ordinateur : `http://localhost:11434`.
    - API compatible OpenAI : son adresse, par exemple `https://api.mistral.ai`, et votre clé API.
-3. Choisissez le modèle dans la liste **Modèle LLM**, puis corrigez votre premier texte.
+3. Dans la même rubrique, choisissez le modèle dans la liste **Modèle LLM**, fermez le menu, puis corrigez votre premier texte.
 
 La case **Couper le raisonnement du modèle** est cochée par défaut. Un modèle qui raisonne (Qwen3 servi par vLLM ou SGLang, par exemple) réfléchit sinon plusieurs secondes avant d'écrire, sans rien afficher. Si le serveur du modèle refuse ce réglage, Grammaria renvoie la requête sans lui. Le journal technique (`server.log`) indique pour chaque correction le délai avant le premier mot et le nombre de fragments de raisonnement reçus.
 
