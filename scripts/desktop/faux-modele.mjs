@@ -5,7 +5,8 @@
  * Node seul (aucune dépendance, pas de Bun). N'écoute que sur 127.0.0.1.
  *
  * Usage : node scripts/desktop/faux-modele.mjs [--port 31977]
- *   (variables : FAUX_MODELE_PORT, FAUX_MODELE_CLE — clé API attendue, « sk-autotest-cle » par défaut)
+ *   (variables : FAUX_MODELE_PORT, FAUX_MODELE_CLE — clé API attendue, « sk-autotest-cle » par
+ *   défaut —, FAUX_MODELE_PAUSE_MS — pause entre deux mots d'une correction, 5 ms par défaut)
  *
  * Comportement selon le champ `model` de la conversation :
  *   debit   3000 fragments numérotés « m0 », « m1 »… sans pause (débit, ordre) ;
@@ -27,6 +28,7 @@ const option = (nom) => {
 };
 const PORT = Number(option("--port") ?? process.env.FAUX_MODELE_PORT ?? 31977);
 const CLE = process.env.FAUX_MODELE_CLE ?? "sk-autotest-cle";
+const PAUSE_MOT_MS = Number(process.env.FAUX_MODELE_PAUSE_MS ?? 5);
 
 /** Fautes « corrigées » par le faux modèle. */
 const CORRECTIONS = [
@@ -39,7 +41,15 @@ const CORRECTIONS = [
   [/\bdevellopement\b/g, "développement"],
 ];
 
-const etat = { requetes: 0, connexionsCoupees: 0, cleConforme: null, derniersCorps: [] };
+const etat = {
+  requetes: 0,
+  connexionsCoupees: 0,
+  /** Clé reçue conforme, à la dernière requête (liste des modèles ou conversation). */
+  cleConforme: null,
+  /** Clé reçue conforme, à la dernière conversation seulement. */
+  cleConformeConversation: null,
+  derniersCorps: [],
+};
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function lireCorps(req) {
@@ -87,6 +97,7 @@ const serveur = createServer(async (req, res) => {
   }
   etat.requetes++;
   etat.cleConforme = auth === `Bearer ${CLE}`;
+  etat.cleConformeConversation = etat.cleConforme;
   const { messages: _messages, ...resume } = corps;
   etat.derniersCorps.push(resume);
   if (etat.derniersCorps.length > 20) etat.derniersCorps.shift();
@@ -142,7 +153,7 @@ const serveur = createServer(async (req, res) => {
     for (const mot of texte.split(/(?<= )/)) {
       if (coupee) break;
       envoyer({ content: mot });
-      await pause(5);
+      await pause(PAUSE_MOT_MS);
     }
   }
   if (coupee) return;
