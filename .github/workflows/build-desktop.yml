@@ -100,6 +100,10 @@ jobs:
           VP_GIT_HOOKS: "0"
         run: npm ci
 
+      # Pré-version (v0.2.0-rc.1) : le MSI exige une version numérique
+      # major.minor.patch.build. On la fixe nous-mêmes (0.2.0.1) au lieu de
+      # laisser Tauri la déduire du suffixe. Windows ignore le quatrième champ
+      # pour les mises à jour MSI : installez la version stable par-dessus.
       - name: Injecter la version
         shell: bash
         env:
@@ -109,8 +113,18 @@ jobs:
           node -e '
             const fs = require("fs");
             const path = "src-tauri/tauri.conf.json";
+            const version = process.argv[1];
+            const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(version);
+            if (!match) throw new Error(`Version invalide : ${version} (attendu : 1.2.3 ou 1.2.3-rc.1)`);
             const conf = JSON.parse(fs.readFileSync(path, "utf8"));
-            conf.version = process.argv[1];
+            conf.version = version;
+            if (match[4]) {
+              const build = Number((/(\d+)$/.exec(match[4]) ?? [, "0"])[1]);
+              if (build > 65535) throw new Error(`Numéro de pré-version trop grand pour le MSI : ${build}`);
+              const msi = `${match[1]}.${match[2]}.${match[3]}.${build}`;
+              conf.bundle.windows.wix.version = msi;
+              console.log(`Version MSI : ${msi}`);
+            }
             fs.writeFileSync(path, JSON.stringify(conf, null, 2) + "\n");
           ' "$version"
           echo "Version : $version"
