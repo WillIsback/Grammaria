@@ -4,12 +4,8 @@ import { getCurrentModel } from "./models";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { sanitizeInput } from "./sanitize";
 
+/** Requête en cours : une nouvelle correction l'annule. */
 let currentAbortController: AbortController | null = null;
-
-export function abortOngoingRequest(): void {
-  currentAbortController?.abort();
-  currentAbortController = null;
-}
 
 export async function correctText(
   text: string,
@@ -34,14 +30,7 @@ export async function correctText(
   currentAbortController = controller;
 
   const streamTimeoutMs = 120_000;
-  let streamTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  function clearStreamTimeout(): void {
-    if (streamTimeoutId) {
-      clearTimeout(streamTimeoutId);
-      streamTimeoutId = null;
-    }
-  }
+  let streamTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const response = await fetch("/v1/chat/completions", {
@@ -96,7 +85,7 @@ export async function correctText(
         }
 
         if (payload.done) {
-          clearStreamTimeout();
+          clearTimeout(streamTimeoutId);
           return {
             text: typeof payload.text === "string" ? payload.text : cleanLlmOutput(received),
             duration: payload.duration ?? 0,

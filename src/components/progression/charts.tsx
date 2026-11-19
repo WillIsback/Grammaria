@@ -17,13 +17,8 @@ const formatSemaine = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: 
 const formatSemaineCourt = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" });
 
 /** « 16 nov. » : lundi de la semaine. */
-export function libelleSemaine(start: number): string {
+function libelleSemaine(start: number): string {
   return formatSemaine.format(new Date(start));
-}
-
-/** Nombre au format français, avec au plus `chiffres` décimales. */
-export function nombre(n: number, chiffres = 1): string {
-  return n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
 }
 
 /** Largeur réelle du conteneur, pour garder un texte lisible à toutes les tailles. */
@@ -62,7 +57,7 @@ const HAUTEUR = 200;
 const MARGE = { haut: 16, droite: 12, bas: 28, gauche: 34 };
 
 /** Graduation « ronde » au-dessus du maximum (1, 2, 5 × 10ⁿ). */
-export function niceMax(value: number): number {
+function niceMax(value: number): number {
   if (value <= 0) return 1;
   const p = 10 ** Math.floor(Math.log10(value));
   for (const m of [1, 2, 2.5, 5, 10]) if (value <= m * p) return m * p;

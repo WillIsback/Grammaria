@@ -1,5 +1,5 @@
 import type { AppUpdate } from "../hooks/useAppUpdate";
-import { formatProgress } from "../services/appUpdate";
+import { isBusy, messagePhase } from "../services/appUpdate";
 
 interface Props {
   update: AppUpdate;
@@ -23,7 +23,7 @@ const note = "text-xs leading-relaxed text-gray-500 dark:text-gray-400";
 export function UpdateSettings({ update }: Props) {
   const { status, check, install, openReleasePage } = update;
   const { mode, phase } = status;
-  const working = phase === "checking" || phase === "downloading" || phase === "installing";
+  const working = isBusy(phase);
 
   return (
     <section aria-label="Mises à jour">
@@ -52,8 +52,7 @@ export function UpdateSettings({ update }: Props) {
             {phase === "upToDate" && "Grammaria est à jour."}
             {phase === "noRelease" && "Aucune mise à jour disponible pour le moment."}
             {phase === "available" && `La version ${status.version} est disponible.`}
-            {phase === "downloading" && `Téléchargement… ${formatProgress(status)}`}
-            {phase === "installing" && "Installation… L’application va redémarrer toute seule."}
+            {messagePhase(status)}
             {phase === "error" && (
               <span className="text-red-600 dark:text-red-400">{status.error}</span>
             )}

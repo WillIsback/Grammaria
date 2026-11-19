@@ -4,7 +4,14 @@ import { SettingsDialog } from "../../src/components/SettingsDialog";
 import { UpdateBanner } from "../../src/components/UpdateBanner";
 import { UpdateSettings } from "../../src/components/UpdateSettings";
 import { type AppUpdate, useAppUpdate } from "../../src/hooks/useAppUpdate";
-import { type AppUpdateStatus, formatProgress, isDesktopApp } from "../../src/services/appUpdate";
+import {
+  type AppUpdateStatus,
+  formatProgress,
+  isBusy,
+  isDesktopApp,
+  messagePhase,
+  type UpdatePhase,
+} from "../../src/services/appUpdate";
 
 vi.mock("../../src/utils/models", () => ({
   getCurrentModel: () => "qwen3",
@@ -113,6 +120,30 @@ describe("formatProgress", () => {
     expect(formatProgress({ downloaded: 50, total: 200 })).toBe("25 %");
     expect(formatProgress({ downloaded: 300, total: 200 })).toBe("100 %");
     expect(formatProgress({ downloaded: 12_340_000, total: null })).toBe("12,3 Mo");
+  });
+});
+
+describe("isBusy et messagePhase", () => {
+  it("l'application avance seule pendant la recherche, le téléchargement et l'installation", () => {
+    const occupees: UpdatePhase[] = ["checking", "downloading", "installing"];
+    const libres: UpdatePhase[] = ["idle", "upToDate", "available", "noRelease", "error"];
+    expect(occupees.every(isBusy)).toBe(true);
+    expect(libres.some(isBusy)).toBe(false);
+  });
+
+  it("ne décrit que le téléchargement et l'installation", () => {
+    const telechargement: AppUpdateStatus = {
+      ...base,
+      phase: "downloading",
+      downloaded: 1,
+      total: 4,
+    };
+    expect(messagePhase(telechargement)).toBe("Téléchargement… 25 %");
+    expect(messagePhase(telechargement, "Téléchargement de la mise à jour…")).toBe(
+      "Téléchargement de la mise à jour… 25 %",
+    );
+    expect(messagePhase({ ...base, phase: "installing" })).toMatch(/^Installation…/);
+    expect(messagePhase({ ...base, phase: "checking" })).toBeNull();
   });
 });
 

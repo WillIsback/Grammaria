@@ -4,6 +4,7 @@ import {
   checkForUpdate,
   fetchUpdateStatus,
   installUpdate,
+  isBusy,
   isDesktopApp,
   openReleasePage,
 } from "../services/appUpdate";
@@ -48,10 +49,7 @@ export function useAppUpdate(): AppUpdate | null {
 
   // Pendant une recherche, le téléchargement et l'installation, l'application
   // avance seule : on relit son état.
-  const busy =
-    status?.phase === "checking" ||
-    status?.phase === "downloading" ||
-    status?.phase === "installing";
+  const busy = status !== null && isBusy(status.phase);
   useEffect(() => {
     if (!busy) return;
     const timer = setInterval(() => {
