@@ -75,13 +75,8 @@ export function useCorrector() {
 
   const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup à l'unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-      if (localStorageTimeoutRef.current) clearTimeout(localStorageTimeoutRef.current);
-    };
-  }, []);
+  // Cleanup à l'unmount (la sauvegarde différée est annulée par son propre effet)
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   // Debounce de la sauvegarde des settings (500ms)
   useEffect(() => {
@@ -98,6 +93,16 @@ export function useCorrector() {
     };
   }, [settings]);
 
+  /** Efface le résultat de la correction précédente. */
+  const clearResult = useCallback(() => {
+    setOutputText("");
+    setCorrections([]);
+    setAnalysis(null);
+    setAnalysisNotice(null);
+    setStats({ processingTime: 0, modificationCount: 0 });
+    setError(null);
+  }, []);
+
   const handleCorrect = useCallback(async () => {
     if (isRunningRef.current) return;
     if (!textContent.trim()) {
@@ -108,12 +113,7 @@ export function useCorrector() {
     isRunningRef.current = true;
     setIsLoadingText(true);
     setIsLoadingCorrections(false);
-    setError(null);
-    setOutputText("");
-    setCorrections([]);
-    setAnalysis(null);
-    setAnalysisNotice(null);
-    setStats({ processingTime: 0, modificationCount: 0 });
+    clearResult();
 
     abortControllerRef.current = new AbortController();
 
@@ -191,17 +191,12 @@ export function useCorrector() {
       setIsLoadingCorrections(false);
       abortControllerRef.current = null;
     }
-  }, [textContent, settings]);
+  }, [textContent, settings, clearResult]);
 
   const handleReset = useCallback(() => {
     setTextContent("");
-    setOutputText("");
-    setCorrections([]);
-    setAnalysis(null);
-    setAnalysisNotice(null);
-    setStats({ processingTime: 0, modificationCount: 0 });
-    setError(null);
-  }, []);
+    clearResult();
+  }, [clearResult]);
 
   return {
     textContent,
