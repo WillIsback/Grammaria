@@ -117,6 +117,54 @@ describe("amorce du bureau", () => {
     expect(erreur?.querySelector("button")?.textContent).toBe("Réessayer");
   });
 
+  // Validation finale : après « Installez la dernière version », la consigne générique
+  // « Fermez Grammaria puis relancez-la » et le bouton « Réessayer » étaient contradictoires.
+  it("journal d'une version plus récente : pas de « Réessayer », lien vers le téléchargement", async () => {
+    const tauri = tauriSimule();
+    const appels: string[] = [];
+    let ouverture: Promise<unknown> = Promise.resolve();
+    (window as { __TAURI__?: unknown }).__TAURI__ = {
+      core: {
+        invoke: (commande: string, args?: Record<string, unknown>) => {
+          appels.push(commande);
+          if (commande === "db_read") return Promise.resolve([{ user_version: 999 }]);
+          if (commande.startsWith("db_")) return Promise.reject("aucune écriture attendue");
+          if (commande === "update_open_release_page") return ouverture;
+          return tauri.api.invoke(commande, args);
+        },
+        Channel: tauri.api.Channel,
+      },
+    };
+    const rendre = vi.fn();
+    await amorcer(rendre);
+    expect(rendre).not.toHaveBeenCalled();
+    expect(appels.filter((c) => c === "db_batch")).toHaveLength(0);
+    const ecran = document.querySelector('[data-testid="erreur-demarrage"]')!;
+    expect(ecran.getAttribute("role")).toBe("alert");
+    expect(ecran.querySelector("h1")?.textContent).toBe(
+      "Ce journal a été créé par une version plus récente de Grammaria.",
+    );
+    expect(ecran.textContent).toContain(
+      "Installez la dernière version de Grammaria pour l'ouvrir. Votre journal n'a pas été modifié.",
+    );
+    expect(ecran.textContent).not.toContain("Fermez Grammaria");
+    expect(ecran.textContent).not.toContain("schéma");
+    const boutons = [...ecran.querySelectorAll("button")].map((b) => b.textContent);
+    expect(boutons).toEqual(["Ouvrir la page de téléchargement"]);
+
+    ecran.querySelector("button")!.click();
+    expect(appels).toContain("update_open_release_page");
+
+    // Page impossible à ouvrir : l'adresse est donnée en clair (role=status).
+    ouverture = Promise.reject("aucun navigateur");
+    ecran.querySelector("button")!.click();
+    await vi.waitFor(() =>
+      expect(ecran.querySelector('[role="status"]')?.textContent).toContain(
+        "github.com/WillIsback/Grammaria/releases",
+      ),
+    );
+  });
+
   it("pont installé avant le rendu ; correcteur absent : bandeau, interface quand même", async () => {
     const tauri = tauriSimule();
     (window as { __TAURI__?: unknown }).__TAURI__ = { core: tauri.api };
