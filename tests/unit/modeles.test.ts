@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { creerDetecteurModele, listerModelesAmont, modelesDuCorps } from "../../src/utils/modeles";
 
 // Liste des modèles et détection du modèle par défaut, utilisées par le
-// gestionnaire d'API (serveur et bureau). Mêmes garanties que createModelDetector.
+// gestionnaire d'API (serveur et bureau).
 
 const okResponse = (body: unknown) =>
   Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
@@ -70,5 +70,9 @@ describe("creerDetecteurModele", () => {
     await expect(detecter()).rejects.toThrow("injoignable");
     expect(await detecter()).toBeNull();
     expect(await detecter()).toBe("m2");
+  });
+
+  it("réponse non JSON (corps null) : null, sans erreur", async () => {
+    expect(await creerDetecteurModele(async () => null)()).toBeNull();
   });
 });
