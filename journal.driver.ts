@@ -115,17 +115,29 @@ export function resoudreParametre(
  */
 export const USER_VERSION_MAX = 2;
 
-/** Pragmas lisibles par `read` et `readMany`. */
+/**
+ * Pragmas lisibles par `read` et `readMany`. Le journal ne lit que
+ * `user_version` ; les autres servent aux tests et aux vérifications. Chacun
+ * doit figurer dans `PRAGMAS_LECTURE` du pilote Rust (`src-tauri/src/db.rs`) :
+ * un test le vérifie en lisant ce fichier.
+ */
 export const PRAGMAS_LISIBLES: readonly string[] = [
   "user_version",
   "schema_version",
   "journal_mode",
   "foreign_keys",
   "table_info",
-  "table_list",
   "index_list",
   "index_info",
 ];
+
+/**
+ * Parmi eux, ceux qui prennent un nom de table ou d'index en argument
+ * (`PRAGMA table_info(badges)`). Pour les autres, un argument serait une
+ * valeur à écrire (`PRAGMA journal_mode(DELETE)`). Chacun doit figurer dans
+ * `PRAGMAS_A_ARGUMENT` du pilote Rust.
+ */
+export const PRAGMAS_A_ARGUMENT: readonly string[] = ["table_info", "index_list", "index_info"];
 
 /**
  * Supprime chaînes, identifiants entre délimiteurs et commentaires d'une
@@ -180,7 +192,11 @@ export function verifierLecture(sql: string): void {
     return;
   }
   const pragma = s.match(/^PRAGMA\s+(\w+)\s*(\(\s*[^)]*\))?$/);
-  if (pragma && PRAGMAS_LISIBLES.includes(pragma[1].toLowerCase())) return;
+  if (pragma) {
+    const nom = pragma[1].toLowerCase();
+    const admis = pragma[2] === undefined ? PRAGMAS_LISIBLES : PRAGMAS_A_ARGUMENT;
+    if (admis.includes(nom)) return;
+  }
   throw new Error("read : seules les requêtes de lecture sont acceptées");
 }
 
