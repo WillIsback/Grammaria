@@ -23,8 +23,9 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
   technical: { label: "Technique", icon: "T" },
 };
 
+// Espace insécable avant « ? » : il ne passe pas seul à la ligne dans une fenêtre étroite.
 const PURGE_WARNING =
-  "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.";
+  "Effacer définitivement tout le journal des fautes\u00a0? Les badges obtenus seront aussi effacés.";
 
 /** Titre de rubrique, partagé avec les rubriques du menu Paramètres. */
 export const sectionTitle =

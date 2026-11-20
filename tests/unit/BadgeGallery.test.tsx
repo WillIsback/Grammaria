@@ -253,7 +253,7 @@ describe("Effacement du journal", () => {
     expect(dialogue.getAttribute("aria-modal")).toBe("true");
     expect(screen.getByRole("alertdialog", { name: "Effacer le journal ?" })).toBe(dialogue);
     expect(document.getElementById(dialogue.getAttribute("aria-describedby")!)?.textContent).toBe(
-      "Effacer définitivement tout le journal des fautes ? Les badges obtenus seront aussi effacés.",
+      "Effacer définitivement tout le journal des fautes\u00a0? Les badges obtenus seront aussi effacés.",
     );
     // « Annuler » a le focus par défaut : Entrée par mégarde n'efface rien.
     expect(document.activeElement).toBe(within(dialogue).getByRole("button", { name: "Annuler" }));
