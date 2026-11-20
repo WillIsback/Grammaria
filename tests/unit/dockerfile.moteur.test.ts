@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
+import { cheminDonnees, cheminMoteur } from "../../grammar";
 import { copies, etapesDockerfile, horsContexte, RACINE } from "./helpers/docker";
 
 /**
@@ -103,9 +104,12 @@ describe("Dockerfile — moteur grammatical", () => {
       sources: ["/app/moteur"],
       destination: "./moteur",
     });
-    const grammar = readFileSync(join(RACINE, "grammar.ts"), "utf-8");
-    expect(grammar).toContain('join(RACINE, "moteur", "grammaria")');
-    expect(grammar).toContain('join(RACINE, "moteur", "data")');
+    // Sans variable d'environnement (cas de l'image), sous Linux.
+    vi.stubEnv("GRAMMARIA_MOTEUR", "");
+    vi.stubEnv("GRAMMARIA_MOTEUR_DONNEES", "");
+    expect(cheminMoteur()).toBe(join(RACINE, "moteur", "grammaria"));
+    expect(cheminDonnees()).toBe(join(RACINE, "moteur", "data"));
+    vi.unstubAllEnvs();
     // grammar.ts est copié à la racine de /app.
     expect(
       copies(finale).some((c) => c.sources.includes("grammar.ts") && c.destination === "./"),

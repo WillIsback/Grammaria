@@ -35,9 +35,13 @@ export type OptionsCorrecteur = {
 
 const RACINE = dirname(fileURLToPath(import.meta.url));
 
-/** Binaire du moteur (GRAMMARIA_MOTEUR, défaut : `moteur/grammaria` à côté de ce fichier). */
+/**
+ * Binaire du moteur (GRAMMARIA_MOTEUR, défaut : `moteur/grammaria` à côté de ce fichier,
+ * `grammaria.exe` sous Windows, comme le produit scripts/moteur/construire.sh).
+ */
 export function cheminMoteur(): string {
-  return resolve(process.env.GRAMMARIA_MOTEUR || join(RACINE, "moteur", "grammaria"));
+  const binaire = process.platform === "win32" ? "grammaria.exe" : "grammaria";
+  return resolve(process.env.GRAMMARIA_MOTEUR || join(RACINE, "moteur", binaire));
 }
 
 /** Données du moteur (GRAMMARIA_MOTEUR_DONNEES, défaut : `moteur/data`). */
