@@ -10,3 +10,6 @@ tests/
 .vscode/
 .idea/
 src-tauri/
+# La référence du correcteur est importée par src/desktop/autotest.ts : tsc en a
+# besoin pour compiler, même si le serveur ne s'en sert pas.
+!tests/fixtures/
