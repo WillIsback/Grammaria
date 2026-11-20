@@ -1466,7 +1466,7 @@ dependencies = [
 name = "grammaria"
 version = "0.1.0"
 dependencies = [
- "grammaria 0.1.0 (git+https://github.com/WillIsback/grammaria-rc?rev=f55cf1663b04e36ea5e7e0183e77ce186c438422)",
+ "grammaria 0.1.0 (git+https://github.com/WillIsback/grammaria-rc?rev=77488bd31e78f5e6c27f7a32d646582a990df848)",
  "regex",
  "reqwest",
  "rusqlite",
@@ -1487,7 +1487,7 @@ dependencies = [
 [[package]]
 name = "grammaria"
 version = "0.1.0"
-source = "git+https://github.com/WillIsback/grammaria-rc?rev=f55cf1663b04e36ea5e7e0183e77ce186c438422#f55cf1663b04e36ea5e7e0183e77ce186c438422"
+source = "git+https://github.com/WillIsback/grammaria-rc?rev=77488bd31e78f5e6c27f7a32d646582a990df848#77488bd31e78f5e6c27f7a32d646582a990df848"
 
 [[package]]
 name = "gtk"

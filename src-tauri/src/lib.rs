@@ -382,12 +382,7 @@ mod tests {
         ressources.sort_unstable();
         assert_eq!(
             ressources,
-            [
-                "moteur/fr.disambig.xml",
-                "moteur/fr.lex",
-                "moteur/fr.rules",
-                "moteur/fr.words"
-            ]
+            ["moteur/grammaria/", "moteur/lt/"]
         );
     }
 }

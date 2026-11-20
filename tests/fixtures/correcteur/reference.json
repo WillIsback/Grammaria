@@ -8,45 +8,52 @@
       "detections": [
         {
           "regle": "ETRE_VPPA_OU_ADJ",
-          "debut": 9,
-          "longueur": 10,
+          "debut": 14,
+          "longueur": 5,
           "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["aller", "aller", "aller", "aller"]
+          "suggestions": ["allé", "allés", "allée", "allées"]
         },
         {
-          "regle": "D_N_E_OU_E",
-          "debut": 124,
-          "longueur": 10,
-          "message": "Vérifiez l'accord entre le nom et le déterminant précédent.",
-          "suggestions": ["allées"]
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 104,
+          "longueur": 5,
+          "message": "Le verbe doit être pluriel.",
+          "suggestions": ["étaient"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 136,
-          "longueur": 18,
+          "debut": 147,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["trouvé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
           "debut": 185,
           "longueur": 13,
           "message": "Vérifiez l’accord entre le pronom « elles » et le verbe « coûtait ».",
-          "suggestions": ["elle coûtait", "elles"]
+          "suggestions": ["elle coûtait", "elles coûtaient"]
+        },
+        {
+          "regle": "OE",
+          "debut": 231,
+          "longueur": 5,
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en que.",
-          "suggestions": []
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "suggestions": ["qu'ils"]
         },
         {
-          "regle": "NOUS_SOMMES",
-          "debut": 328,
-          "longueur": 12,
-          "message": "Vouliez-vous dire « sommes » (du verbe \"être\")?",
-          "suggestions": ["nous sommes"]
+          "regle": "A_INFINITIF",
+          "debut": 309,
+          "longueur": 10,
+          "message": "La préposition \"à\" est généralement placée avant un verbe à l'infinitif.",
+          "suggestions": ["à cuisiner"]
         },
         {
           "regle": "NOUS_SOMMES",
@@ -56,39 +63,60 @@
           "suggestions": ["nous sommes"]
         },
         {
+          "regle": "J_N",
+          "debut": 341,
+          "longueur": 11,
+          "message": "\"Allés\" et \"boire\" ne semblent pas bien accordés.",
+          "suggestions": ["allé boire", "allés boires"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 436,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["n'avions"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 447,
+          "longueur": 8,
+          "message": "Si « croissants » est l’antécédent du relatif « que », vérifiez l’accord du participe « commandé ».",
+          "suggestions": ["commandés"]
+        },
+        {
           "regle": "R_VAVOIR_VINF",
-          "debut": 457,
-          "longueur": 12,
+          "debut": 462,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["essayé"]
+        },
+        {
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 499,
+          "longueur": 10,
+          "message": "Vérifiez l’accord entre le pronom « il » et le verbe « comprenais ».",
+          "suggestions": ["comprenait"]
         },
         {
           "regle": "AUX_AVOIR_VCONJ",
-          "debut": 637,
-          "longueur": 19,
-          "message": "Après l’auxiliaire « avais », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
-          "suggestions": ["oublier", "oublier", "oublier", "oublier", "oublier"]
+          "debut": 555,
+          "longueur": 3,
+          "message": "Après l’auxiliaire « avons », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
+          "suggestions": ["ri"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 641,
-          "longueur": 15,
+          "debut": 649,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["oublié"]
         },
         {
-          "regle": "NOM_AGREEMENT",
+          "regle": "D_N_E_OU_E",
           "debut": 747,
           "longueur": 8,
-          "message": "Vouliez-vous écrire \"rendu\" (infinitif)? \"La\" et \"rendu\" ne sont pas bien accordés.",
-          "suggestions": ["l'a rendu"]
-        },
-        {
-          "regle": "CONFUSION_E_ER",
-          "debut": 829,
-          "longueur": 24,
-          "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["créer", "de créer", "à créer"]
+          "message": "Le déterminant s'accorde avec le nom \"rendu\".",
+          "suggestions": ["la rendue", "le rendu"]
         }
       ]
     },
@@ -98,39 +126,95 @@
       "mots": 62,
       "detections": [
         {
-          "regle": "A_ACCENT",
+          "regle": "ACCORD_R_PERS_VERBE",
           "debut": 24,
-          "longueur": 27,
-          "message": "Ce groupe nominal est formé avec la préposition .",
-          "suggestions": []
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « écrit ».",
+          "suggestions": ["écris"]
         },
         {
-          "regle": "A_A_ACCENT",
-          "debut": 30,
-          "longueur": 7,
-          "message": "Dans cette expression, la préposition \"a\" possède un accent grave.",
+          "regle": "A_ACCENT",
+          "debut": 36,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
           "regle": "COMME_PREVU",
-          "debut": 70,
-          "longueur": 14,
+          "debut": 76,
+          "longueur": 8,
           "message": "Le mot « convenus » est invariable après « comme ».",
-          "suggestions": ["convenus"]
+          "suggestions": ["convenu"]
         },
         {
-          "regle": "ESPACE_UNITES",
+          "regle": "PRONSUJ_NONVERBE",
+          "debut": 94,
+          "longueur": 5,
+          "message": "Un verbe conjugué est généralement attendu après le pronom personnel sujet « je ».",
+          "suggestions": ["envoie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
           "debut": 140,
           "longueur": 7,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "message": "Vérifiez la concordance de «demandé» avec les noms précédents.",
+          "suggestions": ["demandés"]
         },
         {
           "regle": "SONT_SON",
           "debut": 175,
           "longueur": 13,
           "message": "Le mot singulier \"meilleur\" n’est pas accordé en nombre avec le verbe \"sont\".",
-          "suggestions": ["son meilleur"]
+          "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
+        },
+        {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 193,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 201,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 233,
+          "longueur": 7,
+          "message": "Avec l’auxiliaire « ont », le participe passé « annulés » ne s’accorde pas avec ce qui suit.",
+          "suggestions": ["annulé"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 265,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 290,
+          "longueur": 19,
+          "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
+          "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 366,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 396,
+          "longueur": 10,
+          "message": "Vérifiez la concordance de «distingués» avec les noms précédents.",
+          "suggestions": ["distinguées"]
         }
       ]
     },
@@ -140,39 +224,74 @@
       "mots": 46,
       "detections": [
         {
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 12,
+          "longueur": 5,
+          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
+          "suggestions": ["étaient"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 29,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"vacances\".",
+          "suggestions": ["leurs vacances", "leur vacance"]
+        },
+        {
           "regle": "R_VAVOIR_VINF",
-          "debut": 44,
-          "longueur": 14,
+          "debut": 52,
+          "longueur": 6,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["mangé"]
         },
         {
           "regle": "AGREEMENT_TOUT_LE",
           "debut": 92,
-          "longueur": 8,
+          "longueur": 4,
           "message": "\"Tout\" et le groupe nominal ne semblent pas bien accordés.",
           "suggestions": ["tous"]
         },
         {
+          "regle": "D_N",
+          "debut": 108,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["Leurs parents", "Leur parent", "Leur parente", "Leurs parentes"]
+        },
+        {
           "regle": "AUX_ETRE_VCONJ",
-          "debut": 127,
-          "longueur": 11,
+          "debut": 132,
+          "longueur": 6,
           "message": "Après l’auxiliaire « sont », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde en genre et en nombre avec le sujet du verbe.",
-          "suggestions": []
+          "suggestions": ["resté", "restée", "restés", "restées"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 175,
+          "longueur": 2,
+          "message": "Si « fille » est l’antécédent du relatif « que », vérifiez l’accord du participe « vu ».",
+          "suggestions": ["vue"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 200,
+          "longueur": 4,
+          "message": "Vérifiez la concordance de «bleu» avec les noms précédents.",
+          "suggestions": ["bleue"]
         },
         {
           "regle": "QUELQUE_SOIT",
           "debut": 206,
-          "longueur": 16,
+          "longueur": 13,
           "message": "« Quelques soit » est incorrect.",
           "suggestions": ["Quel que soit"]
         },
         {
           "regle": "COMMENT_VPPA",
-          "debut": 228,
-          "longueur": 24,
+          "debut": 245,
+          "longueur": 7,
           "message": "Un verbe à l'infinitif est généralement attendu après un verbe conjugué.",
-          "suggestions": ["promené"]
+          "suggestions": ["promener"]
         }
       ]
     },
@@ -182,39 +301,81 @@
       "mots": 58,
       "detections": [
         {
-          "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 55,
-          "longueur": 9,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "regle": "SA_CA_SE",
+          "debut": 0,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["Ça", "Cela"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 94,
-          "longueur": 4,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 58,
+          "longueur": 6,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « habite ».",
+          "suggestions": ["habites"]
+        },
+        {
+          "regle": "ON_ONT",
+          "debut": 78,
+          "longueur": 3,
+          "message": "Une phrase doit commencer par un sujet.",
+          "suggestions": ["On", "Ils ont"]
+        },
+        {
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 97,
+          "longueur": 1,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « a ».",
+          "suggestions": ["as"]
         },
         {
           "regle": "CES_CEST",
           "debut": 125,
-          "longueur": 12,
-          "message": "Voulez-vous écrire  au lieu de « Ces » ?",
-          "suggestions": []
+          "longueur": 3,
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "suggestions": ["C'est"]
         },
         {
-          "regle": "SAIT_CES_C_EST_S_EST",
-          "debut": 181,
-          "longueur": 8,
-          "message": "Le verbe \"savoir\" semble plus approprié.",
-          "suggestions": ["sais"]
+          "regle": "A_ACCENT",
+          "debut": 170,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 184,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 195,
+          "longueur": 6,
+          "message": "Le mot pluriel « amusés » n’est pas accordé en nombre avec le mot singulier « c' ».",
+          "suggestions": ["amusé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 221,
-          "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 224,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « peut ».",
+          "suggestions": ["peux"]
+        },
+        {
+          "regle": "SE_CE",
+          "debut": 235,
+          "longueur": 11,
+          "message": "Le démonstratif \"ce\" se place avant le nom \"week-end\" .",
+          "suggestions": ["ce week-end"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 253,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
         }
       ]
     },
@@ -228,7 +389,64 @@
       "nom": "typographie",
       "texte": "Est-ce que tu viens demain? Je ne sais pas ,peut-être... Il a dit : \"non\" . Le prix est de 12,5 euros,et c'est trop chère !  Il y a  deux espaces ici. au début d'une phrase sans majuscule.",
       "mots": 38,
-      "detections": []
+      "detections": [
+        {
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 20,
+          "longueur": 7,
+          "message": "Le point d'interrogation est précédé d'une espace fine insécable.",
+          "suggestions": ["demain ?"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 42,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [", "]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 73,
+          "longueur": 2,
+          "message": "Ne placez pas d'espace avant le point.",
+          "suggestions": ["."]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 101,
+          "longueur": 3,
+          "message": "Insérez une espace après la virgule.",
+          "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 116,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
+        },
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 123,
+          "longueur": 2,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "DOUBLES_ESPACES",
+          "debut": 131,
+          "longueur": 2,
+          "message": "Il semblerait qu'une espace surnuméraire s'est glissée entre ces deux mots.",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 151,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Au"]
+        }
+      ]
     },
     {
       "nom": "conjugaison",
@@ -237,59 +455,66 @@
       "detections": [
         {
           "regle": "SI",
-          "debut": 0,
-          "longueur": 11,
+          "debut": 5,
+          "longueur": 6,
           "message": "« Si » doit être suivi d’un verbe au présent ou à l'imparfait.",
-          "suggestions": []
+          "suggestions": ["ai", "avais"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 19,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["ne serais"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 48,
-          "longueur": 8,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
-        },
-        {
-          "regle": "SUBJ_LOCU",
-          "debut": 65,
-          "longueur": 17,
-          "message": "Le verbe «  » doit être au subjonctif après la locution « avant que ».",
-          "suggestions": []
+          "debut": 51,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « vient ».",
+          "suggestions": ["viens"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 75,
-          "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « je » et le verbe «  ».",
-          "suggestions": []
+          "debut": 78,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « part ».",
+          "suggestions": ["pars"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 84,
-          "longueur": 18,
+          "debut": 95,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["décidé"]
         },
         {
           "regle": "SUBJ_LOCU",
-          "debut": 116,
-          "longueur": 23,
+          "debut": 136,
+          "longueur": 3,
           "message": "Le verbe « est » doit être au subjonctif après la locution « , bien ».",
-          "suggestions": ["est"]
+          "suggestions": ["soit"]
         },
         {
-          "regle": "CONFUSION_DANS_UNE_EXPRESSION",
-          "debut": 148,
-          "longueur": 18,
-          "message": "Une erreur d’orthographe semble être détectée.",
-          "suggestions": ["serais"]
+          "regle": "ETRE_GRE",
+          "debut": 156,
+          "longueur": 6,
+          "message": "« Être gré » est une expression fautive.",
+          "suggestions": ["saurais"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 201,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
         },
         {
           "regle": "A_INFINITIF",
           "debut": 219,
           "longueur": 6,
           "message": "Un verbe conjugué ou un infinitif semble plus approprié.",
-          "suggestions": ["a pris"]
+          "suggestions": ["a pris", "à prendre"]
         }
       ]
     },
@@ -299,11 +524,11 @@
       "mots": 4,
       "detections": [
         {
-          "regle": "D_N",
+          "regle": "D_N_E_OU_E",
           "debut": 9,
           "longueur": 8,
           "message": "Le déterminant s'accorde avec le nom \"pomme\".",
-          "suggestions": ["une pomme"]
+          "suggestions": ["un pommé", "une pomme"]
         }
       ]
     },
@@ -314,45 +539,52 @@
       "detections": [
         {
           "regle": "ETRE_VPPA_OU_ADJ",
-          "debut": 9,
-          "longueur": 10,
+          "debut": 14,
+          "longueur": 5,
           "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["aller", "aller", "aller", "aller"]
+          "suggestions": ["allé", "allés", "allée", "allées"]
         },
         {
-          "regle": "D_N_E_OU_E",
-          "debut": 124,
-          "longueur": 10,
-          "message": "Vérifiez l'accord entre le nom et le déterminant précédent.",
-          "suggestions": ["allées"]
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 104,
+          "longueur": 5,
+          "message": "Le verbe doit être pluriel.",
+          "suggestions": ["étaient"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 136,
-          "longueur": 18,
+          "debut": 147,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["trouvé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
           "debut": 185,
           "longueur": 13,
           "message": "Vérifiez l’accord entre le pronom « elles » et le verbe « coûtait ».",
-          "suggestions": ["elle coûtait", "elles"]
+          "suggestions": ["elle coûtait", "elles coûtaient"]
+        },
+        {
+          "regle": "OE",
+          "debut": 231,
+          "longueur": 5,
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en que.",
-          "suggestions": []
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "suggestions": ["qu'ils"]
         },
         {
-          "regle": "NOUS_SOMMES",
-          "debut": 328,
-          "longueur": 12,
-          "message": "Vouliez-vous dire « sommes » (du verbe \"être\")?",
-          "suggestions": ["nous sommes"]
+          "regle": "A_INFINITIF",
+          "debut": 309,
+          "longueur": 10,
+          "message": "La préposition \"à\" est généralement placée avant un verbe à l'infinitif.",
+          "suggestions": ["à cuisiner"]
         },
         {
           "regle": "NOUS_SOMMES",
@@ -362,249 +594,473 @@
           "suggestions": ["nous sommes"]
         },
         {
+          "regle": "J_N",
+          "debut": 341,
+          "longueur": 11,
+          "message": "\"Allés\" et \"boire\" ne semblent pas bien accordés.",
+          "suggestions": ["allé boire", "allés boires"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 436,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["n'avions"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 447,
+          "longueur": 8,
+          "message": "Si « croissants » est l’antécédent du relatif « que », vérifiez l’accord du participe « commandé ».",
+          "suggestions": ["commandés"]
+        },
+        {
           "regle": "R_VAVOIR_VINF",
-          "debut": 457,
-          "longueur": 12,
+          "debut": 462,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["essayé"]
+        },
+        {
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 499,
+          "longueur": 10,
+          "message": "Vérifiez l’accord entre le pronom « il » et le verbe « comprenais ».",
+          "suggestions": ["comprenait"]
         },
         {
           "regle": "AUX_AVOIR_VCONJ",
-          "debut": 637,
-          "longueur": 19,
-          "message": "Après l’auxiliaire « avais », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
-          "suggestions": ["oublier", "oublier", "oublier", "oublier", "oublier"]
+          "debut": 555,
+          "longueur": 3,
+          "message": "Après l’auxiliaire « avons », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
+          "suggestions": ["ri"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 641,
-          "longueur": 15,
+          "debut": 649,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["oublié"]
         },
         {
-          "regle": "NOM_AGREEMENT",
+          "regle": "D_N_E_OU_E",
           "debut": 747,
           "longueur": 8,
-          "message": "Vouliez-vous écrire \"rendu\" (infinitif)? \"La\" et \"rendu\" ne sont pas bien accordés.",
-          "suggestions": ["l'a rendu"]
+          "message": "Le déterminant s'accorde avec le nom \"rendu\".",
+          "suggestions": ["la rendue", "le rendu"]
         },
         {
-          "regle": "CONFUSION_E_ER",
-          "debut": 829,
-          "longueur": 24,
-          "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["créer", "de créer", "à créer"]
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 975,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « écrit ».",
+          "suggestions": ["écris"]
         },
         {
           "regle": "A_ACCENT",
-          "debut": 975,
-          "longueur": 27,
-          "message": "Ce groupe nominal est formé avec la préposition .",
-          "suggestions": []
-        },
-        {
-          "regle": "A_A_ACCENT",
-          "debut": 981,
-          "longueur": 7,
-          "message": "Dans cette expression, la préposition \"a\" possède un accent grave.",
+          "debut": 987,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
           "regle": "COMME_PREVU",
-          "debut": 1021,
-          "longueur": 14,
+          "debut": 1027,
+          "longueur": 8,
           "message": "Le mot « convenus » est invariable après « comme ».",
-          "suggestions": ["convenus"]
+          "suggestions": ["convenu"]
         },
         {
-          "regle": "ESPACE_UNITES",
+          "regle": "PRONSUJ_NONVERBE",
+          "debut": 1045,
+          "longueur": 5,
+          "message": "Un verbe conjugué est généralement attendu après le pronom personnel sujet « je ».",
+          "suggestions": ["envoie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
           "debut": 1091,
           "longueur": 7,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "message": "Vérifiez la concordance de «demandé» avec les noms précédents.",
+          "suggestions": ["demandés"]
         },
         {
           "regle": "SONT_SON",
           "debut": 1126,
           "longueur": 13,
           "message": "Le mot singulier \"meilleur\" n’est pas accordé en nombre avec le verbe \"sont\".",
-          "suggestions": ["son meilleur"]
+          "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
+        },
+        {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 1144,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1152,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 1184,
+          "longueur": 7,
+          "message": "Avec l’auxiliaire « ont », le participe passé « annulés » ne s’accorde pas avec ce qui suit.",
+          "suggestions": ["annulé"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 1216,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 1241,
+          "longueur": 19,
+          "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
+          "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1317,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 1347,
+          "longueur": 10,
+          "message": "Vérifiez la concordance de «distingués» avec les noms précédents.",
+          "suggestions": ["distinguées"]
+        },
+        {
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 1372,
+          "longueur": 5,
+          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
+          "suggestions": ["étaient"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 1389,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"vacances\".",
+          "suggestions": ["leurs vacances", "leur vacance"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 1404,
-          "longueur": 14,
+          "debut": 1412,
+          "longueur": 6,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["mangé"]
         },
         {
           "regle": "AGREEMENT_TOUT_LE",
           "debut": 1452,
-          "longueur": 8,
+          "longueur": 4,
           "message": "\"Tout\" et le groupe nominal ne semblent pas bien accordés.",
           "suggestions": ["tous"]
         },
         {
+          "regle": "D_N",
+          "debut": 1468,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["Leurs parents", "Leur parent", "Leur parente", "Leurs parentes"]
+        },
+        {
           "regle": "AUX_ETRE_VCONJ",
-          "debut": 1487,
-          "longueur": 11,
+          "debut": 1492,
+          "longueur": 6,
           "message": "Après l’auxiliaire « sont », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde en genre et en nombre avec le sujet du verbe.",
-          "suggestions": []
+          "suggestions": ["resté", "restée", "restés", "restées"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 1535,
+          "longueur": 2,
+          "message": "Si « fille » est l’antécédent du relatif « que », vérifiez l’accord du participe « vu ».",
+          "suggestions": ["vue"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 1560,
+          "longueur": 4,
+          "message": "Vérifiez la concordance de «bleu» avec les noms précédents.",
+          "suggestions": ["bleue"]
         },
         {
           "regle": "QUELQUE_SOIT",
           "debut": 1566,
-          "longueur": 16,
+          "longueur": 13,
           "message": "« Quelques soit » est incorrect.",
           "suggestions": ["Quel que soit"]
         },
         {
           "regle": "COMMENT_VPPA",
-          "debut": 1588,
-          "longueur": 24,
+          "debut": 1605,
+          "longueur": 7,
           "message": "Un verbe à l'infinitif est généralement attendu après un verbe conjugué.",
-          "suggestions": ["promené"]
+          "suggestions": ["promener"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 1615,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["Ça", "Cela"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1670,
-          "longueur": 9,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 1673,
+          "longueur": 6,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « habite ».",
+          "suggestions": ["habites"]
+        },
+        {
+          "regle": "ON_ONT",
+          "debut": 1693,
+          "longueur": 3,
+          "message": "Une phrase doit commencer par un sujet.",
+          "suggestions": ["On", "Ils ont"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1709,
-          "longueur": 4,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 1712,
+          "longueur": 1,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « a ».",
+          "suggestions": ["as"]
         },
         {
           "regle": "CES_CEST",
           "debut": 1740,
-          "longueur": 12,
-          "message": "Voulez-vous écrire  au lieu de « Ces » ?",
-          "suggestions": []
+          "longueur": 3,
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "suggestions": ["C'est"]
         },
         {
-          "regle": "SAIT_CES_C_EST_S_EST",
-          "debut": 1796,
-          "longueur": 8,
-          "message": "Le verbe \"savoir\" semble plus approprié.",
-          "suggestions": ["sais"]
+          "regle": "A_ACCENT",
+          "debut": 1785,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 1799,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 1810,
+          "longueur": 6,
+          "message": "Le mot pluriel « amusés » n’est pas accordé en nombre avec le mot singulier « c' ».",
+          "suggestions": ["amusé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1836,
+          "debut": 1839,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « peut ».",
+          "suggestions": ["peux"]
+        },
+        {
+          "regle": "SE_CE",
+          "debut": 1850,
+          "longueur": 11,
+          "message": "Le démonstratif \"ce\" se place avant le nom \"week-end\" .",
+          "suggestions": ["ce week-end"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 1868,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
+        },
+        {
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 2137,
           "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "message": "Le point d'interrogation est précédé d'une espace fine insécable.",
+          "suggestions": ["demain ?"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2159,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [", "]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2190,
+          "longueur": 2,
+          "message": "Ne placez pas d'espace avant le point.",
+          "suggestions": ["."]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2218,
+          "longueur": 3,
+          "message": "Insérez une espace après la virgule.",
+          "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 2233,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
+        },
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 2240,
+          "longueur": 2,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "DOUBLES_ESPACES",
+          "debut": 2248,
+          "longueur": 2,
+          "message": "Il semblerait qu'une espace surnuméraire s'est glissée entre ces deux mots.",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 2268,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Au"]
         },
         {
           "regle": "SI",
-          "debut": 2307,
-          "longueur": 11,
+          "debut": 2312,
+          "longueur": 6,
           "message": "« Si » doit être suivi d’un verbe au présent ou à l'imparfait.",
-          "suggestions": []
+          "suggestions": ["ai", "avais"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 2326,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["ne serais"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 2355,
-          "longueur": 8,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
-        },
-        {
-          "regle": "SUBJ_LOCU",
-          "debut": 2372,
-          "longueur": 17,
-          "message": "Le verbe «  » doit être au subjonctif après la locution « avant que ».",
-          "suggestions": []
+          "debut": 2358,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « vient ».",
+          "suggestions": ["viens"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 2382,
-          "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « je » et le verbe «  ».",
-          "suggestions": []
+          "debut": 2385,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « part ».",
+          "suggestions": ["pars"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 2391,
-          "longueur": 18,
+          "debut": 2402,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["décidé"]
         },
         {
           "regle": "SUBJ_LOCU",
-          "debut": 2423,
-          "longueur": 23,
+          "debut": 2443,
+          "longueur": 3,
           "message": "Le verbe « est » doit être au subjonctif après la locution « , bien ».",
-          "suggestions": ["est"]
+          "suggestions": ["soit"]
         },
         {
-          "regle": "CONFUSION_DANS_UNE_EXPRESSION",
-          "debut": 2455,
-          "longueur": 18,
-          "message": "Une erreur d’orthographe semble être détectée.",
-          "suggestions": ["serais"]
+          "regle": "ETRE_GRE",
+          "debut": 2463,
+          "longueur": 6,
+          "message": "« Être gré » est une expression fautive.",
+          "suggestions": ["saurais"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 2508,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
         },
         {
           "regle": "A_INFINITIF",
           "debut": 2526,
           "longueur": 6,
           "message": "Un verbe conjugué ou un infinitif semble plus approprié.",
-          "suggestions": ["a pris"]
-        },
-        {
-          "regle": "D_N",
-          "debut": 2553,
-          "longueur": 8,
-          "message": "Le déterminant s'accorde avec le nom \"pomme\".",
-          "suggestions": ["une pomme"]
-        },
-        {
-          "regle": "ETRE_VPPA_OU_ADJ",
-          "debut": 2573,
-          "longueur": 10,
-          "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["aller", "aller", "aller", "aller"]
+          "suggestions": ["a pris", "à prendre"]
         },
         {
           "regle": "D_N_E_OU_E",
-          "debut": 2688,
-          "longueur": 10,
-          "message": "Vérifiez l'accord entre le nom et le déterminant précédent.",
-          "suggestions": ["allées"]
+          "debut": 2553,
+          "longueur": 8,
+          "message": "Le déterminant s'accorde avec le nom \"pomme\".",
+          "suggestions": ["un pommé", "une pomme"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 2578,
+          "longueur": 5,
+          "message": "Un participe passé semble plus approprié.",
+          "suggestions": ["allé", "allés", "allée", "allées"]
+        },
+        {
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 2668,
+          "longueur": 5,
+          "message": "Le verbe doit être pluriel.",
+          "suggestions": ["étaient"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 2700,
-          "longueur": 18,
+          "debut": 2711,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["trouvé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
           "debut": 2749,
           "longueur": 13,
           "message": "Vérifiez l’accord entre le pronom « elles » et le verbe « coûtait ».",
-          "suggestions": ["elle coûtait", "elles"]
+          "suggestions": ["elle coûtait", "elles coûtaient"]
+        },
+        {
+          "regle": "OE",
+          "debut": 2795,
+          "longueur": 5,
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 2847,
           "longueur": 7,
-          "message": "« que ils » s’élide en que.",
-          "suggestions": []
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "suggestions": ["qu'ils"]
         },
         {
-          "regle": "NOUS_SOMMES",
-          "debut": 2892,
-          "longueur": 12,
-          "message": "Vouliez-vous dire « sommes » (du verbe \"être\")?",
-          "suggestions": ["nous sommes"]
+          "regle": "A_INFINITIF",
+          "debut": 2873,
+          "longueur": 10,
+          "message": "La préposition \"à\" est généralement placée avant un verbe à l'infinitif.",
+          "suggestions": ["à cuisiner"]
         },
         {
           "regle": "NOUS_SOMMES",
@@ -614,207 +1070,424 @@
           "suggestions": ["nous sommes"]
         },
         {
+          "regle": "J_N",
+          "debut": 2905,
+          "longueur": 11,
+          "message": "\"Allés\" et \"boire\" ne semblent pas bien accordés.",
+          "suggestions": ["allé boire", "allés boires"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 3000,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["n'avions"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 3011,
+          "longueur": 8,
+          "message": "Si « croissants » est l’antécédent du relatif « que », vérifiez l’accord du participe « commandé ».",
+          "suggestions": ["commandés"]
+        },
+        {
           "regle": "R_VAVOIR_VINF",
-          "debut": 3021,
-          "longueur": 12,
+          "debut": 3026,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["essayé"]
+        },
+        {
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 3063,
+          "longueur": 10,
+          "message": "Vérifiez l’accord entre le pronom « il » et le verbe « comprenais ».",
+          "suggestions": ["comprenait"]
         },
         {
           "regle": "AUX_AVOIR_VCONJ",
-          "debut": 3201,
-          "longueur": 19,
-          "message": "Après l’auxiliaire « avais », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
-          "suggestions": ["oublier", "oublier", "oublier", "oublier", "oublier"]
+          "debut": 3119,
+          "longueur": 3,
+          "message": "Après l’auxiliaire « avons », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
+          "suggestions": ["ri"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 3205,
-          "longueur": 15,
+          "debut": 3213,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["oublié"]
         },
         {
-          "regle": "NOM_AGREEMENT",
+          "regle": "D_N_E_OU_E",
           "debut": 3311,
           "longueur": 8,
-          "message": "Vouliez-vous écrire \"rendu\" (infinitif)? \"La\" et \"rendu\" ne sont pas bien accordés.",
-          "suggestions": ["l'a rendu"]
+          "message": "Le déterminant s'accorde avec le nom \"rendu\".",
+          "suggestions": ["la rendue", "le rendu"]
         },
         {
-          "regle": "CONFUSION_E_ER",
-          "debut": 3393,
-          "longueur": 24,
-          "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["créer", "de créer", "à créer"]
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 3539,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « écrit ».",
+          "suggestions": ["écris"]
         },
         {
           "regle": "A_ACCENT",
-          "debut": 3539,
-          "longueur": 27,
-          "message": "Ce groupe nominal est formé avec la préposition .",
-          "suggestions": []
-        },
-        {
-          "regle": "A_A_ACCENT",
-          "debut": 3545,
-          "longueur": 7,
-          "message": "Dans cette expression, la préposition \"a\" possède un accent grave.",
+          "debut": 3551,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
           "regle": "COMME_PREVU",
-          "debut": 3585,
-          "longueur": 14,
+          "debut": 3591,
+          "longueur": 8,
           "message": "Le mot « convenus » est invariable après « comme ».",
-          "suggestions": ["convenus"]
+          "suggestions": ["convenu"]
         },
         {
-          "regle": "ESPACE_UNITES",
+          "regle": "PRONSUJ_NONVERBE",
+          "debut": 3609,
+          "longueur": 5,
+          "message": "Un verbe conjugué est généralement attendu après le pronom personnel sujet « je ».",
+          "suggestions": ["envoie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
           "debut": 3655,
           "longueur": 7,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "message": "Vérifiez la concordance de «demandé» avec les noms précédents.",
+          "suggestions": ["demandés"]
         },
         {
           "regle": "SONT_SON",
           "debut": 3690,
           "longueur": 13,
           "message": "Le mot singulier \"meilleur\" n’est pas accordé en nombre avec le verbe \"sont\".",
-          "suggestions": ["son meilleur"]
+          "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
+        },
+        {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 3708,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 3716,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 3748,
+          "longueur": 7,
+          "message": "Avec l’auxiliaire « ont », le participe passé « annulés » ne s’accorde pas avec ce qui suit.",
+          "suggestions": ["annulé"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 3780,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 3805,
+          "longueur": 19,
+          "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
+          "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 3881,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 3911,
+          "longueur": 10,
+          "message": "Vérifiez la concordance de «distingués» avec les noms précédents.",
+          "suggestions": ["distinguées"]
+        },
+        {
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 3936,
+          "longueur": 5,
+          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
+          "suggestions": ["étaient"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 3953,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"vacances\".",
+          "suggestions": ["leurs vacances", "leur vacance"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 3968,
-          "longueur": 14,
+          "debut": 3976,
+          "longueur": 6,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["mangé"]
         },
         {
           "regle": "AGREEMENT_TOUT_LE",
           "debut": 4016,
-          "longueur": 8,
+          "longueur": 4,
           "message": "\"Tout\" et le groupe nominal ne semblent pas bien accordés.",
           "suggestions": ["tous"]
         },
         {
+          "regle": "D_N",
+          "debut": 4032,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["Leurs parents", "Leur parent", "Leur parente", "Leurs parentes"]
+        },
+        {
           "regle": "AUX_ETRE_VCONJ",
-          "debut": 4051,
-          "longueur": 11,
+          "debut": 4056,
+          "longueur": 6,
           "message": "Après l’auxiliaire « sont », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde en genre et en nombre avec le sujet du verbe.",
-          "suggestions": []
+          "suggestions": ["resté", "restée", "restés", "restées"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 4099,
+          "longueur": 2,
+          "message": "Si « fille » est l’antécédent du relatif « que », vérifiez l’accord du participe « vu ».",
+          "suggestions": ["vue"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 4124,
+          "longueur": 4,
+          "message": "Vérifiez la concordance de «bleu» avec les noms précédents.",
+          "suggestions": ["bleue"]
         },
         {
           "regle": "QUELQUE_SOIT",
           "debut": 4130,
-          "longueur": 16,
+          "longueur": 13,
           "message": "« Quelques soit » est incorrect.",
           "suggestions": ["Quel que soit"]
         },
         {
           "regle": "COMMENT_VPPA",
-          "debut": 4152,
-          "longueur": 24,
+          "debut": 4169,
+          "longueur": 7,
           "message": "Un verbe à l'infinitif est généralement attendu après un verbe conjugué.",
-          "suggestions": ["promené"]
+          "suggestions": ["promener"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 4179,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["Ça", "Cela"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 4234,
-          "longueur": 9,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 4237,
+          "longueur": 6,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « habite ».",
+          "suggestions": ["habites"]
+        },
+        {
+          "regle": "ON_ONT",
+          "debut": 4257,
+          "longueur": 3,
+          "message": "Une phrase doit commencer par un sujet.",
+          "suggestions": ["On", "Ils ont"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 4273,
-          "longueur": 4,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 4276,
+          "longueur": 1,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « a ».",
+          "suggestions": ["as"]
         },
         {
           "regle": "CES_CEST",
           "debut": 4304,
-          "longueur": 12,
-          "message": "Voulez-vous écrire  au lieu de « Ces » ?",
-          "suggestions": []
+          "longueur": 3,
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "suggestions": ["C'est"]
         },
         {
-          "regle": "SAIT_CES_C_EST_S_EST",
-          "debut": 4360,
-          "longueur": 8,
-          "message": "Le verbe \"savoir\" semble plus approprié.",
-          "suggestions": ["sais"]
+          "regle": "A_ACCENT",
+          "debut": 4349,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 4363,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 4374,
+          "longueur": 6,
+          "message": "Le mot pluriel « amusés » n’est pas accordé en nombre avec le mot singulier « c' ».",
+          "suggestions": ["amusé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 4400,
+          "debut": 4403,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « peut ».",
+          "suggestions": ["peux"]
+        },
+        {
+          "regle": "SE_CE",
+          "debut": 4414,
+          "longueur": 11,
+          "message": "Le démonstratif \"ce\" se place avant le nom \"week-end\" .",
+          "suggestions": ["ce week-end"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 4432,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
+        },
+        {
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 4701,
           "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "message": "Le point d'interrogation est précédé d'une espace fine insécable.",
+          "suggestions": ["demain ?"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 4723,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [", "]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 4754,
+          "longueur": 2,
+          "message": "Ne placez pas d'espace avant le point.",
+          "suggestions": ["."]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 4782,
+          "longueur": 3,
+          "message": "Insérez une espace après la virgule.",
+          "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 4797,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
+        },
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 4804,
+          "longueur": 2,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "DOUBLES_ESPACES",
+          "debut": 4812,
+          "longueur": 2,
+          "message": "Il semblerait qu'une espace surnuméraire s'est glissée entre ces deux mots.",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 4832,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Au"]
         },
         {
           "regle": "SI",
-          "debut": 4871,
-          "longueur": 11,
+          "debut": 4876,
+          "longueur": 6,
           "message": "« Si » doit être suivi d’un verbe au présent ou à l'imparfait.",
-          "suggestions": []
+          "suggestions": ["ai", "avais"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 4890,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["ne serais"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 4919,
-          "longueur": 8,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
-        },
-        {
-          "regle": "SUBJ_LOCU",
-          "debut": 4936,
-          "longueur": 17,
-          "message": "Le verbe «  » doit être au subjonctif après la locution « avant que ».",
-          "suggestions": []
+          "debut": 4922,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « vient ».",
+          "suggestions": ["viens"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 4946,
-          "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « je » et le verbe «  ».",
-          "suggestions": []
+          "debut": 4949,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « part ».",
+          "suggestions": ["pars"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 4955,
-          "longueur": 18,
+          "debut": 4966,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["décidé"]
         },
         {
           "regle": "SUBJ_LOCU",
-          "debut": 4987,
-          "longueur": 23,
+          "debut": 5007,
+          "longueur": 3,
           "message": "Le verbe « est » doit être au subjonctif après la locution « , bien ».",
-          "suggestions": ["est"]
+          "suggestions": ["soit"]
         },
         {
-          "regle": "CONFUSION_DANS_UNE_EXPRESSION",
-          "debut": 5019,
-          "longueur": 18,
-          "message": "Une erreur d’orthographe semble être détectée.",
-          "suggestions": ["serais"]
+          "regle": "ETRE_GRE",
+          "debut": 5027,
+          "longueur": 6,
+          "message": "« Être gré » est une expression fautive.",
+          "suggestions": ["saurais"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 5072,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
         },
         {
           "regle": "A_INFINITIF",
           "debut": 5090,
           "longueur": 6,
           "message": "Un verbe conjugué ou un infinitif semble plus approprié.",
-          "suggestions": ["a pris"]
+          "suggestions": ["a pris", "à prendre"]
         },
         {
-          "regle": "D_N",
+          "regle": "D_N_E_OU_E",
           "debut": 5117,
           "longueur": 8,
           "message": "Le déterminant s'accorde avec le nom \"pomme\".",
-          "suggestions": ["une pomme"]
+          "suggestions": ["un pommé", "une pomme"]
         }
       ]
     },
@@ -828,7 +1501,22 @@
       "nom": "blancs",
       "texte": "   \n\t  \n",
       "mots": 0,
-      "detections": []
+      "detections": [
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 0,
+          "longueur": 3,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 5,
+          "longueur": 2,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        }
+      ]
     },
     {
       "nom": "apostrophes-typographiques",
@@ -836,18 +1524,18 @@
       "mots": 28,
       "detections": [
         {
-          "regle": "A_A_ACCENT2",
-          "debut": 46,
-          "longueur": 36,
-          "message": "La préposition  est généralement attendue après un verbe conjugué.",
-          "suggestions": []
+          "regle": "A_ACCENT",
+          "debut": 81,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "suggestions": ["à"]
         },
         {
-          "regle": "PRONSUJ_NONVERBE",
-          "debut": 157,
-          "longueur": 5,
-          "message": "Une forme conjuguée du verbe est attendue.",
-          "suggestions": ["était"]
+          "regle": "APOS_ESPACE",
+          "debut": 101,
+          "longueur": 6,
+          "message": "Il ne doit pas y avoir d’espace après l’apostrophe.",
+          "suggestions": ["qu’il"]
         }
       ]
     },
@@ -861,7 +1549,28 @@
           "debut": 60,
           "longueur": 9,
           "message": "Le déterminant s'accorde avec le nom \"fille\".",
-          "suggestions": ["Les filles"]
+          "suggestions": ["La fille", "Les filles"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 75,
+          "longueur": 6,
+          "message": "Vérifiez l'accord en genre et en nombre de « arrivé », le féminin semble plus probable.",
+          "suggestions": ["arrivée"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 90,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["leurs parents", "leur parent", "leur parente", "leurs parentes"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 143,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
         }
       ]
     },
@@ -871,32 +1580,74 @@
       "mots": 39,
       "detections": [
         {
-          "regle": "START_D_N",
-          "debut": 0,
-          "longueur": 13,
-          "message": "Un déterminant est nécessaire, car une phrase ne peut pas commencer par un nom.",
-          "suggestions": ["les pARIS", "des pARIS", "ces pARIS"]
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 27,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Je"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 40,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 42,
+          "longueur": 5,
+          "message": "Un nom de ville prend une majuscule.",
+          "suggestions": ["Paris"]
         },
         {
           "regle": "MOIS",
-          "debut": 48,
-          "longueur": 10,
+          "debut": 51,
+          "longueur": 7,
           "message": "Les mois de l’année s'écrivent sans majuscule.",
           "suggestions": ["juillet"]
         },
         {
-          "regle": "ACCORD_SUJET_VERBE",
-          "debut": 79,
-          "longueur": 17,
-          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
-          "suggestions": []
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 73,
+          "longueur": 4,
+          "message": "Un prénom prend une majuscule.",
+          "suggestions": ["Jean"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 108,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"VACANCES\".",
+          "suggestions": ["LEURS VACANCES", "LEUR VACANCE"]
         },
         {
           "regle": "JOURS",
-          "debut": 123,
-          "longueur": 8,
+          "debut": 126,
+          "longueur": 5,
           "message": "Les jours de la semaine s'écrivent sans majuscule.",
           "suggestions": ["lundi"]
+        },
+        {
+          "regle": "FR_SPELLING_RULE",
+          "debut": 167,
+          "longueur": 4,
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["État", "Était", "Étant", "États", "Ethan"]
+        },
+        {
+          "regle": "FR_SPELLING_RULE",
+          "debut": 173,
+          "longueur": 5,
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["École", "Écoles", "Découle", "Accolé", "Écoulé"]
+        },
+        {
+          "regle": "FR_SPELLING_RULE",
+          "debut": 182,
+          "longueur": 6,
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["Église", "Églises", "Égalise", "Enlisé", "Éclisse"]
         }
       ]
     },
@@ -906,25 +1657,53 @@
       "mots": 50,
       "detections": [
         {
-          "regle": "VIRG_NON_TROUVEE",
-          "debut": 22,
-          "longueur": 14,
-          "message": "Une virgule est requise.",
-          "suggestions": [", il"]
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 11,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [","]
         },
         {
-          "regle": "DEUX_POINTS_ESPACE",
-          "debut": 87,
-          "longueur": 5,
-          "message": "Une espace est requise.",
-          "suggestions": [":"]
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 30,
+          "longueur": 7,
+          "message": "Les deux-points sont précédés d'une espace insécable.",
+          "suggestions": ["ajouta :"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 112,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [","]
+        },
+        {
+          "regle": "ESPACE_APRES_POINT",
+          "debut": 129,
+          "longueur": 3,
+          "message": "Il manque une espace après le point.",
+          "suggestions": [". Le", " Le"]
         },
         {
           "regle": "HEURES",
           "debut": 149,
           "longueur": 5,
           "message": "La lettre h doit être espacée dans les heures abrégées.",
-          "suggestions": []
+          "suggestions": ["19 h 00", "19:00"]
+        },
+        {
+          "regle": "TIRET",
+          "debut": 206,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
+        },
+        {
+          "regle": "TIRET",
+          "debut": 222,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
         }
       ]
     },
@@ -934,11 +1713,11 @@
       "mots": 44,
       "detections": [
         {
-          "regle": "MOIS",
-          "debut": 9,
-          "longueur": 6,
-          "message": "Les mois de l’année n’ont pas de majuscule. Voulez-vous écrire mars ?",
-          "suggestions": []
+          "regle": "FR_DATE_WEEKDAY",
+          "debut": 3,
+          "longueur": 7,
+          "message": "La date « 3 mars 2026 » n’est pas un lundi mais un mardi.",
+          "suggestions": ["mardi 3", "lundi 2"]
         },
         {
           "regle": "DATE",
@@ -946,6 +1725,20 @@
           "longueur": 10,
           "message": "Le mois de février n’a que 28 ou 29 jours pour les années bissextiles.",
           "suggestions": ["28 février", "29 février", "03 février"]
+        },
+        {
+          "regle": "AGREEMENT_NUMERAL_PLURAL",
+          "debut": 96,
+          "longueur": 4,
+          "message": "Vérifiez l'accord en nombre entre \"3\" et \"chat\".",
+          "suggestions": ["chats"]
+        },
+        {
+          "regle": "GRM_COLLECTIF_DE_NOM_SING",
+          "debut": 114,
+          "longueur": 5,
+          "message": "On achète des fruits ou des légumes au poids : le nom se met au pluriel.",
+          "suggestions": ["pommes"]
         }
       ]
     },
@@ -956,38 +1749,38 @@
       "detections": [
         {
           "regle": "TIRET",
-          "debut": 20,
-          "longueur": 4,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
+          "debut": 18,
+          "longueur": 3,
+          "message": "Le trait d'union est employé sans espaces pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": [" –", " —", ": "]
         },
         {
           "regle": "TIRET",
           "debut": 30,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
+        },
+        {
+          "regle": "OE",
+          "debut": 36,
           "longueur": 5,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
+          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
+          "suggestions": ["œufs"]
         },
         {
           "regle": "TIRET",
           "debut": 42,
-          "longueur": 4,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
-        },
-        {
-          "regle": "ESPACE_UNITES",
-          "debut": 52,
-          "longueur": 11,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
         },
         {
           "regle": "NE_PLUS_INF",
-          "debut": 65,
-          "longueur": 13,
-          "message": "Le verbe «  » devrait être à l’infinitif.",
-          "suggestions": []
+          "debut": 72,
+          "longueur": 6,
+          "message": "Le verbe « oublié » devrait être à l’infinitif.",
+          "suggestions": ["oublier"]
         }
       ]
     },
@@ -995,36 +1788,7 @@
       "nom": "sans-faute-long",
       "texte": "La bibliothèque de quartier a rouvert ses portes après six mois de travaux. Les lecteurs y découvrent des salles plus lumineuses, des fauteuils confortables et un espace réservé aux enfants, où des animatrices proposent chaque mercredi des lectures à voix haute. Le fonds a été enrichi de plusieurs milliers d'ouvrages, parmi lesquels des romans récents, des bandes dessinées et des livres en langues étrangères. Les horaires ont également été élargis : la bibliothèque est désormais ouverte le dimanche matin, ce que de nombreux habitants réclamaient depuis longtemps. Selon la directrice, la fréquentation a doublé dès la première semaine. Elle espère que ce succès durera et que les nouveaux inscrits prendront l'habitude de revenir régulièrement. Un club de lecture se réunira une fois par mois pour discuter d'un livre choisi ensemble.",
       "mots": 130,
-      "detections": [
-        {
-          "regle": "ADJ_GN",
-          "debut": 76,
-          "longueur": 67,
-          "message": "Vérifiez l'accord de cet adjectif avec le groupe nominal suivant.",
-          "suggestions": ["lumineuses"]
-        },
-        {
-          "regle": "DEUX_POINTS_ESPACE",
-          "debut": 452,
-          "longueur": 4,
-          "message": "Une espace est requise.",
-          "suggestions": [":"]
-        },
-        {
-          "regle": "EST_CE",
-          "debut": 470,
-          "longueur": 43,
-          "message": "Le sujet est lié au verbe par un trait d'union dans une phrase interrogative.",
-          "suggestions": ["est-ce"]
-        },
-        {
-          "regle": "ESPACE_UNITES",
-          "debut": 610,
-          "longueur": 6,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
-        }
-      ]
+      "detections": []
     },
     {
       "nom": "recit",
@@ -1033,24 +1797,38 @@
       "detections": [
         {
           "regle": "ACCORD_SUJET_VERBE",
-          "debut": 68,
-          "longueur": 25,
+          "debut": 84,
+          "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
-          "suggestions": []
+          "suggestions": ["regardaient"]
         },
         {
-          "regle": "D_N",
+          "regle": "GRM_TU_MOTS_COMPOSES",
           "debut": 125,
           "longueur": 11,
-          "message": "Le déterminant s'accorde avec le nom \"un\".",
-          "suggestions": ["quelques uns"]
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
-          "regle": "SUJET_AUXILIAIRE",
-          "debut": 352,
-          "longueur": 8,
-          "message": "Un verbe est nécessaire.",
-          "suggestions": ["en est", "est en", "en a", "a en"]
+          "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
+          "debut": 137,
+          "longueur": 13,
+          "message": "Le mot « téléphonaient » ne peut pas être un verbe après « un ».",
+          "suggestions": ["téléphoné"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 303,
+          "longueur": 1,
+          "message": "Cette préposition comporte un accent.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 555,
+          "longueur": 7,
+          "message": "Vérifiez la concordance de «couvert» avec les noms précédents.",
+          "suggestions": ["couverts"]
         }
       ]
     },
@@ -1061,45 +1839,52 @@
       "detections": [
         {
           "regle": "ETRE_VPPA_OU_ADJ",
-          "debut": 9,
-          "longueur": 10,
+          "debut": 14,
+          "longueur": 5,
           "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["aller", "aller", "aller", "aller"]
+          "suggestions": ["allé", "allés", "allée", "allées"]
         },
         {
-          "regle": "D_N_E_OU_E",
-          "debut": 124,
-          "longueur": 10,
-          "message": "Vérifiez l'accord entre le nom et le déterminant précédent.",
-          "suggestions": ["allées"]
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 104,
+          "longueur": 5,
+          "message": "Le verbe doit être pluriel.",
+          "suggestions": ["étaient"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 136,
-          "longueur": 18,
+          "debut": 147,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["trouvé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
           "debut": 185,
           "longueur": 13,
           "message": "Vérifiez l’accord entre le pronom « elles » et le verbe « coûtait ».",
-          "suggestions": ["elle coûtait", "elles"]
+          "suggestions": ["elle coûtait", "elles coûtaient"]
+        },
+        {
+          "regle": "OE",
+          "debut": 231,
+          "longueur": 5,
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en que.",
-          "suggestions": []
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "suggestions": ["qu'ils"]
         },
         {
-          "regle": "NOUS_SOMMES",
-          "debut": 328,
-          "longueur": 12,
-          "message": "Vouliez-vous dire « sommes » (du verbe \"être\")?",
-          "suggestions": ["nous sommes"]
+          "regle": "A_INFINITIF",
+          "debut": 309,
+          "longueur": 10,
+          "message": "La préposition \"à\" est généralement placée avant un verbe à l'infinitif.",
+          "suggestions": ["à cuisiner"]
         },
         {
           "regle": "NOUS_SOMMES",
@@ -1109,284 +1894,592 @@
           "suggestions": ["nous sommes"]
         },
         {
+          "regle": "J_N",
+          "debut": 341,
+          "longueur": 11,
+          "message": "\"Allés\" et \"boire\" ne semblent pas bien accordés.",
+          "suggestions": ["allé boire", "allés boires"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 436,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["n'avions"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 447,
+          "longueur": 8,
+          "message": "Si « croissants » est l’antécédent du relatif « que », vérifiez l’accord du participe « commandé ».",
+          "suggestions": ["commandés"]
+        },
+        {
           "regle": "R_VAVOIR_VINF",
-          "debut": 457,
-          "longueur": 12,
+          "debut": 462,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["essayé"]
+        },
+        {
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 499,
+          "longueur": 10,
+          "message": "Vérifiez l’accord entre le pronom « il » et le verbe « comprenais ».",
+          "suggestions": ["comprenait"]
         },
         {
           "regle": "AUX_AVOIR_VCONJ",
-          "debut": 637,
-          "longueur": 19,
-          "message": "Après l’auxiliaire « avais », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
-          "suggestions": ["oublier", "oublier", "oublier", "oublier", "oublier"]
+          "debut": 555,
+          "longueur": 3,
+          "message": "Après l’auxiliaire « avons », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde avec le COD s’il est placé avant l’auxiliaire ; sinon il restera au masculin singulier.",
+          "suggestions": ["ri"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 641,
-          "longueur": 15,
+          "debut": 649,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["oublié"]
         },
         {
-          "regle": "NOM_AGREEMENT",
+          "regle": "D_N_E_OU_E",
           "debut": 747,
           "longueur": 8,
-          "message": "Vouliez-vous écrire \"rendu\" (infinitif)? \"La\" et \"rendu\" ne sont pas bien accordés.",
-          "suggestions": ["l'a rendu"]
+          "message": "Le déterminant s'accorde avec le nom \"rendu\".",
+          "suggestions": ["la rendue", "le rendu"]
         },
         {
-          "regle": "CONFUSION_E_ER",
-          "debut": 829,
-          "longueur": 24,
-          "message": "Un participe passé semble plus approprié.",
-          "suggestions": ["créer", "de créer", "à créer"]
+          "regle": "ACCORD_R_PERS_VERBE",
+          "debut": 975,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « écrit ».",
+          "suggestions": ["écris"]
         },
         {
           "regle": "A_ACCENT",
-          "debut": 975,
-          "longueur": 27,
-          "message": "Ce groupe nominal est formé avec la préposition .",
-          "suggestions": []
-        },
-        {
-          "regle": "A_A_ACCENT",
-          "debut": 981,
-          "longueur": 7,
-          "message": "Dans cette expression, la préposition \"a\" possède un accent grave.",
+          "debut": 987,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
           "regle": "COMME_PREVU",
-          "debut": 1021,
-          "longueur": 14,
+          "debut": 1027,
+          "longueur": 8,
           "message": "Le mot « convenus » est invariable après « comme ».",
-          "suggestions": ["convenus"]
+          "suggestions": ["convenu"]
         },
         {
-          "regle": "ESPACE_UNITES",
+          "regle": "PRONSUJ_NONVERBE",
+          "debut": 1045,
+          "longueur": 5,
+          "message": "Un verbe conjugué est généralement attendu après le pronom personnel sujet « je ».",
+          "suggestions": ["envoie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
           "debut": 1091,
           "longueur": 7,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "message": "Vérifiez la concordance de «demandé» avec les noms précédents.",
+          "suggestions": ["demandés"]
         },
         {
           "regle": "SONT_SON",
           "debut": 1126,
           "longueur": 13,
           "message": "Le mot singulier \"meilleur\" n’est pas accordé en nombre avec le verbe \"sont\".",
-          "suggestions": ["son meilleur"]
+          "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
+        },
+        {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 1144,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1152,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 1184,
+          "longueur": 7,
+          "message": "Avec l’auxiliaire « ont », le participe passé « annulés » ne s’accorde pas avec ce qui suit.",
+          "suggestions": ["annulé"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 1216,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 1241,
+          "longueur": 19,
+          "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
+          "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1317,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 1347,
+          "longueur": 10,
+          "message": "Vérifiez la concordance de «distingués» avec les noms précédents.",
+          "suggestions": ["distinguées"]
+        },
+        {
+          "regle": "ACCORD_SUJET_VERBE",
+          "debut": 1372,
+          "longueur": 5,
+          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
+          "suggestions": ["étaient"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 1389,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"vacances\".",
+          "suggestions": ["leurs vacances", "leur vacance"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 1404,
-          "longueur": 14,
+          "debut": 1412,
+          "longueur": 6,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["mangé"]
         },
         {
           "regle": "AGREEMENT_TOUT_LE",
           "debut": 1452,
-          "longueur": 8,
+          "longueur": 4,
           "message": "\"Tout\" et le groupe nominal ne semblent pas bien accordés.",
           "suggestions": ["tous"]
         },
         {
+          "regle": "D_N",
+          "debut": 1468,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["Leurs parents", "Leur parent", "Leur parente", "Leurs parentes"]
+        },
+        {
           "regle": "AUX_ETRE_VCONJ",
-          "debut": 1487,
-          "longueur": 11,
+          "debut": 1492,
+          "longueur": 6,
           "message": "Après l’auxiliaire « sont », le verbe devrait être au participe passé. Quant à l’accord, celui-ci s’accorde en genre et en nombre avec le sujet du verbe.",
-          "suggestions": []
+          "suggestions": ["resté", "restée", "restés", "restées"]
+        },
+        {
+          "regle": "QUE_AVOIR",
+          "debut": 1535,
+          "longueur": 2,
+          "message": "Si « fille » est l’antécédent du relatif « que », vérifiez l’accord du participe « vu ».",
+          "suggestions": ["vue"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 1560,
+          "longueur": 4,
+          "message": "Vérifiez la concordance de «bleu» avec les noms précédents.",
+          "suggestions": ["bleue"]
         },
         {
           "regle": "QUELQUE_SOIT",
           "debut": 1566,
-          "longueur": 16,
+          "longueur": 13,
           "message": "« Quelques soit » est incorrect.",
           "suggestions": ["Quel que soit"]
         },
         {
           "regle": "COMMENT_VPPA",
-          "debut": 1588,
-          "longueur": 24,
+          "debut": 1605,
+          "longueur": 7,
           "message": "Un verbe à l'infinitif est généralement attendu après un verbe conjugué.",
-          "suggestions": ["promené"]
+          "suggestions": ["promener"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 1615,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["Ça", "Cela"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1670,
-          "longueur": 9,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 1673,
+          "longueur": 6,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « habite ».",
+          "suggestions": ["habites"]
+        },
+        {
+          "regle": "ON_ONT",
+          "debut": 1693,
+          "longueur": 3,
+          "message": "Une phrase doit commencer par un sujet.",
+          "suggestions": ["On", "Ils ont"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1709,
-          "longueur": 4,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "debut": 1712,
+          "longueur": 1,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « a ».",
+          "suggestions": ["as"]
         },
         {
           "regle": "CES_CEST",
           "debut": 1740,
-          "longueur": 12,
-          "message": "Voulez-vous écrire  au lieu de « Ces » ?",
-          "suggestions": []
+          "longueur": 3,
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "suggestions": ["C'est"]
         },
         {
-          "regle": "SAIT_CES_C_EST_S_EST",
-          "debut": 1796,
-          "longueur": 8,
-          "message": "Le verbe \"savoir\" semble plus approprié.",
-          "suggestions": ["sais"]
+          "regle": "A_ACCENT",
+          "debut": 1785,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 1799,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
+        },
+        {
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 1810,
+          "longueur": 6,
+          "message": "Le mot pluriel « amusés » n’est pas accordé en nombre avec le mot singulier « c' ».",
+          "suggestions": ["amusé"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 1836,
+          "debut": 1839,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « peut ».",
+          "suggestions": ["peux"]
+        },
+        {
+          "regle": "SE_CE",
+          "debut": 1850,
+          "longueur": 11,
+          "message": "Le démonstratif \"ce\" se place avant le nom \"week-end\" .",
+          "suggestions": ["ce week-end"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 1868,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
+        },
+        {
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 2137,
           "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
+          "message": "Le point d'interrogation est précédé d'une espace fine insécable.",
+          "suggestions": ["demain ?"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2159,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [", "]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2190,
+          "longueur": 2,
+          "message": "Ne placez pas d'espace avant le point.",
+          "suggestions": ["."]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 2218,
+          "longueur": 3,
+          "message": "Insérez une espace après la virgule.",
+          "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 2233,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
+        },
+        {
+          "regle": "WHITESPACE_RULE",
+          "debut": 2240,
+          "longueur": 2,
+          "message": "Faute de frappe possible : une espace est répétée",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "DOUBLES_ESPACES",
+          "debut": 2248,
+          "longueur": 2,
+          "message": "Il semblerait qu'une espace surnuméraire s'est glissée entre ces deux mots.",
+          "suggestions": [" "]
+        },
+        {
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 2268,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Au"]
         },
         {
           "regle": "SI",
-          "debut": 2307,
-          "longueur": 11,
+          "debut": 2312,
+          "longueur": 6,
           "message": "« Si » doit être suivi d’un verbe au présent ou à l'imparfait.",
-          "suggestions": []
+          "suggestions": ["ai", "avais"]
+        },
+        {
+          "regle": "P_V_PAS",
+          "debut": 2326,
+          "longueur": 6,
+          "message": "Un adverbe de négation doit être ajouté afin d'obtenir une négation complète.",
+          "suggestions": ["ne serais"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 2355,
-          "longueur": 8,
-          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe «  ».",
-          "suggestions": []
-        },
-        {
-          "regle": "SUBJ_LOCU",
-          "debut": 2372,
-          "longueur": 17,
-          "message": "Le verbe «  » doit être au subjonctif après la locution « avant que ».",
-          "suggestions": []
+          "debut": 2358,
+          "longueur": 5,
+          "message": "Vérifiez l’accord entre le pronom « tu » et le verbe « vient ».",
+          "suggestions": ["viens"]
         },
         {
           "regle": "ACCORD_R_PERS_VERBE",
-          "debut": 2382,
-          "longueur": 7,
-          "message": "Vérifiez l’accord entre le pronom « je » et le verbe «  ».",
-          "suggestions": []
+          "debut": 2385,
+          "longueur": 4,
+          "message": "Vérifiez l’accord entre le pronom « je » et le verbe « part ».",
+          "suggestions": ["pars"]
         },
         {
           "regle": "R_VAVOIR_VINF",
-          "debut": 2391,
-          "longueur": 18,
+          "debut": 2402,
+          "longueur": 7,
           "message": "Un participe passé est attendu après l'auxiliaire avoir.",
-          "suggestions": []
+          "suggestions": ["décidé"]
         },
         {
           "regle": "SUBJ_LOCU",
-          "debut": 2423,
-          "longueur": 23,
+          "debut": 2443,
+          "longueur": 3,
           "message": "Le verbe « est » doit être au subjonctif après la locution « , bien ».",
-          "suggestions": ["est"]
+          "suggestions": ["soit"]
         },
         {
-          "regle": "CONFUSION_DANS_UNE_EXPRESSION",
-          "debut": 2455,
-          "longueur": 18,
-          "message": "Une erreur d’orthographe semble être détectée.",
-          "suggestions": ["serais"]
+          "regle": "ETRE_GRE",
+          "debut": 2463,
+          "longueur": 6,
+          "message": "« Être gré » est une expression fautive.",
+          "suggestions": ["saurais"]
+        },
+        {
+          "regle": "CE_SE",
+          "debut": 2508,
+          "longueur": 2,
+          "message": "Le pronom personnel \"se\" est attendu après le sujet et avant le verbe pronominal.",
+          "suggestions": ["s'"]
         },
         {
           "regle": "A_INFINITIF",
           "debut": 2526,
           "longueur": 6,
           "message": "Un verbe conjugué ou un infinitif semble plus approprié.",
-          "suggestions": ["a pris"]
+          "suggestions": ["a pris", "à prendre"]
         },
         {
-          "regle": "D_N",
+          "regle": "D_N_E_OU_E",
           "debut": 2553,
           "longueur": 8,
           "message": "Le déterminant s'accorde avec le nom \"pomme\".",
-          "suggestions": ["une pomme"]
+          "suggestions": ["un pommé", "une pomme"]
         },
         {
-          "regle": "A_A_ACCENT2",
-          "debut": 2610,
-          "longueur": 36,
-          "message": "La préposition  est généralement attendue après un verbe conjugué.",
-          "suggestions": []
+          "regle": "A_ACCENT",
+          "debut": 2645,
+          "longueur": 1,
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "suggestions": ["à"]
         },
         {
-          "regle": "PRONSUJ_NONVERBE",
-          "debut": 2721,
-          "longueur": 5,
-          "message": "Une forme conjuguée du verbe est attendue.",
-          "suggestions": ["était"]
+          "regle": "APOS_ESPACE",
+          "debut": 2665,
+          "longueur": 6,
+          "message": "Il ne doit pas y avoir d’espace après l’apostrophe.",
+          "suggestions": ["qu’il"]
         },
         {
           "regle": "D_N",
           "debut": 2803,
           "longueur": 9,
           "message": "Le déterminant s'accorde avec le nom \"fille\".",
-          "suggestions": ["Les filles"]
+          "suggestions": ["La fille", "Les filles"]
         },
         {
-          "regle": "START_D_N",
-          "debut": 2910,
-          "longueur": 13,
-          "message": "Un déterminant est nécessaire, car une phrase ne peut pas commencer par un nom.",
-          "suggestions": ["les pARIS", "des pARIS", "ces pARIS"]
+          "regle": "ETRE_VPPA_OU_ADJ",
+          "debut": 2818,
+          "longueur": 6,
+          "message": "Vérifiez l'accord en genre et en nombre de « arrivé », le féminin semble plus probable.",
+          "suggestions": ["arrivée"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 2833,
+          "longueur": 12,
+          "message": "Le déterminant s'accorde avec le nom \"parents\".",
+          "suggestions": ["leurs parents", "leur parent", "leur parente", "leurs parentes"]
+        },
+        {
+          "regle": "SA_CA_SE",
+          "debut": 2886,
+          "longueur": 2,
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "suggestions": ["ça", "cela"]
+        },
+        {
+          "regle": "UPPERCASE_SENTENCE_START",
+          "debut": 2937,
+          "longueur": 2,
+          "message": "Cette phrase ne commence pas par une majuscule.",
+          "suggestions": ["Je"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 2950,
+          "longueur": 1,
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 2952,
+          "longueur": 5,
+          "message": "Un nom de ville prend une majuscule.",
+          "suggestions": ["Paris"]
         },
         {
           "regle": "MOIS",
-          "debut": 2958,
-          "longueur": 10,
+          "debut": 2961,
+          "longueur": 7,
           "message": "Les mois de l’année s'écrivent sans majuscule.",
           "suggestions": ["juillet"]
         },
         {
-          "regle": "ACCORD_SUJET_VERBE",
-          "debut": 2989,
-          "longueur": 17,
-          "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
-          "suggestions": []
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 2983,
+          "longueur": 4,
+          "message": "Un prénom prend une majuscule.",
+          "suggestions": ["Jean"]
+        },
+        {
+          "regle": "D_N",
+          "debut": 3018,
+          "longueur": 13,
+          "message": "Le déterminant s'accorde avec le nom \"VACANCES\".",
+          "suggestions": ["LEURS VACANCES", "LEUR VACANCE"]
         },
         {
           "regle": "JOURS",
-          "debut": 3033,
-          "longueur": 8,
+          "debut": 3036,
+          "longueur": 5,
           "message": "Les jours de la semaine s'écrivent sans majuscule.",
           "suggestions": ["lundi"]
         },
         {
-          "regle": "VIRG_NON_TROUVEE",
-          "debut": 3149,
-          "longueur": 14,
-          "message": "Une virgule est requise.",
-          "suggestions": [", il"]
+          "regle": "FR_SPELLING_RULE",
+          "debut": 3077,
+          "longueur": 4,
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["État", "Était", "Étant", "États", "Ethan"]
         },
         {
-          "regle": "DEUX_POINTS_ESPACE",
-          "debut": 3214,
+          "regle": "FR_SPELLING_RULE",
+          "debut": 3083,
           "longueur": 5,
-          "message": "Une espace est requise.",
-          "suggestions": [":"]
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["École", "Écoles", "Découle", "Accolé", "Écoulé"]
+        },
+        {
+          "regle": "FR_SPELLING_RULE",
+          "debut": 3092,
+          "longueur": 6,
+          "message": "Faute de frappe possible trouvée.",
+          "suggestions": ["Église", "Églises", "Égalise", "Enlisé", "Éclisse"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 3138,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [","]
+        },
+        {
+          "regle": "FRENCH_WHITESPACE",
+          "debut": 3157,
+          "longueur": 7,
+          "message": "Les deux-points sont précédés d'une espace insécable.",
+          "suggestions": ["ajouta :"]
+        },
+        {
+          "regle": "COMMA_PARENTHESIS_WHITESPACE",
+          "debut": 3239,
+          "longueur": 2,
+          "message": "Insérez une espace après la virgule et non avant.",
+          "suggestions": [","]
+        },
+        {
+          "regle": "ESPACE_APRES_POINT",
+          "debut": 3256,
+          "longueur": 3,
+          "message": "Il manque une espace après le point.",
+          "suggestions": [". Le", " Le"]
         },
         {
           "regle": "HEURES",
           "debut": 3276,
           "longueur": 5,
           "message": "La lettre h doit être espacée dans les heures abrégées.",
-          "suggestions": []
+          "suggestions": ["19 h 00", "19:00"]
         },
         {
-          "regle": "MOIS",
-          "debut": 3377,
-          "longueur": 6,
-          "message": "Les mois de l’année n’ont pas de majuscule. Voulez-vous écrire mars ?",
-          "suggestions": []
+          "regle": "TIRET",
+          "debut": 3333,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
+        },
+        {
+          "regle": "TIRET",
+          "debut": 3349,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
+        },
+        {
+          "regle": "FR_DATE_WEEKDAY",
+          "debut": 3371,
+          "longueur": 7,
+          "message": "La date « 3 mars 2026 » n’est pas un lundi mais un mardi.",
+          "suggestions": ["mardi 3", "lundi 2"]
         },
         {
           "regle": "DATE",
@@ -1396,109 +2489,123 @@
           "suggestions": ["28 février", "29 février", "03 février"]
         },
         {
-          "regle": "TIRET",
-          "debut": 3640,
+          "regle": "AGREEMENT_NUMERAL_PLURAL",
+          "debut": 3464,
           "longueur": 4,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
+          "message": "Vérifiez l'accord en nombre entre \"3\" et \"chat\".",
+          "suggestions": ["chats"]
+        },
+        {
+          "regle": "GRM_COLLECTIF_DE_NOM_SING",
+          "debut": 3482,
+          "longueur": 5,
+          "message": "On achète des fruits ou des légumes au poids : le nom se met au pluriel.",
+          "suggestions": ["pommes"]
+        },
+        {
+          "regle": "TIRET",
+          "debut": 3638,
+          "longueur": 3,
+          "message": "Le trait d'union est employé sans espaces pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": [" –", " —", ": "]
         },
         {
           "regle": "TIRET",
           "debut": 3650,
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
+        },
+        {
+          "regle": "OE",
+          "debut": 3656,
           "longueur": 5,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
+          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
+          "suggestions": ["œufs"]
         },
         {
           "regle": "TIRET",
           "debut": 3662,
-          "longueur": 4,
-          "message": "Le tiret s'emploie entre deux mots distincts, dans les listes et les dialogues. Il semble plus approprié que le trait d'union.",
-          "suggestions": ["–", "—"]
-        },
-        {
-          "regle": "ESPACE_UNITES",
-          "debut": 3672,
-          "longueur": 11,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "longueur": 1,
+          "message": "Le trait d'union est employé sans espace pour former des mots, alors que le tiret est encadré par des espaces et placé entre deux mots distincts.",
+          "suggestions": ["—", "–", ":", "(", ")"]
         },
         {
           "regle": "NE_PLUS_INF",
-          "debut": 3685,
-          "longueur": 13,
-          "message": "Le verbe «  » devrait être à l’infinitif.",
-          "suggestions": []
-        },
-        {
-          "regle": "ADJ_GN",
-          "debut": 3825,
-          "longueur": 67,
-          "message": "Vérifiez l'accord de cet adjectif avec le groupe nominal suivant.",
-          "suggestions": ["lumineuses"]
-        },
-        {
-          "regle": "DEUX_POINTS_ESPACE",
-          "debut": 4201,
-          "longueur": 4,
-          "message": "Une espace est requise.",
-          "suggestions": [":"]
-        },
-        {
-          "regle": "EST_CE",
-          "debut": 4219,
-          "longueur": 43,
-          "message": "Le sujet est lié au verbe par un trait d'union dans une phrase interrogative.",
-          "suggestions": ["est-ce"]
-        },
-        {
-          "regle": "ESPACE_UNITES",
-          "debut": 4359,
+          "debut": 3692,
           "longueur": 6,
-          "message": "Le nombre est l'unité de mesure doivent être séparée.",
-          "suggestions": []
+          "message": "Le verbe « oublié » devrait être à l’infinitif.",
+          "suggestions": ["oublier"]
         },
         {
           "regle": "ACCORD_SUJET_VERBE",
-          "debut": 4659,
-          "longueur": 25,
+          "debut": 4675,
+          "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
-          "suggestions": []
+          "suggestions": ["regardaient"]
         },
         {
-          "regle": "D_N",
+          "regle": "GRM_TU_MOTS_COMPOSES",
           "debut": 4716,
           "longueur": 11,
-          "message": "Le déterminant s'accorde avec le nom \"un\".",
-          "suggestions": ["quelques uns"]
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
-          "regle": "SUJET_AUXILIAIRE",
-          "debut": 4943,
-          "longueur": 8,
-          "message": "Un verbe est nécessaire.",
-          "suggestions": ["en est", "est en", "en a", "a en"]
+          "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
+          "debut": 4728,
+          "longueur": 13,
+          "message": "Le mot « téléphonaient » ne peut pas être un verbe après « un ».",
+          "suggestions": ["téléphoné"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 4894,
+          "longueur": 1,
+          "message": "Cette préposition comporte un accent.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 5146,
+          "longueur": 7,
+          "message": "Vérifiez la concordance de «couvert» avec les noms précédents.",
+          "suggestions": ["couverts"]
         },
         {
           "regle": "ACCORD_SUJET_VERBE",
-          "debut": 5471,
-          "longueur": 25,
+          "debut": 5487,
+          "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
-          "suggestions": []
+          "suggestions": ["regardaient"]
         },
         {
-          "regle": "D_N",
+          "regle": "GRM_TU_MOTS_COMPOSES",
           "debut": 5528,
           "longueur": 11,
-          "message": "Le déterminant s'accorde avec le nom \"un\".",
-          "suggestions": ["quelques uns"]
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
-          "regle": "SUJET_AUXILIAIRE",
-          "debut": 5755,
-          "longueur": 8,
-          "message": "Un verbe est nécessaire.",
-          "suggestions": ["en est", "est en", "en a", "a en"]
+          "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
+          "debut": 5540,
+          "longueur": 13,
+          "message": "Le mot « téléphonaient » ne peut pas être un verbe après « un ».",
+          "suggestions": ["téléphoné"]
+        },
+        {
+          "regle": "A_A_ACCENT2",
+          "debut": 5706,
+          "longueur": 1,
+          "message": "Cette préposition comporte un accent.",
+          "suggestions": ["à"]
+        },
+        {
+          "regle": "AGREEMENT_POSTPONED_ADJ",
+          "debut": 5958,
+          "longueur": 7,
+          "message": "Vérifiez la concordance de «couvert» avec les noms précédents.",
+          "suggestions": ["couverts"]
         }
       ]
     }

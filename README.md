@@ -68,7 +68,7 @@ npm install
 npm run build
 ```
 
-Construisez le moteur grammatical (binaire et données dans `moteur/` ; la conversion du lexique prend une dizaine de minutes la première fois) :
+Construisez le moteur grammatical (binaire et données dans `moteur/`) :
 
 ```bash
 npm run build:moteur

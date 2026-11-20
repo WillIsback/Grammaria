@@ -50,7 +50,7 @@ jobs:
 
       # Moteur grammatical (grammaria-rc, Rust) à la révision épinglée dans
       # src-tauri/Cargo.toml : binaire du serveur et données (moteur/). La
-      # conversion du lexique prend une dizaine de minutes : le dossier produit
+      # compilation du moteur prend quelques minutes : le dossier produit
       # est mis en cache par révision. Le dépôt du moteur doit être lisible par
       # le job (dépôt public, ou jeton à ajouter au clone s'il est privé).
       - name: Révision du moteur

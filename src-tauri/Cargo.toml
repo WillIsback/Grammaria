@@ -39,7 +39,7 @@ url = "2"
 # Correcteur grammatical (version expérimentale) : moteur Rust grammaria-rc, lié à
 # l'application. Le paquet s'appelle aussi « grammaria » : il est renommé ici. Les données
 # (moteur/data, scripts/moteur/construire.sh) doivent venir de la même révision.
-grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "f55cf1663b04e36ea5e7e0183e77ce186c438422" }
+grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "77488bd31e78f5e6c27f7a32d646582a990df848" }
 
 [dev-dependencies]
 tempfile = "3"

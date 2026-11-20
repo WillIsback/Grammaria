@@ -19,11 +19,9 @@ FROM rust:1-alpine AS moteur
 WORKDIR /src
 COPY --from=grammaria-rc . .
 RUN cargo build --release --locked --bin grammaria --bin grammaria-build
-# Conversion des données (le lexique prend plusieurs minutes), puis règles de
-# désambiguïsation, lues telles quelles par le moteur.
-RUN mkdir -p /moteur/data && \
+# Données : les fichiers de règles et dictionnaires, copiés tels quels.
+RUN mkdir -p /moteur && \
     ./target/release/grammaria-build --assets assets/fr --out /moteur/data && \
-    cp assets/fr/languagetool-disambiguation.xml /moteur/data/fr.disambig.xml && \
     cp target/release/grammaria /moteur/grammaria
 
 # Stage 3 : Runtime Bun

@@ -111,9 +111,9 @@ describe("CorrecteurBureau (moteur Rust de l'application)", () => {
     // Rust rejette `invoke` avec une chaîne.
     backend.refuser(
       0,
-      "Le correcteur grammatical n'a pas pu charger ses données : fichier fr.lex introuvable. Réinstallez Grammaria.",
+      "Le correcteur grammatical n'a pas pu charger ses données : fichier lt/french.dict introuvable. Réinstallez Grammaria.",
     );
-    await expect(demande).rejects.toThrow(/fr\.lex introuvable/);
+    await expect(demande).rejects.toThrow(/french\.dict introuvable/);
     expect(correcteur.etat).toBe("erreur");
     expect(correcteur.erreur).toContain("n'a pas pu charger ses données");
     expect(correcteur.mesures).toBeNull();

@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # Construit le moteur grammatical (grammaria-rc, Rust) dans moteur/ :
 #   moteur/grammaria        binaire (`grammaria serve`, lancé par grammar.ts)
-#   moteur/data/            fr.lex, fr.words, fr.rules, fr.disambig.xml
+#   moteur/data/lt/         ressources françaises de LanguageTool, lues telles quelles
+#   moteur/data/grammaria/  règles propres au moteur et profil de règles
 #
-# Usage : scripts/moteur/construire.sh [--forcer]
+# Usage : scripts/moteur/construire.sh
 #   GRAMMARIA_RC_SRC : dépôt grammaria-rc (défaut : ../grammaria-rc, à côté de Grammaria)
 #   GRAMMARIA_MOTEUR_SORTIE : dossier produit (défaut : moteur/)
 #
-# La conversion du lexique domine (une dizaine de minutes) : elle n'est refaite que si les
-# sources de grammaria-rc sont plus récentes que ses données (data/), ou avec --forcer.
+# Les données ne sont plus converties : le moteur lit les fichiers de règles et les
+# dictionnaires d'origine, `grammaria-build` ne fait que les copier.
 #
 # L'application de bureau lie la même version du moteur (dépendance `grammaria_rc` de
-# src-tauri/Cargo.toml) : le format des données doit lui correspondre. Un avertissement
-# signale un dépôt qui n'est pas à la révision épinglée.
+# src-tauri/Cargo.toml) : les données doivent lui correspondre. Un avertissement signale
+# un dépôt qui n'est pas à la révision épinglée.
 set -euo pipefail
 
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC="$(cd "${GRAMMARIA_RC_SRC:-$RACINE/../grammaria-rc}" && pwd)"
 SORTIE="${GRAMMARIA_MOTEUR_SORTIE:-$RACINE/moteur}"
-FORCER="${1:-}"
 
 if [ ! -f "$SRC/Cargo.toml" ]; then
   echo "grammaria-rc introuvable dans $SRC (variable GRAMMARIA_RC_SRC)" >&2
@@ -32,30 +32,12 @@ cargo build --release --locked --manifest-path "$SRC/Cargo.toml" --bin grammaria
 EXE=""
 case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) EXE=".exe" ;; esac
 
-mkdir -p "$SORTIE/data"
+mkdir -p "$SORTIE"
 install -m 755 "$SRC/target/release/grammaria$EXE" "$SORTIE/grammaria$EXE"
 
-# Les données sont produites dans le dépôt du moteur (data/, non suivi), puis copiées :
-# elles y servent de cache d'une construction à l'autre.
-FICHIERS="fr.lex fr.words fr.rules fr.disambig.xml"
-a_jour() {
-  [ "$FORCER" != "--forcer" ] || return 1
-  for f in $FICHIERS; do
-    [ -f "$SRC/data/$f" ] || return 1
-  done
-  # Une source ou le convertisseur plus récents que les données : à refaire.
-  [ -z "$(find "$SRC/assets/fr" "$SRC/target/release/grammaria-build$EXE" -newer "$SRC/data/fr.rules" -print -quit)" ]
-}
-
-if a_jour; then
-  echo "[moteur] données à jour ($SRC/data)"
-else
-  echo "[moteur] conversion des données (lexique : une dizaine de minutes)"
-  (cd "$SRC" && "./target/release/grammaria-build$EXE" --assets assets/fr --out data)
-fi
-for f in $FICHIERS; do
-  install -m 644 "$SRC/data/$f" "$SORTIE/data/$f"
-done
+# Données : copie fraîche, pour qu'un fichier retiré du moteur ne reste pas.
+rm -rf "$SORTIE/data"
+"$SRC/target/release/grammaria-build$EXE" --assets "$SRC/assets/fr" --out "$SORTIE/data"
 
 # Version du moteur embarqué, pour les mesures et le diagnostic.
 REV="$(git -C "$SRC" rev-parse HEAD 2>/dev/null || echo inconnue)"
@@ -66,4 +48,5 @@ if [ -n "$EPINGLEE" ] && [ "$REV" != "$EPINGLEE" ]; then
 fi
 
 echo "[moteur] prêt :"
-ls -l "$SORTIE/grammaria$EXE" "$SORTIE/data"
+ls -l "$SORTIE/grammaria$EXE"
+du -sh "$SORTIE/data/lt" "$SORTIE/data/grammaria"

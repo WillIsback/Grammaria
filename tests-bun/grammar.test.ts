@@ -24,14 +24,15 @@ describe("GrammarChecker", () => {
       const text = "Je mange un pomme. Il a manger une pomme.";
       const matches = await checker.check(text);
 
-      const accord = matches.find((m) => m.rule.id === "D_N");
+      const accord = matches.find((m) => m.rule.id === "D_N_E_OU_E");
       expect(accord && text.slice(accord.offset, accord.offset + accord.length)).toBe("un pomme");
-      expect(accord?.replacements[0]?.value).toBe("une pomme");
+      // Comme LanguageTool : « un pommé » puis « une pomme ».
+      expect(accord?.replacements.map((r) => r.value)).toContain("une pomme");
       expect(accord?.rule.category?.id).toBeTruthy();
       expect(accord?.message).toContain("pomme");
       const participe = matches.find((m) => m.rule.id === "R_VAVOIR_VINF");
       expect(participe && text.slice(participe.offset, participe.offset + participe.length)).toBe(
-        "Il a manger",
+        "manger",
       );
     },
     LOAD_TIMEOUT_MS,
@@ -50,7 +51,7 @@ describe("GrammarChecker", () => {
   it("positions en unités UTF-16, comme les chaînes JavaScript (emojis, accents)", async () => {
     const text = "Génial 😀 👨‍👩‍👧 ! Je mange un pomme.";
     const matches = await checker.check(text);
-    const accord = matches.find((m) => m.rule.id === "D_N");
+    const accord = matches.find((m) => m.rule.id === "D_N_E_OU_E");
     expect(accord && text.slice(accord.offset, accord.offset + accord.length)).toBe("un pomme");
   });
 
@@ -59,7 +60,7 @@ describe("GrammarChecker", () => {
       i % 2 ? `Texte ${i} : je mange un pomme.` : `Texte ${i} : je mange une pomme.`,
     );
     const resultats = await Promise.all(textes.map((t) => checker.check(t)));
-    expect(resultats.map((m) => m.filter((x) => x.rule.id === "D_N").length)).toEqual(
+    expect(resultats.map((m) => m.filter((x) => x.rule.id === "D_N_E_OU_E").length)).toEqual(
       textes.map((_, i) => i % 2),
     );
   });
@@ -70,7 +71,7 @@ describe("GrammarChecker", () => {
     const analysis = analyze(original, corrected, await checker.check(original));
     expect(analysis.corrections[0].faults[0]).toMatchObject({
       source: "lt",
-      ruleKey: "D_N",
+      ruleKey: "D_N_E_OU_E",
       counted: true,
     });
   });
@@ -86,7 +87,7 @@ describe("GrammarChecker — processus du moteur", () => {
       moteur.kill();
       expect(await messageEchec(enCours)).toContain("s'est arrêté");
       const suivante = await local.check("Je mange un pomme.");
-      expect(suivante.some((m) => m.rule.id === "D_N")).toBe(true);
+      expect(suivante.some((m) => m.rule.id === "D_N_E_OU_E")).toBe(true);
     } finally {
       local.close();
     }
@@ -112,7 +113,7 @@ describe("GrammarChecker — processus du moteur", () => {
     process.env.GRAMMARIA_MOTEUR_DONNEES = "/introuvable/data";
     const local = new GrammarChecker();
     try {
-      expect(await messageEchec(local.check("Bonjour."))).toMatch(/missing fr\.lex/);
+      expect(await messageEchec(local.check("Bonjour."))).toMatch(/cannot load the language data/);
     } finally {
       local.close();
       if (avant === undefined) delete process.env.GRAMMARIA_MOTEUR_DONNEES;

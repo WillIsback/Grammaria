@@ -277,7 +277,7 @@ jobs:
 
       # Moteur grammatical (grammaria-rc, Rust) à la révision épinglée dans
       # src-tauri/Cargo.toml : binaire du serveur et données (moteur/). La
-      # conversion du lexique prend une dizaine de minutes : le dossier produit
+      # compilation du moteur prend quelques minutes : le dossier produit
       # est mis en cache par révision. Le dépôt du moteur doit être lisible par
       # le job (dépôt public, ou jeton à ajouter au clone s'il est privé).
       - name: Révision du moteur
@@ -416,9 +416,9 @@ jobs:
 
       # Garde de taille sur les paquets livrés. Mesures de la 0.3.0 : .deb
       # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Version
-      # expérimentale (données du moteur Rust en ressources, 35,9 Mo bruts) :
-      # .deb mesuré à 15,35 Mio, installeur NSIS non mesuré ; seuils relevés de
-      # 12 et 14 Mio à 20 Mio. Pas de seuil sur
+      # expérimentale (données du moteur Rust en ressources, 15 Mio bruts) :
+      # .deb mesuré à 8,76 Mio, installeur NSIS non mesuré ; seuils de la
+      # 0.3.0 gardés (12 et 14 Mio). Pas de seuil sur
       # l'AppImage (elle embarque WebKitGTK) ni sur le MSI, seulement affichés.
       # Un paquet attendu absent fait aussi échouer l'étape.
       - name: Garde de taille des paquets
@@ -427,8 +427,8 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           mio=$((1024 * 1024))
-          seuil_deb=$((20 * mio))
-          seuil_nsis=$((20 * mio))
+          seuil_deb=$((12 * mio))
+          seuil_nsis=$((14 * mio))
           if [ "$RUNNER_OS" = "Windows" ]; then
             garde=(dist-desktop/*-setup.exe)
             paquets=("${garde[@]}" dist-desktop/*.msi)

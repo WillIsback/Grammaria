@@ -1,7 +1,7 @@
 {
  "moteurs": [
-  "v0.3.0 (ltjs)",
-  "expérimental (Rust)"
+  "reference",
+  "experimental"
  ],
  "corpus": {
   "reference": {
@@ -380,57 +380,57 @@
     {
      "nom": "marche-160-mots",
      "fautes": 15,
-     "couvertes": 8,
-     "detections": 12,
-     "bruit": 2,
-     "classees": 12,
+     "couvertes": 15,
+     "detections": 16,
+     "bruit": 1,
+     "classees": 15,
      "parSource": {
       "fiche": 5,
-      "lt": 4,
-      "accord": 3
+      "lt": 10,
+      "accord": 0
      },
-     "nonClassees": 3,
-     "fautesComptees": 13,
-     "note": 3.8
+     "nonClassees": 0,
+     "fautesComptees": 14,
+     "note": 2.5
     },
     {
      "nom": "courriel-pro",
      "fautes": 14,
-     "couvertes": 5,
-     "detections": 5,
+     "couvertes": 13,
+     "detections": 13,
      "bruit": 0,
-     "classees": 12,
+     "classees": 13,
      "parSource": {
       "fiche": 2,
-      "lt": 4,
-      "accord": 6
+      "lt": 11,
+      "accord": 0
      },
-     "nonClassees": 2,
-     "fautesComptees": 11,
+     "nonClassees": 1,
+     "fautesComptees": 13,
      "note": 0
     },
     {
      "nom": "accords",
      "fautes": 12,
-     "couvertes": 5,
-     "detections": 5,
+     "couvertes": 10,
+     "detections": 10,
      "bruit": 0,
-     "classees": 11,
+     "classees": 12,
      "parSource": {
       "fiche": 3,
-      "lt": 2,
-      "accord": 6
+      "lt": 7,
+      "accord": 2
      },
-     "nonClassees": 1,
-     "fautesComptees": 11,
+     "nonClassees": 0,
+     "fautesComptees": 12,
      "note": 0
     },
     {
      "nom": "homophones",
      "fautes": 12,
-     "couvertes": 5,
-     "detections": 5,
-     "bruit": 0,
+     "couvertes": 10,
+     "detections": 11,
+     "bruit": 1,
      "classees": 11,
      "parSource": {
       "fiche": 8,
@@ -460,32 +460,32 @@
     {
      "nom": "typographie",
      "fautes": 2,
-     "couvertes": 0,
-     "detections": 0,
+     "couvertes": 2,
+     "detections": 8,
      "bruit": 0,
-     "classees": 0,
+     "classees": 2,
      "parSource": {
       "fiche": 0,
-      "lt": 0,
+      "lt": 2,
       "accord": 0
      },
-     "nonClassees": 2,
-     "fautesComptees": 0,
-     "note": 20
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 14.6
     },
     {
      "nom": "conjugaison",
      "fautes": 10,
-     "couvertes": 7,
-     "detections": 8,
+     "couvertes": 9,
+     "detections": 9,
      "bruit": 0,
-     "classees": 9,
+     "classees": 10,
      "parSource": {
       "fiche": 3,
-      "lt": 5,
+      "lt": 6,
       "accord": 1
      },
-     "nonClassees": 1,
+     "nonClassees": 0,
      "fautesComptees": 10,
      "note": 0
     },
@@ -525,8 +525,8 @@
      "nom": "blancs",
      "fautes": 0,
      "couvertes": 0,
-     "detections": 0,
-     "bruit": 0,
+     "detections": 2,
+     "bruit": 2,
      "classees": 0,
      "parSource": {
       "fiche": 0,
@@ -542,7 +542,7 @@
      "fautes": 1,
      "couvertes": 1,
      "detections": 2,
-     "bruit": 1,
+     "bruit": 0,
      "classees": 1,
      "parSource": {
       "fiche": 1,
@@ -556,14 +556,14 @@
     {
      "nom": "emojis",
      "fautes": 4,
-     "couvertes": 1,
-     "detections": 1,
+     "couvertes": 4,
+     "detections": 4,
      "bruit": 0,
      "classees": 4,
      "parSource": {
       "fiche": 1,
-      "lt": 1,
-      "accord": 2
+      "lt": 3,
+      "accord": 0
      },
      "nonClassees": 0,
      "fautesComptees": 4,
@@ -572,25 +572,25 @@
     {
      "nom": "majuscules",
      "fautes": 13,
-     "couvertes": 3,
-     "detections": 4,
-     "bruit": 1,
-     "classees": 6,
+     "couvertes": 10,
+     "detections": 10,
+     "bruit": 0,
+     "classees": 12,
      "parSource": {
       "fiche": 1,
-      "lt": 3,
+      "lt": 9,
       "accord": 2
      },
-     "nonClassees": 7,
-     "fautesComptees": 6,
+     "nonClassees": 1,
+     "fautesComptees": 9,
      "note": 0
     },
     {
      "nom": "ponctuation",
      "fautes": 0,
      "couvertes": 0,
-     "detections": 3,
-     "bruit": 2,
+     "detections": 7,
+     "bruit": 3,
      "classees": 0,
      "parSource": {
       "fiche": 0,
@@ -604,14 +604,14 @@
     {
      "nom": "dates-chiffres-adresses",
      "fautes": 2,
-     "couvertes": 0,
-     "detections": 2,
+     "couvertes": 2,
+     "detections": 4,
      "bruit": 2,
      "classees": 2,
      "parSource": {
       "fiche": 0,
-      "lt": 0,
-      "accord": 2
+      "lt": 2,
+      "accord": 0
      },
      "nonClassees": 0,
      "fautesComptees": 2,
@@ -620,16 +620,16 @@
     {
      "nom": "lignes-et-liste",
      "fautes": 2,
-     "couvertes": 1,
+     "couvertes": 2,
      "detections": 5,
-     "bruit": 4,
-     "classees": 1,
+     "bruit": 3,
+     "classees": 2,
      "parSource": {
       "fiche": 1,
-      "lt": 0,
+      "lt": 1,
       "accord": 0
      },
-     "nonClassees": 1,
+     "nonClassees": 0,
      "fautesComptees": 1,
      "note": 10
     },
@@ -637,8 +637,8 @@
      "nom": "sans-faute-long",
      "fautes": 0,
      "couvertes": 0,
-     "detections": 4,
-     "bruit": 4,
+     "detections": 0,
+     "bruit": 0,
      "classees": 0,
      "parSource": {
       "fiche": 0,
@@ -652,14 +652,14 @@
     {
      "nom": "recit",
      "fautes": 4,
-     "couvertes": 2,
-     "detections": 3,
+     "couvertes": 4,
+     "detections": 5,
      "bruit": 1,
      "classees": 4,
      "parSource": {
       "fiche": 1,
-      "lt": 2,
-      "accord": 1
+      "lt": 3,
+      "accord": 0
      },
      "nonClassees": 0,
      "fautesComptees": 4,
@@ -669,28 +669,23 @@
    "bruit": [
     {
      "texte": "marche-160-mots",
-     "regle": "D_N_E_OU_E",
-     "passage": "les allées"
+     "regle": "J_N",
+     "passage": "allés boire"
     },
     {
-     "texte": "marche-160-mots",
-     "regle": "CONFUSION_E_ER",
-     "passage": "peuvent parfois créer de"
+     "texte": "homophones",
+     "regle": "ETRE_VPPA_OU_ADJ",
+     "passage": "amusés"
     },
     {
-     "texte": "apostrophes-typographiques",
-     "regle": "PRONSUJ_NONVERBE",
-     "passage": "l’été"
+     "texte": "blancs",
+     "regle": "WHITESPACE_RULE",
+     "passage": "   "
     },
     {
-     "texte": "majuscules",
-     "regle": "START_D_N",
-     "passage": "PARIS EST UNE"
-    },
-    {
-     "texte": "ponctuation",
-     "regle": "DEUX_POINTS_ESPACE",
-     "passage": ": des"
+     "texte": "blancs",
+     "regle": "WHITESPACE_RULE",
+     "passage": "  "
     },
     {
      "texte": "ponctuation",
@@ -698,9 +693,19 @@
      "passage": "19h00"
     },
     {
+     "texte": "ponctuation",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
      "texte": "dates-chiffres-adresses",
-     "regle": "MOIS",
-     "passage": "3 mars"
+     "regle": "FR_DATE_WEEKDAY",
+     "passage": "lundi 3"
     },
     {
      "texte": "dates-chiffres-adresses",
@@ -710,60 +715,35 @@
     {
      "texte": "lignes-et-liste",
      "regle": "TIRET",
-     "passage": "- du"
+     "passage": ":\n-"
     },
     {
      "texte": "lignes-et-liste",
      "regle": "TIRET",
-     "passage": "- des"
+     "passage": "-"
     },
     {
      "texte": "lignes-et-liste",
      "regle": "TIRET",
-     "passage": "- du"
-    },
-    {
-     "texte": "lignes-et-liste",
-     "regle": "ESPACE_UNITES",
-     "passage": "demi-écrémé"
-    },
-    {
-     "texte": "sans-faute-long",
-     "regle": "ADJ_GN",
-     "passage": "Les lecteurs y découvrent des salles plus lumineuses, des fauteuils"
-    },
-    {
-     "texte": "sans-faute-long",
-     "regle": "DEUX_POINTS_ESPACE",
-     "passage": ": la"
-    },
-    {
-     "texte": "sans-faute-long",
-     "regle": "EST_CE",
-     "passage": "est désormais ouverte le dimanche matin, ce"
-    },
-    {
-     "texte": "sans-faute-long",
-     "regle": "ESPACE_UNITES",
-     "passage": "doublé"
+     "passage": "-"
     },
     {
      "texte": "recit",
-     "regle": "SUJET_AUXILIAIRE",
-     "passage": "qu'il en"
+     "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
+     "passage": "téléphonaient"
     }
    ],
    "total": {
     "fautes": 92,
-    "couvertes": 39,
-    "detections": 60,
-    "bruit": 17,
-    "classees": 74,
+    "couvertes": 83,
+    "detections": 107,
+    "bruit": 13,
+    "classees": 89,
     "fiche": 26,
-    "lt": 25,
-    "accord": 23,
-    "nonClassees": 18,
-    "fautesComptees": 75
+    "lt": 58,
+    "accord": 5,
+    "nonClassees": 3,
+    "fautesComptees": 83
    }
   },
   "fautes": [
@@ -788,7 +768,9 @@
      [
       "ACCORD_SUJET_VERBE"
      ],
-     []
+     [
+      "ACCORD_SUJET_VERBE"
+     ]
     ]
    },
    {
@@ -825,7 +807,9 @@
      [
       "OE"
      ],
-     []
+     [
+      "OE"
+     ]
     ]
    },
    {
@@ -849,7 +833,9 @@
      [
       "A_INFINITIF"
      ],
-     []
+     [
+      "A_INFINITIF"
+     ]
     ]
    },
    {
@@ -861,7 +847,6 @@
       "NOUS_SOMMES"
      ],
      [
-      "NOUS_SOMMES",
       "NOUS_SOMMES"
      ]
     ]
@@ -874,7 +859,9 @@
      [
       "P_V_PAS"
      ],
-     []
+     [
+      "P_V_PAS"
+     ]
     ]
    },
    {
@@ -885,7 +872,9 @@
      [
       "QUE_AVOIR"
      ],
-     []
+     [
+      "QUE_AVOIR"
+     ]
     ]
    },
    {
@@ -909,7 +898,9 @@
      [
       "ACCORD_R_PERS_VERBE"
      ],
-     []
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
     ]
    },
    {
@@ -920,7 +911,9 @@
      [
       "AUX_AVOIR_VCONJ"
      ],
-     []
+     [
+      "AUX_AVOIR_VCONJ"
+     ]
     ]
    },
    {
@@ -932,7 +925,6 @@
       "R_VAVOIR_VINF"
      ],
      [
-      "AUX_AVOIR_VCONJ",
       "R_VAVOIR_VINF"
      ]
     ]
@@ -946,7 +938,7 @@
       "D_N_E_OU_E"
      ],
      [
-      "NOM_AGREEMENT"
+      "D_N_E_OU_E"
      ]
     ]
    },
@@ -959,7 +951,7 @@
       "ACCORD_R_PERS_VERBE"
      ],
      [
-      "A_ACCENT"
+      "ACCORD_R_PERS_VERBE"
      ]
     ]
    },
@@ -972,8 +964,7 @@
       "A_ACCENT"
      ],
      [
-      "A_ACCENT",
-      "A_A_ACCENT"
+      "A_ACCENT"
      ]
     ]
    },
@@ -998,7 +989,9 @@
      [
       "PRONSUJ_NONVERBE"
      ],
-     []
+     [
+      "PRONSUJ_NONVERBE"
+     ]
     ]
    },
    {
@@ -1010,7 +1003,7 @@
       "AGREEMENT_POSTPONED_ADJ"
      ],
      [
-      "ESPACE_UNITES"
+      "AGREEMENT_POSTPONED_ADJ"
      ]
     ]
    },
@@ -1033,7 +1026,9 @@
     "apres": "prévu",
     "regles": [
      [],
-     []
+     [
+      "GRM_MOTS_INVARIABLES"
+     ]
     ]
    },
    {
@@ -1042,7 +1037,9 @@
     "apres": "bien",
     "regles": [
      [],
-     []
+     [
+      "GRM_LOC_DIVERS"
+     ]
     ]
    },
    {
@@ -1062,7 +1059,9 @@
      [
       "QUE_AVOIR"
      ],
-     []
+     [
+      "QUE_AVOIR"
+     ]
     ]
    },
    {
@@ -1073,7 +1072,9 @@
      [
       "A_A_ACCENT2"
      ],
-     []
+     [
+      "A_A_ACCENT2"
+     ]
     ]
    },
    {
@@ -1084,7 +1085,9 @@
      [
       "D_N"
      ],
-     []
+     [
+      "D_N"
+     ]
     ]
    },
    {
@@ -1093,7 +1096,9 @@
     "apres": "prie",
     "regles": [
      [],
-     []
+     [
+      "GRM_LOC_DIVERS"
+     ]
     ]
    },
    {
@@ -1104,7 +1109,9 @@
      [
       "AGREEMENT_POSTPONED_ADJ"
      ],
-     []
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ]
     ]
    },
    {
@@ -1115,7 +1122,9 @@
      [
       "ACCORD_SUJET_VERBE"
      ],
-     []
+     [
+      "ACCORD_SUJET_VERBE"
+     ]
     ]
    },
    {
@@ -1135,7 +1144,9 @@
      [
       "D_N"
      ],
-     []
+     [
+      "D_N"
+     ]
     ]
    },
    {
@@ -1181,7 +1192,9 @@
      [
       "D_N"
      ],
-     []
+     [
+      "D_N"
+     ]
     ]
    },
    {
@@ -1205,7 +1218,9 @@
      [
       "QUE_AVOIR"
      ],
-     []
+     [
+      "QUE_AVOIR"
+     ]
     ]
    },
    {
@@ -1216,7 +1231,9 @@
      [
       "AGREEMENT_POSTPONED_ADJ"
      ],
-     []
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ]
     ]
    },
    {
@@ -1253,7 +1270,9 @@
      [
       "SA_CA_SE"
      ],
-     []
+     [
+      "SA_CA_SE"
+     ]
     ]
    },
    {
@@ -1286,7 +1305,9 @@
      [
       "ON_ONT"
      ],
-     []
+     [
+      "ON_ONT"
+     ]
     ]
    },
    {
@@ -1332,7 +1353,9 @@
      [
       "A_ACCENT"
      ],
-     []
+     [
+      "A_ACCENT"
+     ]
     ]
    },
    {
@@ -1344,7 +1367,7 @@
       "CE_SE"
      ],
      [
-      "SAIT_CES_C_EST_S_EST"
+      "CE_SE"
      ]
     ]
    },
@@ -1369,7 +1392,9 @@
      [
       "SE_CE"
      ],
-     []
+     [
+      "SE_CE"
+     ]
     ]
    },
    {
@@ -1380,7 +1405,9 @@
      [
       "SA_CA_SE"
      ],
-     []
+     [
+      "SA_CA_SE"
+     ]
     ]
    },
    {
@@ -1389,7 +1416,9 @@
     "apres": "cher",
     "regles": [
      [],
-     []
+     [
+      "GRM_ATTRIBUT_DE_CA"
+     ]
     ]
    },
    {
@@ -1400,7 +1429,9 @@
      [
       "UPPERCASE_SENTENCE_START"
      ],
-     []
+     [
+      "UPPERCASE_SENTENCE_START"
+     ]
     ]
    },
    {
@@ -1424,7 +1455,9 @@
      [
       "P_V_PAS"
      ],
-     []
+     [
+      "P_V_PAS"
+     ]
     ]
    },
    {
@@ -1449,7 +1482,6 @@
       "ACCORD_R_PERS_VERBE"
      ],
      [
-      "SUBJ_LOCU",
       "ACCORD_R_PERS_VERBE"
      ]
     ]
@@ -1489,7 +1521,7 @@
       "ETRE_GRE"
      ],
      [
-      "CONFUSION_DANS_UNE_EXPRESSION"
+      "ETRE_GRE"
      ]
     ]
    },
@@ -1501,7 +1533,9 @@
      [
       "CE_SE"
      ],
-     []
+     [
+      "CE_SE"
+     ]
     ]
    },
    {
@@ -1535,7 +1569,7 @@
       "D_N_E_OU_E"
      ],
      [
-      "D_N"
+      "D_N_E_OU_E"
      ]
     ]
    },
@@ -1548,7 +1582,7 @@
       "A_ACCENT"
      ],
      [
-      "A_A_ACCENT2"
+      "A_ACCENT"
      ]
     ]
    },
@@ -1573,7 +1607,9 @@
      [
       "ETRE_VPPA_OU_ADJ"
      ],
-     []
+     [
+      "ETRE_VPPA_OU_ADJ"
+     ]
     ]
    },
    {
@@ -1584,7 +1620,9 @@
      [
       "D_N"
      ],
-     []
+     [
+      "D_N"
+     ]
     ]
    },
    {
@@ -1595,7 +1633,9 @@
      [
       "SA_CA_SE"
      ],
-     []
+     [
+      "SA_CA_SE"
+     ]
     ]
    },
    {
@@ -1606,7 +1646,9 @@
      [
       "UPPERCASE_SENTENCE_START"
      ],
-     []
+     [
+      "UPPERCASE_SENTENCE_START"
+     ]
     ]
    },
    {
@@ -1617,7 +1659,9 @@
      [
       "A_A_ACCENT2"
      ],
-     []
+     [
+      "A_A_ACCENT2"
+     ]
     ]
    },
    {
@@ -1626,7 +1670,9 @@
     "apres": "Paris",
     "regles": [
      [],
-     []
+     [
+      "GRM_MAJ_GEOGRAPHIE"
+     ]
     ]
    },
    {
@@ -1648,7 +1694,9 @@
     "apres": "Jean",
     "regles": [
      [],
-     []
+     [
+      "GRM_MAJ_GEOGRAPHIE"
+     ]
     ]
    },
    {
@@ -1657,9 +1705,7 @@
     "apres": "ÉTAIENT",
     "regles": [
      [],
-     [
-      "ACCORD_SUJET_VERBE"
-     ]
+     []
     ]
    },
    {
@@ -1679,7 +1725,9 @@
      [
       "D_N"
      ],
-     []
+     [
+      "D_N"
+     ]
     ]
    },
    {
@@ -1712,7 +1760,9 @@
      [
       "FR_SPELLING_RULE"
      ],
-     []
+     [
+      "FR_SPELLING_RULE"
+     ]
     ]
    },
    {
@@ -1723,7 +1773,9 @@
      [
       "FR_SPELLING_RULE"
      ],
-     []
+     [
+      "FR_SPELLING_RULE"
+     ]
     ]
    },
    {
@@ -1734,7 +1786,9 @@
      [
       "FR_SPELLING_RULE"
      ],
-     []
+     [
+      "FR_SPELLING_RULE"
+     ]
     ]
    },
    {
@@ -1745,7 +1799,9 @@
      [
       "AGREEMENT_NUMERAL_PLURAL"
      ],
-     []
+     [
+      "AGREEMENT_NUMERAL_PLURAL"
+     ]
     ]
    },
    {
@@ -1754,7 +1810,9 @@
     "apres": "pommes",
     "regles": [
      [],
-     []
+     [
+      "GRM_COLLECTIF_DE_NOM_SING"
+     ]
     ]
    },
    {
@@ -1765,7 +1823,9 @@
      [
       "OE"
      ],
-     []
+     [
+      "OE"
+     ]
     ]
    },
    {
@@ -1801,7 +1861,7 @@
     "regles": [
      [],
      [
-      "D_N"
+      "GRM_TU_MOTS_COMPOSES"
      ]
     ]
    },
@@ -1813,7 +1873,9 @@
      [
       "A_A_ACCENT2"
      ],
-     []
+     [
+      "A_A_ACCENT2"
+     ]
     ]
    },
    {
@@ -1824,7 +1886,9 @@
      [
       "AGREEMENT_POSTPONED_ADJ"
      ],
-     []
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ]
     ]
    }
   ]
@@ -1839,153 +1903,153 @@
   },
   {
    "fautifs": 1000,
-   "detectes": 498,
-   "memeRegle": 410,
+   "detectes": 892,
+   "memeRegle": 795,
    "corrects": 1000,
-   "propres": 686
+   "propres": 697
   }
  ],
  "moteur": {
   "reference": {
-   "chargementMs": 4226,
+   "chargementMs": 4512,
    "memoireMo": {
-    "avant": 20.8,
-    "apresChargement": 819.7,
-    "apresCorpus": 1073.8,
-    "apresExemples": 869.9
+    "avant": 20.1,
+    "apresChargement": 809.8,
+    "apresCorpus": 1009,
+    "apresExemples": 826.9
    }
   },
   "experimental": {
-   "chargementMs": 121,
+   "chargementMs": 579,
    "memoireMo": {
     "avant": 20.7,
-    "apresChargement": 80.2,
-    "apresCorpus": 97.3,
-    "apresExemples": 105.1
+    "apresChargement": 245.5,
+    "apresCorpus": 273.2,
+    "apresExemples": 301.8
    }
   }
  },
  "serveurs": [
   {
-   "nom": "v0.3.0 (ltjs)",
-   "racine": "<arbre v0.3.0>",
+   "nom": "reference",
+   "racine": "/tmp/claude-0/-home-user/df25e29c-a4b6-5777-aca5-81dafd0c57b5/scratchpad/grammaria-v0.3.0",
    "demarrageMs": [
-    4313,
-    4341,
-    4272
+    4807,
+    4684,
+    5057
    ],
    "memoireMo": {
-    "apresDemarrage": 691.1,
-    "apresCharge": 1178.1
+    "apresDemarrage": 680.3,
+    "apresCharge": 1087.1
    },
    "latence": [
     {
      "nom": "court",
      "mots": 4,
      "ms": {
-      "mediane": 30.24,
-      "p95": 48.22,
-      "min": 15.05,
-      "max": 52.44
+      "mediane": 30.23,
+      "p95": 43.39,
+      "min": 22.99,
+      "max": 50.27
      }
     },
     {
      "nom": "marche-160-mots",
      "mots": 160,
      "ms": {
-      "mediane": 198.73,
-      "p95": 294.44,
-      "min": 150.63,
-      "max": 309.94
+      "mediane": 240.96,
+      "p95": 306.62,
+      "min": 169.55,
+      "max": 347.53
      }
     },
     {
      "nom": "long",
      "mots": 906,
      "ms": {
-      "mediane": 954.06,
-      "p95": 1067.93,
-      "min": 852.93,
-      "max": 1074.27
+      "mediane": 1206.11,
+      "p95": 1545.49,
+      "min": 912.11,
+      "max": 1621.06
      }
     },
     {
      "nom": "tres-long",
      "mots": 1085,
      "ms": {
-      "mediane": 895.8,
-      "p95": 1000.69,
-      "min": 822.2,
-      "max": 1052.73
+      "mediane": 1218.24,
+      "p95": 1363.31,
+      "min": 986.59,
+      "max": 1397.44
      }
     }
    ],
    "debit": {
     "simultanees": 16,
     "requetes": 160,
-    "dureeMs": 24897,
-    "parSeconde": 6.4
+    "dureeMs": 33322,
+    "parSeconde": 4.8
    }
   },
   {
-   "nom": "expérimental (Rust)",
-   "racine": "<branche expérimentale>",
+   "nom": "experimental",
+   "racine": "/home/user/Grammaria",
    "demarrageMs": [
-    274,
-    222,
-    230
+    660,
+    696,
+    724
    ],
    "memoireMo": {
-    "apresDemarrage": 102.4,
-    "apresCharge": 117.4
+    "apresDemarrage": 265.5,
+    "apresCharge": 291.8
    },
    "latence": [
     {
      "nom": "court",
      "mots": 4,
      "ms": {
-      "mediane": 18.06,
-      "p95": 20.89,
-      "min": 17.05,
-      "max": 24.76
+      "mediane": 2.24,
+      "p95": 3.63,
+      "min": 1.89,
+      "max": 3.96
      }
     },
     {
      "nom": "marche-160-mots",
      "mots": 160,
      "ms": {
-      "mediane": 565.31,
-      "p95": 650.78,
-      "min": 530.96,
-      "max": 758.86
+      "mediane": 45.34,
+      "p95": 66.96,
+      "min": 41,
+      "max": 67
      }
     },
     {
      "nom": "long",
      "mots": 906,
      "ms": {
-      "mediane": 1924.28,
-      "p95": 2103.64,
-      "min": 1817.58,
-      "max": 2414.62
+      "mediane": 288.2,
+      "p95": 376.69,
+      "min": 238.7,
+      "max": 394.76
      }
     },
     {
      "nom": "tres-long",
      "mots": 1085,
      "ms": {
-      "mediane": 2526.01,
-      "p95": 2676.92,
-      "min": 2436.22,
-      "max": 2721.14
+      "mediane": 325.47,
+      "p95": 449.11,
+      "min": 280.79,
+      "max": 476.05
      }
     }
    ],
    "debit": {
     "simultanees": 16,
     "requetes": 160,
-    "dureeMs": 95990,
-    "parSeconde": 1.7
+    "dureeMs": 8559,
+    "parSeconde": 18.7
    }
   }
  ]

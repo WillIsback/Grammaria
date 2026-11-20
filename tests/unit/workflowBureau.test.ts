@@ -67,10 +67,10 @@ describe("workflow build-desktop (bureau sans Bun)", () => {
     expect(publication).not.toContain("grammaria-desktop-");
   });
 
-  it("garde la taille du .deb et de l'installeur NSIS (20 Mio avec les données du moteur)", () => {
+  it("garde la taille du .deb et de l'installeur NSIS (12 et 14 Mio, données du moteur comprises)", () => {
     const garde = etape(build, "Garde de taille des paquets");
-    expect(garde).toContain("seuil_deb=$((20 * mio))");
-    expect(garde).toContain("seuil_nsis=$((20 * mio))");
+    expect(garde).toContain("seuil_deb=$((12 * mio))");
+    expect(garde).toContain("seuil_nsis=$((14 * mio))");
     expect(garde).toContain("*.AppImage");
     expect(garde).toContain("*.msi");
     expect(garde).toContain("GITHUB_STEP_SUMMARY");
@@ -89,7 +89,7 @@ describe("workflows ci et release", () => {
     expect(ci).not.toContain("chromium");
     // Données du moteur Rust : ressources de l'application.
     expect(new Set(Object.values(conf.bundle.resources))).toEqual(
-      new Set(["moteur/fr.disambig.xml", "moteur/fr.lex", "moteur/fr.rules", "moteur/fr.words"]),
+      new Set(["moteur/lt/", "moteur/grammaria/"]),
     );
   });
 

@@ -1,5 +1,5 @@
-//! Correcteur grammatical : le moteur Rust grammaria-rc (règles françaises de
-//! LanguageTool réimplémentées en natif), lié à l'application.
+//! Correcteur grammatical : le moteur Rust grammaria-rc (chaîne française de
+//! LanguageTool portée en Rust, plus ses propres règles), lié à l'application.
 //!
 //! Version expérimentale : remplace le portage JavaScript de LanguageTool, qui
 //! tournait dans un Worker de la WebView avec une archive de règles. Ici, la
@@ -11,7 +11,8 @@
 //!   réponse de POST /api/check (tableau `matches`, positions en unités
 //!   UTF-16 comme en JavaScript).
 //!
-//! Les données (`fr.lex`, `fr.words`, `fr.rules`, `fr.disambig.xml`) sont des
+//! Les données (`lt/` : règles et dictionnaires de LanguageTool, lus tels
+//! quels ; `grammaria/` : règles propres au moteur et profil) sont des
 //! ressources de l'application (`bundle.resources` de tauri.conf.json, dossier
 //! `moteur/`), produites par `scripts/moteur/construire.sh`.
 //!
@@ -33,8 +34,13 @@ use crate::logs;
 /// Dossier des données du moteur dans les ressources de l'application.
 pub const DOSSIER_RESSOURCES: &str = "moteur";
 
-/// Fichiers attendus dans le dossier des données.
-const FICHIERS: [&str; 4] = ["fr.lex", "fr.words", "fr.rules", "fr.disambig.xml"];
+/// Fichiers dont l'absence est signalée nommément (le moteur en lit d'autres).
+const FICHIERS: [&str; 4] = [
+    "lt/french.dict",
+    "lt/grammar.xml",
+    "lt/disambiguation.xml",
+    "lt/segment.srx",
+];
 
 /// Longueur maximale d'un texte, en unités UTF-16 (`MAX_ANALYZE_LENGTH` du
 /// gestionnaire d'API, api/handler.ts).
@@ -47,7 +53,7 @@ const LONGUEUR_MAX: usize = 20_000;
 pub struct MesuresChargement {
     /// Taille des données du moteur sur le disque.
     pub donnees_octets: u64,
-    /// Durée du chargement (lexique, listes de mots, règles).
+    /// Durée du chargement (dictionnaires, règles).
     pub chargement_ms: f64,
 }
 
@@ -116,17 +122,30 @@ impl Interne {
 
 /// Taille totale des données ; erreur lisible si un fichier manque.
 fn taille_donnees(dossier: &Path) -> Result<u64, String> {
-    let mut total = 0;
     for nom in FICHIERS {
-        let meta = std::fs::metadata(dossier.join(nom)).map_err(|_| {
-            format!(
+        if !dossier.join(nom).is_file() {
+            return Err(format!(
                 "Le correcteur grammatical n'a pas pu charger ses données : \
                  fichier {nom} introuvable. Réinstallez Grammaria."
-            )
-        })?;
-        total += meta.len();
+            ));
+        }
     }
-    Ok(total)
+    Ok(taille_dossier(dossier))
+}
+
+/// Somme des tailles des fichiers d'un dossier, sous-dossiers compris.
+fn taille_dossier(dossier: &Path) -> u64 {
+    let Ok(entrees) = std::fs::read_dir(dossier) else {
+        return 0;
+    };
+    entrees
+        .filter_map(Result::ok)
+        .map(|entree| match entree.metadata() {
+            Ok(meta) if meta.is_dir() => taille_dossier(&entree.path()),
+            Ok(meta) => meta.len(),
+            Err(_) => 0,
+        })
+        .sum()
 }
 
 /// Détections de `texte`, en JSON (tableau `matches`).
@@ -135,7 +154,8 @@ fn controler(interne: &Interne, texte: &str) -> Result<String, String> {
         return Err("Texte trop long pour le correcteur grammatical.".into());
     }
     let (moteur, _) = interne.moteur()?;
-    Ok(moteur.check_json(texte, false, OffsetUnit::Utf16))
+    // Règles de style comprises, comme LanguageTool par défaut.
+    Ok(moteur.check_json(texte, true, OffsetUnit::Utf16))
 }
 
 /// Exécute `tache` hors du fil principal ; un panic du moteur devient une erreur.
@@ -196,7 +216,7 @@ mod tests {
             charge: Mutex::new(None),
         };
         let erreur = controler(&interne, "Bonjour.").unwrap_err();
-        assert!(erreur.contains("fr.lex introuvable"), "{erreur}");
+        assert!(erreur.contains("lt/french.dict introuvable"), "{erreur}");
         // Rien n'est retenu : la demande suivante retente le chargement.
         assert!(interne.charge.lock().unwrap().is_none());
         assert!(controler(&interne, "Bonjour.").is_err());
