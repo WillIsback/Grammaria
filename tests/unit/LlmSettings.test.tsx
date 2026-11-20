@@ -22,6 +22,19 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     expect(screen.getByRole("status").textContent).toContain("pour commencer");
   });
 
+  it("settings.json illisible : avertissement clair à la place de l'invitation", () => {
+    render(<LlmSettings settings={{ ...base, settingsUnreadable: true }} onSaved={vi.fn()} />);
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Vos réglages n’ont pas pu être lus. Saisissez à nouveau l’adresse du modèle et la clé.",
+    );
+    expect(screen.queryByText(/pour commencer/)).toBeNull();
+  });
+
+  it("serveur web ou réglages lisibles (champ absent ou faux) : pas d'avertissement", () => {
+    render(<LlmSettings settings={{ ...base, settingsUnreadable: false }} onSaved={vi.fn()} />);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("enregistre l'adresse et la clé, puis vide le champ de la clé", async () => {
     const saved = {
       ...base,

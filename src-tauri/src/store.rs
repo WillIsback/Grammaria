@@ -85,6 +85,12 @@ pub struct PublicSettings {
     pub llm_model_name: String,
     pub llm_disable_thinking: bool,
     pub has_api_key: bool,
+    /// `settings.json` présent mais illisible ou invalide : ses réglages (et
+    /// la clé) sont ignorés, la page prévient l'utilisateur. Absent du JSON
+    /// quand il est faux (champ facultatif de `ServerSettings`) ; redevient
+    /// faux dès qu'un enregistrement réécrit le fichier.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub settings_unreadable: bool,
 }
 
 /// Contenu de `settings.json`, champs dans l'ordre écrit par `settings.ts`.
@@ -153,8 +159,11 @@ impl Store {
     /// Réglages publics (sans la clé).
     pub fn settings(&self) -> PublicSettings {
         self.locked(|inner| {
-            let (exists, settings) = read_settings(&inner.settings_path);
-            public_view(exists, &settings)
+            let (exists, unreadable, settings) = read_settings_state(&inner.settings_path);
+            PublicSettings {
+                settings_unreadable: unreadable,
+                ..public_view(exists, &settings)
+            }
         })
     }
 
@@ -183,8 +192,10 @@ impl Store {
 
     /// Fichiers présents mais illisibles ou invalides (noms seuls, jamais leur
     /// contenu : `settings.json` porte la clé API). Les valeurs par défaut
-    /// s'appliquent alors sans rien dire à l'utilisateur : `lib.rs` le note au
-    /// démarrage dans le journal technique, pour le support.
+    /// s'appliquent alors : `lib.rs` le note au démarrage dans le journal
+    /// technique, pour le support, et la vue publique signale un
+    /// `settings.json` illisible (`settings_unreadable`) pour que la page
+    /// prévienne l'utilisateur.
     pub fn fichiers_illisibles(&self) -> Vec<&'static str> {
         self.locked(|inner| {
             let mut fichiers = Vec::new();
@@ -231,6 +242,7 @@ fn public_view(exists: bool, settings: &LlmSettings) -> PublicSettings {
         llm_model_name: settings.llm_model_name.clone(),
         llm_disable_thinking: settings.llm_disable_thinking,
         has_api_key: !settings.llm_api_key.is_empty(),
+        settings_unreadable: false,
     }
 }
 
@@ -421,15 +433,21 @@ fn parse_settings_file(path: &Path) -> Option<SettingsUpdate> {
 /// Lit `settings.json` : (fichier présent, réglages). Un fichier illisible ou
 /// invalide donne les valeurs par défaut, comme `settings.ts`.
 fn read_settings(path: &Path) -> (bool, LlmSettings) {
+    let (exists, _, settings) = read_settings_state(path);
+    (exists, settings)
+}
+
+/// Comme `read_settings`, avec en plus l'état « fichier présent mais
+/// illisible » : (fichier présent, illisible, réglages).
+fn read_settings_state(path: &Path) -> (bool, bool, LlmSettings) {
     let defaults = LlmSettings::default();
     if !path.exists() {
-        return (false, defaults);
+        return (false, false, defaults);
     }
-    let settings = match parse_settings_file(path) {
-        Some(update) => apply_fields(&defaults, update),
-        None => defaults,
-    };
-    (true, settings)
+    match parse_settings_file(path) {
+        Some(update) => (true, false, apply_fields(&defaults, update)),
+        None => (true, true, defaults),
+    }
 }
 
 fn apply_fields(current: &LlmSettings, update: SettingsUpdate) -> LlmSettings {
@@ -684,6 +702,42 @@ mod tests {
             assert_eq!(settings.llm_model_name, "", "{contenu}");
             assert!(!settings.configured, "{contenu}");
         }
+    }
+
+    #[test]
+    fn un_fichier_de_reglages_illisible_est_signale_jusqu_au_prochain_enregistrement() {
+        let banc = banc();
+        // Absent (premier lancement) ou valide : rien à signaler, champ absent du JSON.
+        assert!(!banc.store.settings().settings_unreadable);
+        assert!(serde_json::to_value(banc.store.settings())
+            .unwrap()
+            .get("settingsUnreadable")
+            .is_none());
+        banc.write_settings(json!({"settingsVersion": 2, "llmTarget": "http://127.0.0.1:8000"}));
+        assert!(!banc.store.settings().settings_unreadable);
+
+        // Tronqué : réglages et clé ignorés, et la page en est prévenue.
+        fs::write(
+            banc.settings_path(),
+            r#"{"settingsVersion":2,"llmApiKey":"sk-secret","llmTar"#,
+        )
+        .unwrap();
+        let vue = banc.store.settings();
+        assert!(vue.settings_unreadable);
+        assert!(!vue.configured);
+        assert!(!vue.has_api_key);
+        let json = serde_json::to_value(&vue).unwrap();
+        assert_eq!(json["settingsUnreadable"], json!(true));
+        assert!(!json.to_string().contains("sk-secret"));
+
+        // Un enregistrement réussi réécrit le fichier : l'avertissement disparaît.
+        let enregistre = banc
+            .store
+            .update_settings(&json!({"llmTarget": "http://127.0.0.1:8000"}))
+            .unwrap();
+        assert!(!enregistre.settings_unreadable);
+        assert!(!banc.store.settings().settings_unreadable);
+        assert!(banc.store.settings().configured);
     }
 
     #[test]

@@ -6,7 +6,7 @@ mockerApp();
 
 const { default: App } = await import("../../src/App");
 
-function serverSettings(configured: boolean) {
+function serverSettings(configured: boolean, settingsUnreadable?: boolean) {
   globalThis.fetch = vi.fn(() =>
     Promise.resolve({
       ok: true,
@@ -19,6 +19,7 @@ function serverSettings(configured: boolean) {
           llmModelName: "",
           llmDisableThinking: true,
           hasApiKey: false,
+          ...(settingsUnreadable === undefined ? {} : { settingsUnreadable }),
         }),
     }),
   ) as unknown as typeof fetch;
@@ -67,6 +68,25 @@ describe("App — menu Paramètres → IA", () => {
 
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  // Validation finale : un settings.json illisible faisait repartir l'application
+  // comme au premier lancement, sans prévenir que réglages et clé étaient ignorés.
+  it("settings.json illisible : Paramètres → IA s'ouvre avec un avertissement, levé après l'enregistrement", async () => {
+    serverSettings(false, true);
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", { name: "Paramètres" });
+    expect(within(dialog).getByRole("alert").textContent).toBe(
+      "Vos réglages n’ont pas pu être lus. Saisissez à nouveau l’adresse du modèle et la clé.",
+    );
+    // Réponse de Rust après l'écriture : le champ n'y est plus.
+    serverSettings(true);
+    fireEvent.change(within(dialog).getByLabelText("Adresse"), {
+      target: { value: "http://gpu:8000" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+    await within(dialog).findByText("Réglages enregistrés.");
+    expect(within(dialog).queryByText(/n’ont pas pu être lus/)).toBeNull();
   });
 
   // Régression vue en QA : à l'enregistrement de l'adresse, le menu ouvert
