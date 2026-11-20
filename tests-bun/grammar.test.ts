@@ -6,7 +6,7 @@ import { GrammarChecker } from "../grammar.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { lancerServeur } from "./serveur.ts";
 
-// Moteur réel (version expérimentale) : le moteur Rust grammaria-rc, lancé une fois par
+// Moteur réel : le moteur Rust grammaria-rc, lancé une fois par
 // grammar.ts (`moteur/grammaria serve`). À construire avant : `npm run build:moteur`.
 const checker = new GrammarChecker();
 afterAll(() => checker.close());
@@ -42,11 +42,25 @@ describe("GrammarChecker", () => {
     LOAD_TIMEOUT_MS,
   );
 
-  // Pertes connues du moteur Rust par rapport au portage JavaScript de LanguageTool
-  // (voir benchmark/moteur-rust/rapport.md) : pas de correcteur orthographique, et l'accord
-  // sujet-verbe (« les enfants était ») n'est pas détecté.
-  it.todo("reconnaît une faute d'orthographe (FR_SPELLING_RULE)", () => {});
-  it.todo("détecte l'accord sujet-verbe (ACCORD_SUJET_VERBE)", () => {});
+  // Anciennes pertes de la première version du moteur Rust, retrouvées depuis qu'il porte la
+  // chaîne de LanguageTool elle-même (benchmark/moteur-rust/rapport.md).
+  it("reconnaît une faute d'orthographe (FR_SPELLING_RULE)", async () => {
+    const text = "Je mange une pomee.";
+    const faute = (await checker.check(text)).find((m) => m.rule.id === "FR_SPELLING_RULE");
+    expect(faute && text.slice(faute.offset, faute.offset + faute.length)).toBe("pomee");
+    expect(faute?.replacements.map((r) => r.value)).toContain("pomme");
+  });
+
+  it("détecte l'accord sujet-verbe (ACCORD_SUJET_VERBE)", async () => {
+    const matches = await checker.check("Les enfants était contents.");
+    expect(matches.some((m) => m.rule.id === "ACCORD_SUJET_VERBE")).toBe(true);
+  });
+
+  it("ne signale pas en orthographe un mot inconnu qui a l'allure d'un nom propre", async () => {
+    // Profil de Grammaria (assets/fr/grammaria/profile.txt du moteur).
+    const matches = await checker.check("Hier, j'ai vu Pencroff à la gare.");
+    expect(matches.filter((m) => m.rule.id === "FR_SPELLING_RULE")).toEqual([]);
+  });
 
   it("ne signale rien sur un texte correct", async () => {
     expect(await checker.check("Les enfants étaient contents.")).toEqual([]);
