@@ -3,6 +3,7 @@ import { analyze } from "../src/analysis/analyze.ts";
 import { compterEtats } from "../src/analysis/regles/cycle.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
 import { parsePeriodDays } from "../src/analysis/score.ts";
+import { classerErreurModele, messageErreurModele } from "../src/utils/erreursModele.ts";
 import { cleanLlmOutput } from "../src/utils/llmText.ts";
 import { creerDetecteurModele } from "../src/utils/modeles.ts";
 import { isStreamTeardownError } from "../src/utils/streamErrors.ts";
@@ -117,6 +118,20 @@ export function creerGestionnaire(
   function allowedOrigin(req: Request): string | null {
     const origin = req.headers.get("Origin") ?? "";
     return isLocalOrigin(origin) || options.originesCors.includes(origin) ? origin : null;
+  }
+
+  /**
+   * Erreur du modèle pour l'interface : `message` simple (selon la cause et
+   * selon que les réglages se changent dans Paramètres → IA), `details`
+   * technique, affiché replié et écrit dans le journal technique.
+   */
+  function erreurPourInterface(err: unknown, modifiable: boolean) {
+    const cause = classerErreurModele(err);
+    return {
+      message: messageErreurModele(cause, modifiable),
+      cause,
+      details: err instanceof Error ? err.message : String(err),
+    };
   }
 
   function getCorsHeaders(req: Request): Headers {
@@ -313,6 +328,8 @@ export function creerGestionnaire(
 
       // Annule la requête au modèle quand l'interface abandonne le flux.
       const abort = new AbortController();
+      // Réglages modifiables dans Paramètres → IA : le message d'erreur y renvoie.
+      let modifiable = options.bureau;
       // Bureau : l'abandon de la requête par l'interface annule aussi l'attente du premier
       // fragment (le flux de réponse n'existe pas encore).
       if (options.suivreAbandonRequete) {
@@ -333,6 +350,7 @@ export function creerGestionnaire(
         const inputText: string = userMessage?.content ?? "";
 
         const vue = await reglages.vuePublique();
+        modifiable = vue.editable;
         const resolvedModel = await resolveModel(vue.llmModelName, llmBody.model, detectModel);
         span.setAttributes({
           "openinference.span.kind": "LLM",
@@ -480,7 +498,13 @@ export function creerGestionnaire(
             } catch (err) {
               span.setStatus({ code: SpanStatusCode.ERROR, message: String(err) });
               span.end();
-              safeEnqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
+              const erreur = erreurPourInterface(err, modifiable);
+              console.error(`[LLM] Erreur pendant le flux : ${erreur.details}`);
+              safeEnqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ error: erreur.message, cause: erreur.cause, details: erreur.details })}\n\n`,
+                ),
+              );
             } finally {
               stopKeepalive();
               try {
@@ -509,7 +533,17 @@ export function creerGestionnaire(
         const message = error instanceof Error ? error.message : "Unknown error";
         span.setStatus({ code: SpanStatusCode.ERROR, message });
         span.end();
-        return json({ error: "LLM unavailable", details: message }, JSON_ONLY, 502);
+        const erreur = erreurPourInterface(error, modifiable);
+        return json(
+          {
+            error: "LLM unavailable",
+            message: erreur.message,
+            cause: erreur.cause,
+            details: message,
+          },
+          JSON_ONLY,
+          502,
+        );
       }
     }
 

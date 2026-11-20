@@ -12,7 +12,7 @@ import { Journal } from "../../journal";
 import { dependancesBureau } from "../../src/desktop/dependances";
 import { creerPiloteTauri } from "../../src/desktop/journal.driver.tauri";
 import { estRouteApi, installerPont } from "../../src/desktop/pont";
-import { correctText } from "../../src/utils/llm";
+import { CORRECTION_REMPLACEE, correctText } from "../../src/utils/llm";
 import { tauriSimule, type OptionsSimulation } from "./helpers/tauriSimule";
 
 const PAGE = "tauri://localhost/";
@@ -345,9 +345,29 @@ describe("pont — modèle", () => {
     const { cible, tauri } = await bureau();
     tauri.reglages.llmModelName = "panne";
     vi.stubGlobal("fetch", cible.fetch);
-    await expect(correctText("texte", { mode: "fluide" } as never)).rejects.toThrow(
-      "Connexion au modèle coupée.",
+    const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Message simple ; le détail technique de Rust reste disponible à part.
+    await expect(correctText("texte", { mode: "fluide" } as never)).rejects.toMatchObject({
+      message:
+        "Le modèle ne répond pas. Vérifiez son adresse dans Paramètres → IA, et qu'il est bien démarré.",
+      details: "Connexion au modèle coupée.",
+    });
+    erreur.mockRestore();
+  });
+
+  it("modèle injoignable avant la correction : message simple, détail technique à part", async () => {
+    const { cible, tauri } = await bureau();
+    tauri.pannes.modeles =
+      "Liste des modèles indisponible : error sending request : tcp connect error : Connection refused (os error 111)";
+    vi.stubGlobal("fetch", cible.fetch);
+    const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
+    const echec = await correctText("texte", { mode: "fluide" } as never).catch((e) => e);
+    expect(echec.message).toBe(
+      "Le modèle ne répond pas. Vérifiez son adresse dans Paramètres → IA, et qu'il est bien démarré.",
     );
+    expect(echec.message).not.toMatch(/HTTP|tcp|serveur de correction/);
+    expect(echec.details).toContain("tcp connect error");
+    erreur.mockRestore();
   });
 
   it("interruption par llm.ts (nouvelle correction) : AbortError, requête du modèle annulée", async () => {
@@ -358,7 +378,10 @@ describe("pont — modèle", () => {
     const premiere = correctText("texte", { mode: "fluide" } as never, {
       onText: (t) => textes.push(t),
     });
-    const rejet = expect(premiere).rejects.toThrow("Délai d'attente dépassé.");
+    const rejet = expect(premiere).rejects.toMatchObject({
+      name: "AbortError",
+      message: CORRECTION_REMPLACEE,
+    });
     await vi.waitFor(() => expect(textes.length).toBeGreaterThan(2));
     tauri.reglages.llmModelName = "normal";
     // correctText annule la requête en cours avant d'en lancer une autre.
