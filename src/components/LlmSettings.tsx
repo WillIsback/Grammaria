@@ -65,13 +65,24 @@ export function LlmSettings({ settings, onSaved }: Props) {
     <form onSubmit={handleSubmit} className="mb-6" aria-label="Serveur du modèle">
       <h2 className={sectionTitle}>Serveur du modèle</h2>
 
-      {!settings.configured && (
+      {settings.settingsUnreadable ? (
         <p
-          className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
-          role="status"
+          className="mb-3 px-3 py-2 rounded-xl text-xs leading-relaxed bg-red-50 dark:bg-red-950/40
+            border border-red-200/70 dark:border-red-800/40 text-red-700 dark:text-red-300"
+          role="alert"
         >
-          Indiquez l&rsquo;adresse de votre modèle de langage pour commencer à corriger.
+          Vos réglages n&rsquo;ont pas pu être lus. Saisissez à nouveau l&rsquo;adresse du modèle et
+          la clé.
         </p>
+      ) : (
+        !settings.configured && (
+          <p
+            className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+            role="status"
+          >
+            Indiquez l&rsquo;adresse de votre modèle de langage pour commencer à corriger.
+          </p>
+        )
       )}
 
       <label htmlFor="llm-target" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">

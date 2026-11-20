@@ -421,9 +421,77 @@ describe("creerGestionnaire — conversation (/v1/chat/completions)", () => {
         throw new Error("coupure");
       })();
     const { traiter } = creer({ modele });
+    const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
     const events = await evenements((await traiter(post("/v1/chat/completions", conversation)))!);
-    expect(events).toEqual([{ delta: "Bon" }, { error: "Error: coupure" }]);
+    // Message simple pour l'utilisateur ; le détail technique part dans le journal.
+    expect(events).toEqual([
+      { delta: "Bon" },
+      {
+        error: "La correction a échoué. Réessayez dans un instant.",
+        cause: "autre",
+        details: "coupure",
+      },
+    ]);
+    expect(erreur).toHaveBeenCalledWith(expect.stringContaining("coupure"));
+    erreur.mockRestore();
   });
+
+  it.each([
+    [
+      "modèle injoignable (bureau)",
+      { message: "Liste des modèles indisponible : tcp connect error : Connection refused" },
+      true,
+      "injoignable",
+      "Le modèle ne répond pas. Vérifiez son adresse dans Paramètres → IA, et qu'il est bien démarré.",
+    ],
+    [
+      "clé refusée (bureau)",
+      { status: 401, message: "Unauthorized" },
+      true,
+      "cle",
+      "Le modèle a refusé la clé API. Vérifiez-la dans Paramètres → IA.",
+    ],
+    [
+      "clé refusée (serveur web, réglages non modifiables)",
+      { status: 403, message: "Forbidden" },
+      false,
+      "cle",
+      "Le modèle a refusé l'accès. Prévenez la personne qui gère Grammaria.",
+    ],
+    [
+      "modèle introuvable",
+      { status: 404, message: "model not found" },
+      true,
+      "introuvable",
+      "Le modèle demandé est introuvable. Vérifiez son adresse dans Paramètres → IA, puis choisissez un modèle dans la liste.",
+    ],
+    [
+      "délai dépassé",
+      {
+        message:
+          "Serveur du modèle injoignable : le serveur du modèle ne répond pas (délai dépassé).",
+      },
+      true,
+      "delai",
+      "Le modèle a mis trop de temps à répondre. Réessayez, ou corrigez un texte plus court.",
+    ],
+  ])(
+    "refus du modèle — %s : message simple, détail technique à part",
+    async (_cas, refus, editable, cause, message) => {
+      const { modele } = modeleFactice({ refus });
+      const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { traiter } = creer({ modele }, { editable, llmModelName: "m" });
+      const response = (await traiter(post("/v1/chat/completions", conversation)))!;
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({
+        error: "LLM unavailable",
+        message,
+        cause,
+        details: refus.message,
+      });
+      erreur.mockRestore();
+    },
+  );
 
   it("annule la requête au modèle quand l'interface abandonne le flux", async () => {
     let signalRecu: AbortSignal | null = null;

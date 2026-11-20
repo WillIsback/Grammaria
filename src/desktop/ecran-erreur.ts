@@ -7,8 +7,26 @@
 
 const ROUGE = "#b91c1c";
 
-/** Remplace la page par un message lisible et un bouton « Réessayer » (recharge la page). */
-export function afficherErreur(titre: string, detail: string, doc: Document = document): void {
+/** Consigne et bouton propres à un cas, à la place de « Fermez Grammaria… » et « Réessayer ». */
+export interface ActionErreur {
+  /** Consigne affichée sous le message (null : aucune). */
+  aide: string | null;
+  libelle: string;
+  /** Action du bouton ; un rejet affiche `siEchec` sous le bouton. */
+  surClic: () => Promise<unknown>;
+  siEchec: string;
+}
+
+/**
+ * Remplace la page par un message lisible et un bouton « Réessayer » (recharge la page), ou
+ * par la consigne et le bouton de `action` quand relancer n'y changerait rien.
+ */
+export function afficherErreur(
+  titre: string,
+  detail: string,
+  doc: Document = document,
+  action?: ActionErreur,
+): void {
   const racine = doc.getElementById("root") ?? doc.body;
   racine.replaceChildren();
   const boite = doc.createElement("div");
@@ -22,17 +40,38 @@ export function afficherErreur(titre: string, detail: string, doc: Document = do
   const p = doc.createElement("p");
   p.textContent = detail;
   p.style.cssText = "margin:0 0 .75rem;white-space:pre-wrap;word-break:break-word";
-  const aide = doc.createElement("p");
-  aide.textContent =
-    "Fermez Grammaria puis relancez-la. Si le problème persiste, signalez-le avec le message ci-dessus.";
-  aide.style.cssText = "margin:0 0 1.25rem;color:#475569";
+  boite.append(h1, p);
+  const texteAide =
+    action === undefined
+      ? "Fermez Grammaria puis relancez-la. Si le problème persiste, signalez-le avec le message ci-dessus."
+      : action.aide;
+  if (texteAide !== null) {
+    const aide = doc.createElement("p");
+    aide.textContent = texteAide;
+    aide.style.cssText = "margin:0 0 1.25rem;color:#475569";
+    boite.append(aide);
+  }
   const bouton = doc.createElement("button");
   bouton.type = "button";
-  bouton.textContent = "Réessayer";
+  bouton.textContent = action?.libelle ?? "Réessayer";
   bouton.style.cssText =
     "font:inherit;padding:.5rem 1rem;border-radius:.5rem;border:1px solid #cbd5e1;background:#fff;cursor:pointer";
-  bouton.addEventListener("click", () => doc.defaultView?.location.reload());
-  boite.append(h1, p, aide, bouton);
+  boite.append(bouton);
+  if (action === undefined) {
+    bouton.addEventListener("click", () => doc.defaultView?.location.reload());
+  } else {
+    // Échec de l'action : message annoncé à part (role="status").
+    const echec = doc.createElement("p");
+    echec.setAttribute("role", "status");
+    echec.style.cssText = "margin:.75rem 0 0;color:#475569";
+    bouton.addEventListener("click", () => {
+      echec.textContent = "";
+      action.surClic().catch(() => {
+        echec.textContent = action.siEchec;
+      });
+    });
+    boite.append(echec);
+  }
   racine.append(boite);
 }
 

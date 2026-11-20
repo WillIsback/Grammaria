@@ -19,7 +19,7 @@
  * d'autotest (autotest.ts, chunk à part) est chargée et exécutée après le rendu.
  */
 import { creerGestionnaire } from "../../api/handler.ts";
-import { Journal } from "../../journal.ts";
+import { Journal, JournalFuturError } from "../../journal.ts";
 import { CorrecteurBureau } from "./correcteur.ts";
 import { dependancesBureau } from "./dependances.ts";
 import { afficherBandeau, afficherErreur } from "./ecran-erreur.ts";
@@ -64,6 +64,23 @@ export async function amorcer(rendre: () => void): Promise<void> {
       "erreur",
       `Journal des fautes impossible à ouvrir : ${messageErreur(error)}`,
     );
+    if (error instanceof JournalFuturError) {
+      // Relancer n'y changerait rien : seule une version plus récente peut l'ouvrir. Le détail
+      // (numéros de schéma) est déjà dans le journal technique.
+      afficherErreur(
+        "Ce journal a été créé par une version plus récente de Grammaria.",
+        "Installez la dernière version de Grammaria pour l'ouvrir. Votre journal n'a pas été modifié.",
+        document,
+        {
+          aide: null,
+          libelle: "Ouvrir la page de téléchargement",
+          surClic: () => api.invoke("update_open_release_page"),
+          siEchec:
+            "La page n'a pas pu s'ouvrir. Rendez-vous sur github.com/WillIsback/Grammaria/releases pour télécharger la dernière version.",
+        },
+      );
+      return;
+    }
     afficherErreur(
       "Le journal de Grammaria n'a pas pu être ouvert.",
       `Cause : ${messageErreur(error)}`,

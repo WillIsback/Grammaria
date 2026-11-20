@@ -132,7 +132,7 @@ ok(
   m.relance,
 );
 ok(
-  m.interruption?.premiere === "Délai d'attente dépassé." &&
+  m.interruption?.premiere === "Correction remplacée par une nouvelle demande." &&
     m.interruption?.coupeesVuesParLeModele === 1,
   "interruption d'une correction",
   m.interruption,

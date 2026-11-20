@@ -40,6 +40,7 @@ function App() {
     isLoading,
     isLoadingCorrections,
     error,
+    errorDetails,
     stats,
     handleCorrect,
     handleReset,
@@ -283,13 +284,27 @@ function App() {
           className="bg-red-50/90 dark:bg-red-950/40 border-t border-red-200/70 dark:border-red-800/40 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto px-5 py-3.5">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-start gap-3 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
                 <Icon className="w-3.5 h-3.5 text-red-500">
                   <path d={WARNING_PATH} />
                 </Icon>
               </div>
-              <p className="text-sm text-red-700 dark:text-red-300 break-words">{error}</p>
+              <div className="min-w-0 pt-1">
+                <p role="alert" className="text-sm text-red-700 dark:text-red-300 break-words">
+                  {error}
+                </p>
+                {errorDetails && (
+                  <details className="mt-1 text-xs text-red-600/80 dark:text-red-300/70">
+                    <summary className="cursor-pointer select-none w-fit hover:text-red-700 dark:hover:text-red-200">
+                      Détails
+                    </summary>
+                    <p className="mt-1 font-mono break-all whitespace-pre-wrap max-h-24 overflow-y-auto">
+                      {errorDetails}
+                    </p>
+                  </details>
+                )}
+              </div>
             </div>
             <button
               type="button"

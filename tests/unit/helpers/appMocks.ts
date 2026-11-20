@@ -29,6 +29,7 @@ export function mockerApp(surcharges: () => Partial<Correcteur> = () => ({})) {
       isLoading: false,
       isLoadingCorrections: false,
       error: null,
+      errorDetails: null,
       stats: { processingTime: 0, modificationCount: 0 },
       handleCorrect: vi.fn(),
       handleReset: vi.fn(),

@@ -52,6 +52,53 @@ describe("SettingsDialog — Paramètres → IA", () => {
     expect(await screen.findByText("Modèle LLM")).toBeTruthy();
   });
 
+  // Validation finale : au premier lancement, « Impossible de charger la liste
+  // des modèles — Réessayer » s'affichait en rouge avant toute saisie.
+  it("premier lancement du bureau : texte neutre, ni erreur ni requête de la liste", async () => {
+    const { fetchModels } = await import("../../src/utils/models");
+    vi.mocked(fetchModels).mockClear();
+    renderDialog({ serverSettings: { ...desktop, configured: false, llmTarget: "" } });
+    const info = screen.getByText("Indiquez d’abord l’adresse du modèle ci-dessus.");
+    expect(info.getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(/Impossible de charger/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Réessayer" })).toBeNull();
+    expect(fetchModels).not.toHaveBeenCalled();
+  });
+
+  it("après l'enregistrement de l'adresse, la liste des modèles est chargée", async () => {
+    const { fetchModels } = await import("../../src/utils/models");
+    vi.mocked(fetchModels).mockClear();
+    const props = {
+      open: true,
+      onClose: vi.fn(),
+      onServerSettingsSaved: vi.fn(),
+    };
+    const { rerender } = render(
+      <SettingsDialog
+        {...props}
+        serverSettings={{ ...desktop, configured: false, llmTarget: "" }}
+        modelsReloadKey={0}
+      />,
+    );
+    expect(fetchModels).not.toHaveBeenCalled();
+    rerender(<SettingsDialog {...props} serverSettings={desktop} modelsReloadKey={1} />);
+    expect(await screen.findByText("qwen3")).toBeTruthy();
+    expect(screen.queryByText(/Indiquez d’abord/)).toBeNull();
+  });
+
+  it("serveur web : la liste est demandée et son échec reste signalé (role=alert)", async () => {
+    const { fetchModels } = await import("../../src/utils/models");
+    vi.mocked(fetchModels).mockRejectedValueOnce(new Error("HTTP 502"));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderDialog({ serverSettings: { ...desktop, editable: false, configured: false } });
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Impossible de charger la liste des modèles",
+    );
+    expect(screen.getByRole("button", { name: "Réessayer" })).toBeTruthy();
+    expect(screen.queryByText(/Indiquez d’abord/)).toBeNull();
+  });
+
   it("se ferme par le bouton, par Échap et par un clic à l'extérieur", () => {
     const onClose = renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "Fermer les paramètres" }));

@@ -28,7 +28,7 @@
 import reference from "../../tests/fixtures/correcteur/reference.json";
 import { estConflit } from "../../journal.driver.ts";
 import type { CorrectionSettings, LTMatch } from "../types.ts";
-import { correctText } from "../utils/llm.ts";
+import { CORRECTION_REMPLACEE, correctText } from "../utils/llm.ts";
 import type { CorrecteurBureau } from "./correcteur.ts";
 import { creerPiloteTauri } from "./journal.driver.tauri.ts";
 import type { Pont } from "./pont.ts";
@@ -490,7 +490,7 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       };
       critere(
         "interruption d'une correction (llm.ts) : requête annulée, la suivante aboutit",
-        premiereIssue === "Délai d'attente dépassé." &&
+        premiereIssue === CORRECTION_REMPLACEE &&
           seconde.text === "Ils ont fini le dossier." &&
           coupees === 1,
         m.interruption,

@@ -3,6 +3,7 @@ import type { AnalyzedCorrection } from "../analysis/analyze";
 import { type AnalysisResponse, analyzeCorrection } from "../services/journal";
 import { runLanguageTool } from "../services/languagetool";
 import type { CorrectionEntry, CorrectionSettings, CorrectionStats, LTMatch } from "../types";
+import { ErreurCorrection, MESSAGE_ECHEC_CORRECTION } from "../utils/erreursModele";
 import { correctText } from "../utils/llm";
 import { MAX_CONTENT_LENGTH, prepareInput } from "../utils/sanitize";
 
@@ -52,6 +53,8 @@ export function useCorrector() {
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [settings, setSettings] = useState<CorrectionSettings>(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
+  /** Détail technique de l'erreur, affiché replié sous « Détails ». */
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [stats, setStats] = useState<CorrectionStats>({
     processingTime: 0,
     modificationCount: 0,
@@ -101,12 +104,14 @@ export function useCorrector() {
     setAnalysisNotice(null);
     setStats({ processingTime: 0, modificationCount: 0 });
     setError(null);
+    setErrorDetails(null);
   }, []);
 
   const handleCorrect = useCallback(async () => {
     if (isRunningRef.current) return;
     if (!textContent.trim()) {
       setError("Veuillez entrer du texte");
+      setErrorDetails(null);
       return;
     }
 
@@ -151,7 +156,10 @@ export function useCorrector() {
       });
 
       if (!finalText || finalText.trim().length === 0) {
-        throw new Error("LLM returned empty response");
+        throw new ErreurCorrection(
+          "Le modèle a renvoyé une réponse vide. Réessayez dans un instant.",
+          "Réponse vide du modèle.",
+        );
       }
 
       setOutputText(finalText);
@@ -186,7 +194,13 @@ export function useCorrector() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Une erreur inconnue est survenue");
+      // Message simple ; le détail technique est replié sous « Détails ».
+      if (err instanceof ErreurCorrection) {
+        setError(err.message);
+        setErrorDetails(err.details || null);
+      } else {
+        setError(err instanceof Error ? err.message : MESSAGE_ECHEC_CORRECTION);
+      }
     } finally {
       isRunningRef.current = false;
       setIsLoadingText(false);
@@ -212,6 +226,7 @@ export function useCorrector() {
     isLoading: isLoadingText,
     isLoadingCorrections,
     error,
+    errorDetails,
     stats,
     handleCorrect,
     handleReset,
