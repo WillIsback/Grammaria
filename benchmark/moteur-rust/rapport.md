@@ -4,6 +4,11 @@ Comparaison de la version expérimentale de Grammaria (branche `claude/sleepy-te
 moteur Rust `grammaria-rc` révision `77488bd`) avec la dernière version publiée, **v0.3.0**
 (portage JavaScript de LanguageTool, `@valueerror/ltjs-core` 0.3.0).
 
+La v0.4.0 épingle la révision `db00af6` de `grammaria-rc` (fusion dans son `main`) : même
+code et mêmes règles que `77488bd`, seule la déclaration des licences change. Les chiffres
+clés ont été revérifiés sur cette révision lors de l'intégration du lot v0.4.0 (section
+« Revérification »).
+
 Ce rapport remplace celui de la première comparaison (moteur à la révision `f55cf16`), qui
 concluait que le moteur Rust ne pouvait pas remplacer ltjs : il voyait moitié moins de fautes
 et répondait plus lentement. Le moteur a depuis été refait.
@@ -73,10 +78,25 @@ correcteur ; 87 tests Rust du backend ; **build réel de l'application de bureau
 autotest complet** sous WebKitGTK (25 critères tenus, détections identiques à celles du serveur
 sur 20 textes sur 20).
 
-Non vérifié : l'image Docker (pas de démon Docker ici), le build Windows, les workflows GitHub
-(jamais exécutés), la documentation du site (`docs/`, non mise à jour).
+Non vérifié à l'écriture du rapport : l'image Docker, le build Windows, les workflows GitHub,
+la documentation du site. Voir la PR du lot v0.4.0 pour ce qui l'a été depuis (image
+reconstituée étape par étape, workflows Linux exécutés, documentation mise à jour).
 
 ## Méthode
+
+Mesures brutes : seuls les résumés sont gardés dans `mesures/` (`rapport.json`, serveurs,
+bureau dans Chromium). Les relevés détection par détection (`moteur-reference.json`,
+`moteur-experimental.json`, 59 000 lignes) et le JSON complet de l'autotest
+(`bureau-experimental-autotest.json`) sont dans l'historique git (commit `c3c4b9e`) et se
+régénèrent avec les scripts ci-dessous :
+
+```bash
+# Arbre de la v0.3.0 (git worktree, npm ci) et arbre courant (npm run build:moteur)
+bun scripts/comparaison/mesurer-moteur.ts --racine <arbre> --nom <étiquette> --sortie moteur-<étiquette>.json
+bun scripts/comparaison/mesurer-serveur.ts --racine <arbre> --nom <étiquette> --sortie serveur-<étiquette>.json
+bun scripts/comparaison/rapport.ts --reference moteur-reference.json --experimental moteur-experimental.json \
+  --serveur-reference serveur-reference.json --serveur-experimental serveur-experimental.json --sortie rapport.json
+```
 
 - Machine : 4 cœurs Intel Xeon 2,1 GHz, 15 Go, Linux. Chaque version est mesurée seule, machine
   au repos. Toutes les mesures de ce rapport ont été refaites pour les deux versions.
@@ -232,6 +252,32 @@ lent que dans le serveur (`opt-level = 3`), 59 ms contre 45 ms sur le texte de 1
 
 La garde de taille du `.deb`, relevée à 20 Mio pour la première version expérimentale
 (15,35 Mio), est ramenée à 12 Mio, sa valeur de la v0.3.0.
+
+## Revérification (intégration du lot v0.4.0, révision `db00af6`)
+
+Même machine, mêmes scripts (`scripts/comparaison/`), moteur reconstruit par
+`npm run build:moteur` à la révision épinglée. Détections du corpus et des 2 000 exemples
+identiques à celles de la mesure ci-dessus.
+
+| | Rapport (`77488bd`) | Revérifié (`db00af6`) |
+| --- | ---: | ---: |
+| Fautes du corpus vues par le moteur | 83 sur 92 | 83 sur 92 |
+| Modifications classées dans l'application | 89 (97 %) | 89 (97 %) |
+| Contrôle à chaud, 160 mots (moteur, médiane) | 58,9 ms | 37,0 ms |
+| Contrôle à chaud, 160 mots (serveur, médiane / p95) | 45,3 / 67,0 ms | 37,7 / 56,4 ms |
+| Démarrage du serveur jusqu'au premier contrôle | 696 ms | 624 ms (590 à 638) |
+| Débit du serveur, 16 clients | 18,7 req/s | 24,2 req/s |
+| Mémoire du serveur au repos / après la charge | 266 / 292 Mo | 265 / 290 Mo |
+| Paquet `.deb` du bureau | 8,76 Mio | 8,76 Mio |
+| Chargement du correcteur dans le bureau (autotest) | 657 ms | 648 ms |
+| Contrôle à chaud dans le bureau (médiane) | 59 ms | 44 ms |
+| Mémoire de l'application de bureau, au repos | — | 621 Mo (RSS), 452 Mo (PSS) |
+| Mémoire de l'application de bureau, après 10 corrections | — | 668 Mo (RSS), 485 Mo (PSS) |
+
+Mémoire du bureau : `.deb` extrait et lancé dans sa disposition installée
+(`/usr/lib/Grammaria/moteur/`), sous Xvfb, contre le faux modèle ; somme des processus
+`grammaria`, `WebKitWebProcess` et `WebKitNetworkProcess` (dont `grammaria` : 402 Mo RSS,
+le moteur et ses données compris). La v0.3.0 était mesurée à environ 0,9 Go sous Linux.
 
 ## Licences
 
