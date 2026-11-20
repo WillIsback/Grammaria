@@ -11,7 +11,7 @@ import { pickChatModel, type UpstreamModel } from "./upstream.ts";
 /**
  * GET `<llmTarget>/v1/models` → corps JSON (`{ data: [...] }`, ou null s'il
  * n'est pas du JSON). Lève une erreur explicite si le serveur est injoignable
- * ou refuse la requête (mêmes messages que `createModelDetector`).
+ * ou refuse la requête.
  */
 export async function listerModelesAmont(
   llmTarget: string,

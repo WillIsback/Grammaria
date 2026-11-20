@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import {
   AUTO_MODEL,
-  createModelDetector,
   downstreamHeaders,
   pickChatModel,
   resolveModel,
@@ -119,50 +118,6 @@ describe("resolveModel", () => {
 
   it("échec de détection : erreur explicite", async () => {
     await expect(resolveModel("", AUTO_MODEL, async () => null)).rejects.toThrow(/LLM_MODEL_NAME/);
-  });
-});
-
-describe("createModelDetector", () => {
-  const okResponse = (data: unknown) =>
-    Promise.resolve(new Response(JSON.stringify({ data }), { status: 200 }));
-
-  it("interroge /v1/models avec la clé et met le résultat en cache", async () => {
-    const fetchMock = vi.fn(() => okResponse([{ id: "m1", type: "text-generation" }]));
-    const detect = createModelDetector(
-      "https://llm.example",
-      "sk-1",
-      fetchMock as unknown as typeof fetch,
-    );
-    expect(await detect()).toBe("m1");
-    expect(await detect()).toBe("m1");
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith("https://llm.example/v1/models", {
-      headers: { Authorization: "Bearer sk-1" },
-    });
-  });
-
-  it("serveur injoignable ou refus : erreur explicite, non mise en cache", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
-      .mockResolvedValueOnce(new Response("", { status: 401 }))
-      .mockImplementationOnce(() => okResponse([{ id: "m2" }]));
-    const detect = createModelDetector("http://x", "", fetchMock as unknown as typeof fetch);
-    await expect(detect()).rejects.toThrow(
-      "Le serveur du modèle (http://x) est injoignable : ECONNREFUSED",
-    );
-    await expect(detect()).rejects.toThrow("HTTP 401");
-    expect(await detect()).toBe("m2");
-    expect(fetchMock.mock.calls[2]).toEqual(["http://x/v1/models", { headers: {} }]);
-  });
-
-  it("liste vide ou non JSON : null (pas d'erreur réseau)", async () => {
-    const empty = createModelDetector("http://x", "", (() =>
-      okResponse([])) as unknown as typeof fetch);
-    expect(await empty()).toBeNull();
-    const html = createModelDetector("http://x", "", (() =>
-      Promise.resolve(new Response("<html>", { status: 200 }))) as unknown as typeof fetch);
-    expect(await html()).toBeNull();
   });
 });
 

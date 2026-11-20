@@ -13,14 +13,6 @@ export interface CorrectionStats {
   modificationCount: number;
 }
 
-export type ToastType = "success" | "error" | "warning";
-
-export interface Toast {
-  id: string;
-  message: string;
-  type: ToastType;
-}
-
 // Détections du correcteur grammatical (format LanguageTool)
 export interface LTMatch {
   message: string;

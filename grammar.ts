@@ -16,8 +16,22 @@ import type { LTMatch } from "./src/types.ts";
  * Le binaire et ses données sont produits par `scripts/moteur/construire.sh` dans `moteur/`.
  */
 
-/** Délai maximal d'une analyse, chargement initial des données compris. */
-const CHECK_TIMEOUT_MS = 30_000;
+/**
+ * Délai maximal d'une analyse, chargement initial des données compris (moins d'une seconde
+ * mesurée). Plus court que le délai de la page (30 s, src/services/languagetool.ts) : le
+ * serveur répond une erreur avant que la page abandonne.
+ */
+const CHECK_TIMEOUT_MS = 15_000;
+
+/** Délai laissé au moteur pour s'arrêter après SIGTERM, avant SIGKILL. */
+const KILL_GRACE_MS = 2_000;
+
+export type OptionsCorrecteur = {
+  /** Délai maximal d'une analyse (défaut : 15 s). */
+  delaiMs?: number;
+  /** Délai entre SIGTERM et SIGKILL (défaut : 2 s). */
+  graceMs?: number;
+};
 
 const RACINE = dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +57,23 @@ export class GrammarChecker {
   private moteur: ChildProcessWithoutNullStreams | null = null;
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();
+  /** Moteurs lancés et pas encore terminés, y compris ceux qu'on est en train d'arrêter. */
+  private readonly vivants = new Set<ChildProcessWithoutNullStreams>();
+  private readonly delaiMs: number;
+  private readonly graceMs: number;
+  /**
+   * À la sortie du serveur (normale, process.exit, exception non rattrapée), aucun moteur
+   * ne doit survivre : un moteur bloqué ne lirait jamais la fin de son entrée standard.
+   * `kill` est synchrone : il part avant la fin du processus.
+   */
+  private readonly tuerALaSortie = () => {
+    for (const moteur of this.vivants) moteur.kill("SIGKILL");
+  };
+
+  constructor(options: OptionsCorrecteur = {}) {
+    this.delaiMs = options.delaiMs ?? CHECK_TIMEOUT_MS;
+    this.graceMs = options.graceMs ?? KILL_GRACE_MS;
+  }
 
   /** Charge les données en arrière-plan pour que la première correction soit rapide. */
   warmUp(): void {
@@ -65,7 +96,7 @@ export class GrammarChecker {
         // Les réponses arrivent dans l'ordre : un moteur bloqué bloque aussi les demandes
         // suivantes. On l'arrête ; le prochain appel en relance un.
         this.arreter(new Error("Le correcteur grammatical ne répond pas."));
-      }, CHECK_TIMEOUT_MS);
+      }, this.delaiMs);
       this.pending.set(id, { resolve, reject, timer });
       // Un seul write : l'en-tête et le texte ne peuvent pas être séparés par une autre demande.
       const corps = Buffer.from(text, "utf8");
@@ -78,12 +109,19 @@ export class GrammarChecker {
     this.arreter(new Error("Le correcteur grammatical a été arrêté."));
   }
 
+  /** Nombre de processus du moteur encore en vie (diagnostic, tests). */
+  get processusVivants(): number {
+    return this.vivants.size;
+  }
+
   private ensureMoteur(): ChildProcessWithoutNullStreams {
     if (this.moteur) return this.moteur;
     const moteur = spawn(cheminMoteur(), ["serve", "--data", cheminDonnees()], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.moteur = moteur;
+    if (this.vivants.size === 0) process.on("exit", this.tuerALaSortie);
+    this.vivants.add(moteur);
 
     let tampon = "";
     moteur.stdout.setEncoding("utf8");
@@ -109,7 +147,16 @@ export class GrammarChecker {
       const detail = erreurs.trim();
       this.failAll(new Error(`Le correcteur grammatical s'est arrêté : ${detail || cause}.`));
     };
-    moteur.on("error", (error) => tombe(error.message));
+    const termine = () => {
+      this.vivants.delete(moteur);
+      if (this.vivants.size === 0) process.off("exit", this.tuerALaSortie);
+    };
+    moteur.on("error", (error) => {
+      // Binaire introuvable : le processus n'a jamais existé, « close » peut ne pas suivre.
+      if (moteur.pid === undefined) termine();
+      tombe(error.message);
+    });
+    moteur.on("exit", termine);
     // « close » plutôt que « exit » : les dernières lignes d'erreur ont alors été lues.
     moteur.on("close", (code, signal) => tombe(signal ? `signal ${signal}` : `code ${code}`));
     // Écriture dans un moteur déjà arrêté : l'événement « close » rejette les demandes.
@@ -137,7 +184,14 @@ export class GrammarChecker {
     const moteur = this.moteur;
     this.moteur = null;
     this.failAll(error);
-    moteur?.kill();
+    if (!moteur || !this.vivants.has(moteur)) return;
+    moteur.kill("SIGTERM");
+    // Un moteur bloqué qui ignore SIGTERM resterait orphelin : SIGKILL après le délai.
+    const forcer = setTimeout(() => {
+      if (this.vivants.has(moteur)) moteur.kill("SIGKILL");
+    }, this.graceMs);
+    forcer.unref?.();
+    moteur.once("exit", () => clearTimeout(forcer));
   }
 
   private failAll(error: Error): void {

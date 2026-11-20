@@ -138,4 +138,46 @@ describe("correctText — erreurs du modèle", () => {
       vi.useRealTimers();
     }
   });
+
+  it("délai de 120 s : borne aussi une connexion qui n'aboutit jamais (aucune réponse)", async () => {
+    vi.useFakeTimers();
+    try {
+      // fetch ne se résout jamais : seul l'abandon (signal) le termine.
+      vi.spyOn(globalThis, "fetch").mockImplementation(
+        (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            (init as RequestInit).signal!.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          }),
+      );
+      let fini = false;
+      const promesse = correctText("texte", reglages)
+        .catch((e) => e)
+        .finally(() => {
+          fini = true;
+        });
+      await vi.advanceTimersByTimeAsync(119_999);
+      expect(fini).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const erreur = await promesse;
+      expect(erreur).toBeInstanceOf(ErreurCorrection);
+      expect(erreur.message).toBe(
+        "Le modèle a mis trop de temps à répondre. Réessayez, ou corrigez un texte plus court.",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("le délai est désarmé à la fin de la correction, même en erreur", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("oups", { status: 500 }));
+      await correctText("texte", reglages).catch(() => {});
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

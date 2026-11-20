@@ -47,15 +47,18 @@ export const SEUILS = {
   choixContexteMax: 60,
 } as const;
 
+/** Règle LanguageTool des fautes de frappe (mots mal orthographiés). */
+export const REGLE_ORTHOGRAPHE = "FR_SPELLING_RULE";
+
 /**
  * Règles tenues hors du cycle de vie, bien que comptées dans la note.
  *
- * `FR_SPELLING_RULE` est la détection générique « faute de frappe » du
+ * `REGLE_ORTHOGRAPHE` (`FR_SPELLING_RULE`) est la détection générique « faute de frappe » du
  * correcteur grammatical : elle regroupe tous les mots mal orthographiés. Ce
  * n'est pas une règle que l'on peut acquérir, et elle occuperait en permanence
  * l'une des places de règle « travaillée ».
  */
-export const REGLES_HORS_CYCLE: readonly string[] = ["FR_SPELLING_RULE"];
+export const REGLES_HORS_CYCLE: readonly string[] = [REGLE_ORTHOGRAPHE];
 
 /** Forme des seuils ; les tests et les simulations peuvent en fournir d'autres valeurs. */
 export type Seuils = { readonly [K in keyof typeof SEUILS]: number };

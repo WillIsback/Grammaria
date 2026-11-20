@@ -199,12 +199,6 @@ export class BadgeStore {
     private serie: <T>(operation: () => Promise<T>) => Promise<T>,
   ) {}
 
-  /** Faits du journal utiles aux badges. */
-  async facts(): Promise<FaitsBadges> {
-    const lignes = await this.driver.readMany([REQUETE_TEXTES, REQUETE_EVENEMENTS]);
-    return { textes: lignes[0] as LigneTexte[], evenements: lignes[1] as FaitEvenement[] };
-  }
-
   /** Badges obtenus, par identifiant, avec leur date d'obtention. */
   async obtained(): Promise<Map<string, number>> {
     const rows = await this.driver.read<{ id: string; at: number }>(REQUETE_OBTENUS.sql);
@@ -264,22 +258,5 @@ export class BadgeStore {
   async catalogue(now: number = Date.now()): Promise<CatalogueBadges> {
     const { faits, obtenus } = lireFaits(await this.driver.readMany(REQUETES_CATALOGUE));
     return vueCatalogue(evaluerBadges(faits, now), obtenus);
-  }
-}
-
-/**
- * Réévalue les badges après une analyse ou une réponse au choix. Une erreur
- * du calcul des badges ne doit jamais faire échouer la requête : elle est
- * journalisée et aucun badge n'est annoncé.
- */
-export async function awardBadgesSafely(
-  store: { award(now?: number): BadgeAnnonce[] | Promise<BadgeAnnonce[]> },
-  now?: number,
-): Promise<BadgeAnnonce[]> {
-  try {
-    return await store.award(now);
-  } catch (error) {
-    console.error("[Badges] Évaluation impossible :", error);
-    return [];
   }
 }

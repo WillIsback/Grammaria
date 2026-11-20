@@ -8,9 +8,9 @@ import {
   REQUETES_BADGES,
   SCHEMA_BADGES,
 } from "./journal.badges.ts";
+import type { AnswerResult } from "./api/deps.ts";
 import type { JournalDriver, Statement } from "./journal.driver.ts";
 import {
-  type AnswerResult,
   type FollowOptions,
   lireInstantaneSuivi,
   type PlanSuivi,
@@ -379,14 +379,6 @@ export class Journal {
     ];
     const period = { ...periode, score: noteSur20(periode.faults, periode.words) };
     return { days, period, unclassified: unclassified.n, rules, words };
-  }
-
-  /**
-   * Tous les textes corrigés (date, mots, fautes), du plus ancien au plus
-   * récent : pour l'écran « Progression » et pour les badges.
-   */
-  async texts(): Promise<LigneTexte[]> {
-    return this.driver.read<LigneTexte>(REQUETE_TEXTES.sql);
   }
 
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
