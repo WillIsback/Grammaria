@@ -1,0 +1,61 @@
+{
+ "nom": "expérimental (Rust)",
+ "racine": "<branche expérimentale>",
+ "demarrageMs": [
+  274,
+  222,
+  230
+ ],
+ "memoireMo": {
+  "apresDemarrage": 102.4,
+  "apresCharge": 117.4
+ },
+ "latence": [
+  {
+   "nom": "court",
+   "mots": 4,
+   "ms": {
+    "mediane": 18.06,
+    "p95": 20.89,
+    "min": 17.05,
+    "max": 24.76
+   }
+  },
+  {
+   "nom": "marche-160-mots",
+   "mots": 160,
+   "ms": {
+    "mediane": 565.31,
+    "p95": 650.78,
+    "min": 530.96,
+    "max": 758.86
+   }
+  },
+  {
+   "nom": "long",
+   "mots": 906,
+   "ms": {
+    "mediane": 1924.28,
+    "p95": 2103.64,
+    "min": 1817.58,
+    "max": 2414.62
+   }
+  },
+  {
+   "nom": "tres-long",
+   "mots": 1085,
+   "ms": {
+    "mediane": 2526.01,
+    "p95": 2676.92,
+    "min": 2436.22,
+    "max": 2721.14
+   }
+  }
+ ],
+ "debit": {
+  "simultanees": 16,
+  "requetes": 160,
+  "dureeMs": 95990,
+  "parSeconde": 1.7
+ }
+}

@@ -1,0 +1,86 @@
+{
+ "tailles": {
+  "workerOctets": 1083232,
+  "workerGzip": 334416,
+  "workerBrotli": 258674,
+  "archiveOctets": 15137137,
+  "archiveGzip": 3395911,
+  "archiveBrotli": 2743542
+ },
+ "csp": "default-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+ "navigateur": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.8103.78 Safari/537.36",
+ "securite": {
+  "evalBloqueDansLaPage": true,
+  "evalBloqueDansUnWorker": true
+ },
+ "corpus": {
+  "chargement": {
+   "archiveOctets": 15137137,
+   "fichiers": 51,
+   "archiveMs": 60.40000000037253,
+   "lectureMs": 45.09999999962747,
+   "reglesMs": 3460,
+   "totalMs": 3565.5
+  },
+  "premierControleDepuisLancementMs": 4095.9,
+  "controles160MotsMs": [
+   167.5,
+   133.4,
+   130.1,
+   124.1,
+   118.2,
+   126.6
+  ],
+  "controles900MotsMs": [
+   774.7,
+   699.5,
+   691,
+   721.2,
+   703.8,
+   657.2
+  ],
+  "filPrincipalEcartMaxMs": {
+   "chargement": 14.6,
+   "controles": 13.8
+  },
+  "absentes": [
+   "fr/french.info",
+   "org/languagetool/MessagesBundle_fr_FR.properties",
+   "org/languagetool/resource/fr/do-not-synthesize.txt",
+   "org/languagetool/resource/fr/hunspell/prohibit_custom.txt",
+   "org/languagetool/resource/fr/word_definitions.txt",
+   "org/languagetool/rules/fr/grammar_custom.xml"
+  ]
+ },
+ "robustesse": {
+  "archiveAbsente": {
+   "message": "Le correcteur grammatical n'a pas pu charger ses règles : archive des règles introuvable (/absente/lt/fr.pack : HTTP 404).",
+   "ms": 78.9,
+   "etat": "erreur"
+  },
+  "archiveAbimee": {
+   "message": "Le correcteur grammatical n'a pas pu charger ses règles : Archive des règles du correcteur invalide : somme de contrôle incorrecte (fichier abîmé).",
+   "ms": 190.8,
+   "etat": "erreur"
+  },
+  "archiveTronquee": {
+   "message": "Le correcteur grammatical n'a pas pu charger ses règles : Archive des règles du correcteur invalide : 7565488 octets de données au lieu de 15134057 (fichier tronqué ?).",
+   "ms": 116,
+   "etat": "erreur"
+  },
+  "workerAbsent": {
+   "message": "Le correcteur grammatical n'a pas pu charger ses règles : le script du Worker est introuvable ou invalide",
+   "ms": 6.1,
+   "etat": "erreur"
+  }
+ },
+ "violationsCsp": [
+  "script-src ← eval"
+ ],
+ "memoire": {
+  "residenteAvantOctets": 97222656,
+  "residenteApresOctets": 489160704,
+  "tasPageAvantOctets": 1051196,
+  "tasPageApresOctets": 1070248
+ }
+}

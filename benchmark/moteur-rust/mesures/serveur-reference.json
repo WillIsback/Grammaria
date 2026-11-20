@@ -1,0 +1,61 @@
+{
+ "nom": "v0.3.0 (ltjs)",
+ "racine": "<arbre v0.3.0>",
+ "demarrageMs": [
+  4313,
+  4341,
+  4272
+ ],
+ "memoireMo": {
+  "apresDemarrage": 691.1,
+  "apresCharge": 1178.1
+ },
+ "latence": [
+  {
+   "nom": "court",
+   "mots": 4,
+   "ms": {
+    "mediane": 30.24,
+    "p95": 48.22,
+    "min": 15.05,
+    "max": 52.44
+   }
+  },
+  {
+   "nom": "marche-160-mots",
+   "mots": 160,
+   "ms": {
+    "mediane": 198.73,
+    "p95": 294.44,
+    "min": 150.63,
+    "max": 309.94
+   }
+  },
+  {
+   "nom": "long",
+   "mots": 906,
+   "ms": {
+    "mediane": 954.06,
+    "p95": 1067.93,
+    "min": 852.93,
+    "max": 1074.27
+   }
+  },
+  {
+   "nom": "tres-long",
+   "mots": 1085,
+   "ms": {
+    "mediane": 895.8,
+    "p95": 1000.69,
+    "min": 822.2,
+    "max": 1052.73
+   }
+  }
+ ],
+ "debit": {
+  "simultanees": 16,
+  "requetes": 160,
+  "dureeMs": 24897,
+  "parSeconde": 6.4
+ }
+}

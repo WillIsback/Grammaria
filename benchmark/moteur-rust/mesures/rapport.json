@@ -1,0 +1,1992 @@
+{
+ "moteurs": [
+  "v0.3.0 (ltjs)",
+  "expérimental (Rust)"
+ ],
+ "corpus": {
+  "reference": {
+   "textes": [
+    {
+     "nom": "marche-160-mots",
+     "fautes": 15,
+     "couvertes": 15,
+     "detections": 16,
+     "bruit": 1,
+     "classees": 15,
+     "parSource": {
+      "fiche": 5,
+      "lt": 10,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 14,
+     "note": 2.5
+    },
+    {
+     "nom": "courriel-pro",
+     "fautes": 14,
+     "couvertes": 10,
+     "detections": 10,
+     "bruit": 0,
+     "classees": 12,
+     "parSource": {
+      "fiche": 2,
+      "lt": 8,
+      "accord": 2
+     },
+     "nonClassees": 2,
+     "fautesComptees": 12,
+     "note": 0
+    },
+    {
+     "nom": "accords",
+     "fautes": 12,
+     "couvertes": 10,
+     "detections": 10,
+     "bruit": 0,
+     "classees": 12,
+     "parSource": {
+      "fiche": 3,
+      "lt": 7,
+      "accord": 2
+     },
+     "nonClassees": 0,
+     "fautesComptees": 12,
+     "note": 0
+    },
+    {
+     "nom": "homophones",
+     "fautes": 12,
+     "couvertes": 10,
+     "detections": 11,
+     "bruit": 1,
+     "classees": 11,
+     "parSource": {
+      "fiche": 8,
+      "lt": 3,
+      "accord": 0
+     },
+     "nonClassees": 1,
+     "fautesComptees": 11,
+     "note": 0
+    },
+    {
+     "nom": "sans-faute",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "typographie",
+     "fautes": 2,
+     "couvertes": 1,
+     "detections": 7,
+     "bruit": 0,
+     "classees": 1,
+     "parSource": {
+      "fiche": 0,
+      "lt": 1,
+      "accord": 0
+     },
+     "nonClassees": 1,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "conjugaison",
+     "fautes": 10,
+     "couvertes": 9,
+     "detections": 9,
+     "bruit": 0,
+     "classees": 10,
+     "parSource": {
+      "fiche": 3,
+      "lt": 6,
+      "accord": 1
+     },
+     "nonClassees": 0,
+     "fautesComptees": 10,
+     "note": 0
+    },
+    {
+     "nom": "court",
+     "fautes": 1,
+     "couvertes": 1,
+     "detections": 1,
+     "bruit": 0,
+     "classees": 1,
+     "parSource": {
+      "fiche": 0,
+      "lt": 1,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 0
+    },
+    {
+     "nom": "vide",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": null
+    },
+    {
+     "nom": "blancs",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 2,
+     "bruit": 2,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": null
+    },
+    {
+     "nom": "apostrophes-typographiques",
+     "fautes": 1,
+     "couvertes": 1,
+     "detections": 2,
+     "bruit": 0,
+     "classees": 1,
+     "parSource": {
+      "fiche": 1,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 12.6
+    },
+    {
+     "nom": "emojis",
+     "fautes": 4,
+     "couvertes": 4,
+     "detections": 4,
+     "bruit": 0,
+     "classees": 4,
+     "parSource": {
+      "fiche": 1,
+      "lt": 3,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 4,
+     "note": 0
+    },
+    {
+     "nom": "majuscules",
+     "fautes": 13,
+     "couvertes": 8,
+     "detections": 8,
+     "bruit": 0,
+     "classees": 10,
+     "parSource": {
+      "fiche": 1,
+      "lt": 7,
+      "accord": 2
+     },
+     "nonClassees": 3,
+     "fautesComptees": 9,
+     "note": 0
+    },
+    {
+     "nom": "ponctuation",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 7,
+     "bruit": 3,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "dates-chiffres-adresses",
+     "fautes": 2,
+     "couvertes": 1,
+     "detections": 3,
+     "bruit": 2,
+     "classees": 2,
+     "parSource": {
+      "fiche": 0,
+      "lt": 1,
+      "accord": 1
+     },
+     "nonClassees": 0,
+     "fautesComptees": 2,
+     "note": 12.5
+    },
+    {
+     "nom": "lignes-et-liste",
+     "fautes": 2,
+     "couvertes": 2,
+     "detections": 5,
+     "bruit": 3,
+     "classees": 2,
+     "parSource": {
+      "fiche": 1,
+      "lt": 1,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 10
+    },
+    {
+     "nom": "sans-faute-long",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "recit",
+     "fautes": 4,
+     "couvertes": 3,
+     "detections": 4,
+     "bruit": 1,
+     "classees": 3,
+     "parSource": {
+      "fiche": 1,
+      "lt": 2,
+      "accord": 0
+     },
+     "nonClassees": 1,
+     "fautesComptees": 3,
+     "note": 15.7
+    }
+   ],
+   "bruit": [
+    {
+     "texte": "marche-160-mots",
+     "regle": "J_N",
+     "passage": "allés boire"
+    },
+    {
+     "texte": "homophones",
+     "regle": "ETRE_VPPA_OU_ADJ",
+     "passage": "amusés"
+    },
+    {
+     "texte": "blancs",
+     "regle": "WHITESPACE_RULE",
+     "passage": "   "
+    },
+    {
+     "texte": "blancs",
+     "regle": "WHITESPACE_RULE",
+     "passage": "  "
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "HEURES",
+     "passage": "19h00"
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
+     "texte": "dates-chiffres-adresses",
+     "regle": "FR_DATE_WEEKDAY",
+     "passage": "lundi 3"
+    },
+    {
+     "texte": "dates-chiffres-adresses",
+     "regle": "DATE",
+     "passage": "31 février"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": ":\n-"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": "-"
+    },
+    {
+     "texte": "recit",
+     "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
+     "passage": "téléphonaient"
+    }
+   ],
+   "total": {
+    "fautes": 92,
+    "couvertes": 75,
+    "detections": 99,
+    "bruit": 13,
+    "classees": 84,
+    "fiche": 26,
+    "lt": 50,
+    "accord": 8,
+    "nonClassees": 8,
+    "fautesComptees": 80
+   }
+  },
+  "experimental": {
+   "textes": [
+    {
+     "nom": "marche-160-mots",
+     "fautes": 15,
+     "couvertes": 8,
+     "detections": 12,
+     "bruit": 2,
+     "classees": 12,
+     "parSource": {
+      "fiche": 5,
+      "lt": 4,
+      "accord": 3
+     },
+     "nonClassees": 3,
+     "fautesComptees": 13,
+     "note": 3.8
+    },
+    {
+     "nom": "courriel-pro",
+     "fautes": 14,
+     "couvertes": 5,
+     "detections": 5,
+     "bruit": 0,
+     "classees": 12,
+     "parSource": {
+      "fiche": 2,
+      "lt": 4,
+      "accord": 6
+     },
+     "nonClassees": 2,
+     "fautesComptees": 11,
+     "note": 0
+    },
+    {
+     "nom": "accords",
+     "fautes": 12,
+     "couvertes": 5,
+     "detections": 5,
+     "bruit": 0,
+     "classees": 11,
+     "parSource": {
+      "fiche": 3,
+      "lt": 2,
+      "accord": 6
+     },
+     "nonClassees": 1,
+     "fautesComptees": 11,
+     "note": 0
+    },
+    {
+     "nom": "homophones",
+     "fautes": 12,
+     "couvertes": 5,
+     "detections": 5,
+     "bruit": 0,
+     "classees": 11,
+     "parSource": {
+      "fiche": 8,
+      "lt": 3,
+      "accord": 0
+     },
+     "nonClassees": 1,
+     "fautesComptees": 11,
+     "note": 0
+    },
+    {
+     "nom": "sans-faute",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "typographie",
+     "fautes": 2,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 2,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "conjugaison",
+     "fautes": 10,
+     "couvertes": 7,
+     "detections": 8,
+     "bruit": 0,
+     "classees": 9,
+     "parSource": {
+      "fiche": 3,
+      "lt": 5,
+      "accord": 1
+     },
+     "nonClassees": 1,
+     "fautesComptees": 10,
+     "note": 0
+    },
+    {
+     "nom": "court",
+     "fautes": 1,
+     "couvertes": 1,
+     "detections": 1,
+     "bruit": 0,
+     "classees": 1,
+     "parSource": {
+      "fiche": 0,
+      "lt": 1,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 0
+    },
+    {
+     "nom": "vide",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": null
+    },
+    {
+     "nom": "blancs",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 0,
+     "bruit": 0,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": null
+    },
+    {
+     "nom": "apostrophes-typographiques",
+     "fautes": 1,
+     "couvertes": 1,
+     "detections": 2,
+     "bruit": 1,
+     "classees": 1,
+     "parSource": {
+      "fiche": 1,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 1,
+     "note": 12.6
+    },
+    {
+     "nom": "emojis",
+     "fautes": 4,
+     "couvertes": 1,
+     "detections": 1,
+     "bruit": 0,
+     "classees": 4,
+     "parSource": {
+      "fiche": 1,
+      "lt": 1,
+      "accord": 2
+     },
+     "nonClassees": 0,
+     "fautesComptees": 4,
+     "note": 0
+    },
+    {
+     "nom": "majuscules",
+     "fautes": 13,
+     "couvertes": 3,
+     "detections": 4,
+     "bruit": 1,
+     "classees": 6,
+     "parSource": {
+      "fiche": 1,
+      "lt": 3,
+      "accord": 2
+     },
+     "nonClassees": 7,
+     "fautesComptees": 6,
+     "note": 0
+    },
+    {
+     "nom": "ponctuation",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 3,
+     "bruit": 2,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "dates-chiffres-adresses",
+     "fautes": 2,
+     "couvertes": 0,
+     "detections": 2,
+     "bruit": 2,
+     "classees": 2,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 2
+     },
+     "nonClassees": 0,
+     "fautesComptees": 2,
+     "note": 12.5
+    },
+    {
+     "nom": "lignes-et-liste",
+     "fautes": 2,
+     "couvertes": 1,
+     "detections": 5,
+     "bruit": 4,
+     "classees": 1,
+     "parSource": {
+      "fiche": 1,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 1,
+     "fautesComptees": 1,
+     "note": 10
+    },
+    {
+     "nom": "sans-faute-long",
+     "fautes": 0,
+     "couvertes": 0,
+     "detections": 4,
+     "bruit": 4,
+     "classees": 0,
+     "parSource": {
+      "fiche": 0,
+      "lt": 0,
+      "accord": 0
+     },
+     "nonClassees": 0,
+     "fautesComptees": 0,
+     "note": 20
+    },
+    {
+     "nom": "recit",
+     "fautes": 4,
+     "couvertes": 2,
+     "detections": 3,
+     "bruit": 1,
+     "classees": 4,
+     "parSource": {
+      "fiche": 1,
+      "lt": 2,
+      "accord": 1
+     },
+     "nonClassees": 0,
+     "fautesComptees": 4,
+     "note": 14.3
+    }
+   ],
+   "bruit": [
+    {
+     "texte": "marche-160-mots",
+     "regle": "D_N_E_OU_E",
+     "passage": "les allées"
+    },
+    {
+     "texte": "marche-160-mots",
+     "regle": "CONFUSION_E_ER",
+     "passage": "peuvent parfois créer de"
+    },
+    {
+     "texte": "apostrophes-typographiques",
+     "regle": "PRONSUJ_NONVERBE",
+     "passage": "l’été"
+    },
+    {
+     "texte": "majuscules",
+     "regle": "START_D_N",
+     "passage": "PARIS EST UNE"
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "DEUX_POINTS_ESPACE",
+     "passage": ": des"
+    },
+    {
+     "texte": "ponctuation",
+     "regle": "HEURES",
+     "passage": "19h00"
+    },
+    {
+     "texte": "dates-chiffres-adresses",
+     "regle": "MOIS",
+     "passage": "3 mars"
+    },
+    {
+     "texte": "dates-chiffres-adresses",
+     "regle": "DATE",
+     "passage": "31 février"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": "- du"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": "- des"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "TIRET",
+     "passage": "- du"
+    },
+    {
+     "texte": "lignes-et-liste",
+     "regle": "ESPACE_UNITES",
+     "passage": "demi-écrémé"
+    },
+    {
+     "texte": "sans-faute-long",
+     "regle": "ADJ_GN",
+     "passage": "Les lecteurs y découvrent des salles plus lumineuses, des fauteuils"
+    },
+    {
+     "texte": "sans-faute-long",
+     "regle": "DEUX_POINTS_ESPACE",
+     "passage": ": la"
+    },
+    {
+     "texte": "sans-faute-long",
+     "regle": "EST_CE",
+     "passage": "est désormais ouverte le dimanche matin, ce"
+    },
+    {
+     "texte": "sans-faute-long",
+     "regle": "ESPACE_UNITES",
+     "passage": "doublé"
+    },
+    {
+     "texte": "recit",
+     "regle": "SUJET_AUXILIAIRE",
+     "passage": "qu'il en"
+    }
+   ],
+   "total": {
+    "fautes": 92,
+    "couvertes": 39,
+    "detections": 60,
+    "bruit": 17,
+    "classees": 74,
+    "fiche": 26,
+    "lt": 25,
+    "accord": 23,
+    "nonClassees": 18,
+    "fautesComptees": 75
+   }
+  },
+  "fautes": [
+   {
+    "texte": "marche-160-mots",
+    "avant": "aller",
+    "apres": "allé",
+    "regles": [
+     [
+      "ETRE_VPPA_OU_ADJ"
+     ],
+     [
+      "ETRE_VPPA_OU_ADJ"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "était",
+    "apres": "étaient",
+    "regles": [
+     [
+      "ACCORD_SUJET_VERBE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "trouver",
+    "apres": "trouvé",
+    "regles": [
+     [
+      "R_VAVOIR_VINF"
+     ],
+     [
+      "R_VAVOIR_VINF"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "coûtait",
+    "apres": "coûtaient",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "soeur",
+    "apres": "sœur",
+    "regles": [
+     [
+      "OE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "que ils",
+    "apres": "qu'elles",
+    "regles": [
+     [
+      "ELISION"
+     ],
+     [
+      "ELISION"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_INFINITIF"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "somme",
+    "apres": "sommes",
+    "regles": [
+     [
+      "NOUS_SOMMES"
+     ],
+     [
+      "NOUS_SOMMES",
+      "NOUS_SOMMES"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "avions",
+    "apres": "n'avions",
+    "regles": [
+     [
+      "P_V_PAS"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "commandé",
+    "apres": "commandés",
+    "regles": [
+     [
+      "QUE_AVOIR"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "essayer",
+    "apres": "essayé",
+    "regles": [
+     [
+      "R_VAVOIR_VINF"
+     ],
+     [
+      "R_VAVOIR_VINF"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "comprenais",
+    "apres": "comprenait",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "rit",
+    "apres": "ri",
+    "regles": [
+     [
+      "AUX_AVOIR_VCONJ"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "oublier",
+    "apres": "oublié",
+    "regles": [
+     [
+      "R_VAVOIR_VINF"
+     ],
+     [
+      "AUX_AVOIR_VCONJ",
+      "R_VAVOIR_VINF"
+     ]
+    ]
+   },
+   {
+    "texte": "marche-160-mots",
+    "avant": "la",
+    "apres": "l'a",
+    "regles": [
+     [
+      "D_N_E_OU_E"
+     ],
+     [
+      "NOM_AGREEMENT"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "écrit",
+    "apres": "écris",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "A_ACCENT"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_ACCENT"
+     ],
+     [
+      "A_ACCENT",
+      "A_A_ACCENT"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "convenus",
+    "apres": "convenu",
+    "regles": [
+     [
+      "COMME_PREVU"
+     ],
+     [
+      "COMME_PREVU"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "envoi",
+    "apres": "envoie",
+    "regles": [
+     [
+      "PRONSUJ_NONVERBE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "demandé",
+    "apres": "demandés",
+    "regles": [
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ],
+     [
+      "ESPACE_UNITES"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "meilleur",
+    "apres": "meilleurs",
+    "regles": [
+     [
+      "SONT_SON"
+     ],
+     [
+      "SONT_SON"
+     ]
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "prévus",
+    "apres": "prévu",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "malgré",
+    "apres": "bien",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "ont",
+    "apres": "aient",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "annulés",
+    "apres": "annulé",
+    "regles": [
+     [
+      "QUE_AVOIR"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_A_ACCENT2"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "renseignements",
+    "apres": "renseignement",
+    "regles": [
+     [
+      "D_N"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "pris",
+    "apres": "prie",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "courriel-pro",
+    "avant": "distingués",
+    "apres": "distinguées",
+    "regles": [
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "était",
+    "apres": "étaient",
+    "regles": [
+     [
+      "ACCORD_SUJET_VERBE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "content",
+    "apres": "contents",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "leur",
+    "apres": "leurs",
+    "regles": [
+     [
+      "D_N"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "manger",
+    "apres": "mangé",
+    "regles": [
+     [
+      "R_VAVOIR_VINF"
+     ],
+     [
+      "R_VAVOIR_VINF"
+     ]
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "baigné",
+    "apres": "baignés",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "tout",
+    "apres": "tous",
+    "regles": [
+     [
+      "AGREEMENT_TOUT_LE"
+     ],
+     [
+      "AGREEMENT_TOUT_LE"
+     ]
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "Leur",
+    "apres": "Leurs",
+    "regles": [
+     [
+      "D_N"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "rester",
+    "apres": "restés",
+    "regles": [
+     [
+      "AUX_ETRE_VCONJ"
+     ],
+     [
+      "AUX_ETRE_VCONJ"
+     ]
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "vu",
+    "apres": "vue",
+    "regles": [
+     [
+      "QUE_AVOIR"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "bleu",
+    "apres": "bleue",
+    "regles": [
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "Quelques",
+    "apres": "Quel que",
+    "regles": [
+     [
+      "QUELQUE_SOIT"
+     ],
+     [
+      "QUELQUE_SOIT"
+     ]
+    ]
+   },
+   {
+    "texte": "accords",
+    "avant": "promené",
+    "apres": "promener",
+    "regles": [
+     [
+      "COMMENT_VPPA"
+     ],
+     [
+      "COMMENT_VPPA"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "Sa",
+    "apres": "Ça",
+    "regles": [
+     [
+      "SA_CA_SE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "Ou",
+    "apres": "Où",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "habite",
+    "apres": "habites",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "Ont",
+    "apres": "On",
+    "regles": [
+     [
+      "ON_ONT"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "a",
+    "apres": "as",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "mère",
+    "apres": "mer",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "Ces",
+    "apres": "C'est",
+    "regles": [
+     [
+      "CES_CEST"
+     ],
+     [
+      "CES_CEST"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_ACCENT"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "c'est",
+    "apres": "s'est",
+    "regles": [
+     [
+      "CE_SE"
+     ],
+     [
+      "SAIT_CES_C_EST_S_EST"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "peut",
+    "apres": "peux",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "se",
+    "apres": "ce",
+    "regles": [
+     [
+      "SE_CE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "homophones",
+    "avant": "sa",
+    "apres": "ça",
+    "regles": [
+     [
+      "SA_CA_SE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "typographie",
+    "avant": "chère",
+    "apres": "cher",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "typographie",
+    "avant": "au",
+    "apres": "Au",
+    "regles": [
+     [
+      "UPPERCASE_SENTENCE_START"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "j'aurais",
+    "apres": "j'avais",
+    "regles": [
+     [
+      "SI"
+     ],
+     [
+      "SI"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "",
+    "apres": "ne ",
+    "regles": [
+     [
+      "P_V_PAS"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "vient",
+    "apres": "viennes",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "part",
+    "apres": "parte",
+    "regles": [
+     [
+      "ACCORD_R_PERS_VERBE"
+     ],
+     [
+      "SUBJ_LOCU",
+      "ACCORD_R_PERS_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "décider",
+    "apres": "décidé",
+    "regles": [
+     [
+      "R_VAVOIR_VINF"
+     ],
+     [
+      "R_VAVOIR_VINF"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "est",
+    "apres": "soit",
+    "regles": [
+     [
+      "SUBJ_LOCU"
+     ],
+     [
+      "SUBJ_LOCU"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "serais",
+    "apres": "saurais",
+    "regles": [
+     [
+      "ETRE_GRE"
+     ],
+     [
+      "CONFUSION_DANS_UNE_EXPRESSION"
+     ]
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "c'est",
+    "apres": "s'est",
+    "regles": [
+     [
+      "CE_SE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "levé",
+    "apres": "levée",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "conjugaison",
+    "avant": "à",
+    "apres": "a",
+    "regles": [
+     [
+      "A_INFINITIF"
+     ],
+     [
+      "A_INFINITIF"
+     ]
+    ]
+   },
+   {
+    "texte": "court",
+    "avant": "un",
+    "apres": "une",
+    "regles": [
+     [
+      "D_N_E_OU_E"
+     ],
+     [
+      "D_N"
+     ]
+    ]
+   },
+   {
+    "texte": "apostrophes-typographiques",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_ACCENT"
+     ],
+     [
+      "A_A_ACCENT2"
+     ]
+    ]
+   },
+   {
+    "texte": "emojis",
+    "avant": "fille",
+    "apres": "filles",
+    "regles": [
+     [
+      "D_N"
+     ],
+     [
+      "D_N"
+     ]
+    ]
+   },
+   {
+    "texte": "emojis",
+    "avant": "arrivé",
+    "apres": "arrivées",
+    "regles": [
+     [
+      "ETRE_VPPA_OU_ADJ"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "emojis",
+    "avant": "leur",
+    "apres": "leurs",
+    "regles": [
+     [
+      "D_N"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "emojis",
+    "avant": "sa",
+    "apres": "ça",
+    "regles": [
+     [
+      "SA_CA_SE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "je",
+    "apres": "Je",
+    "regles": [
+     [
+      "UPPERCASE_SENTENCE_START"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_A_ACCENT2"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "paris",
+    "apres": "Paris",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Juillet",
+    "apres": "juillet",
+    "regles": [
+     [
+      "MOIS"
+     ],
+     [
+      "MOIS"
+     ]
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "jean",
+    "apres": "Jean",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "ÉTAIT",
+    "apres": "ÉTAIENT",
+    "regles": [
+     [],
+     [
+      "ACCORD_SUJET_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "CONTENT",
+    "apres": "CONTENTS",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "LEUR",
+    "apres": "LEURS",
+    "regles": [
+     [
+      "D_N"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Lundi",
+    "apres": "lundi",
+    "regles": [
+     [
+      "JOURS"
+     ],
+     [
+      "JOURS"
+     ]
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Musée",
+    "apres": "musée",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Etat",
+    "apres": "État",
+    "regles": [
+     [
+      "FR_SPELLING_RULE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Ecole",
+    "apres": "École",
+    "regles": [
+     [
+      "FR_SPELLING_RULE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "majuscules",
+    "avant": "Eglise",
+    "apres": "Église",
+    "regles": [
+     [
+      "FR_SPELLING_RULE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "dates-chiffres-adresses",
+    "avant": "chat",
+    "apres": "chats",
+    "regles": [
+     [
+      "AGREEMENT_NUMERAL_PLURAL"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "dates-chiffres-adresses",
+    "avant": "pomme",
+    "apres": "pommes",
+    "regles": [
+     [],
+     []
+    ]
+   },
+   {
+    "texte": "lignes-et-liste",
+    "avant": "oeufs",
+    "apres": "œufs",
+    "regles": [
+     [
+      "OE"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "lignes-et-liste",
+    "avant": "oublié",
+    "apres": "oublier",
+    "regles": [
+     [
+      "NE_PLUS_INF"
+     ],
+     [
+      "NE_PLUS_INF"
+     ]
+    ]
+   },
+   {
+    "texte": "recit",
+    "avant": "regardait",
+    "apres": "regardaient",
+    "regles": [
+     [
+      "ACCORD_SUJET_VERBE"
+     ],
+     [
+      "ACCORD_SUJET_VERBE"
+     ]
+    ]
+   },
+   {
+    "texte": "recit",
+    "avant": "quelques un",
+    "apres": "quelques-uns",
+    "regles": [
+     [],
+     [
+      "D_N"
+     ]
+    ]
+   },
+   {
+    "texte": "recit",
+    "avant": "a",
+    "apres": "à",
+    "regles": [
+     [
+      "A_A_ACCENT2"
+     ],
+     []
+    ]
+   },
+   {
+    "texte": "recit",
+    "avant": "couvert",
+    "apres": "couverts",
+    "regles": [
+     [
+      "AGREEMENT_POSTPONED_ADJ"
+     ],
+     []
+    ]
+   }
+  ]
+ },
+ "exemples": [
+  {
+   "fautifs": 1000,
+   "detectes": 893,
+   "memeRegle": 798,
+   "corrects": 1000,
+   "propres": 667
+  },
+  {
+   "fautifs": 1000,
+   "detectes": 498,
+   "memeRegle": 410,
+   "corrects": 1000,
+   "propres": 686
+  }
+ ],
+ "moteur": {
+  "reference": {
+   "chargementMs": 4226,
+   "memoireMo": {
+    "avant": 20.8,
+    "apresChargement": 819.7,
+    "apresCorpus": 1073.8,
+    "apresExemples": 869.9
+   }
+  },
+  "experimental": {
+   "chargementMs": 121,
+   "memoireMo": {
+    "avant": 20.7,
+    "apresChargement": 80.2,
+    "apresCorpus": 97.3,
+    "apresExemples": 105.1
+   }
+  }
+ },
+ "serveurs": [
+  {
+   "nom": "v0.3.0 (ltjs)",
+   "racine": "<arbre v0.3.0>",
+   "demarrageMs": [
+    4313,
+    4341,
+    4272
+   ],
+   "memoireMo": {
+    "apresDemarrage": 691.1,
+    "apresCharge": 1178.1
+   },
+   "latence": [
+    {
+     "nom": "court",
+     "mots": 4,
+     "ms": {
+      "mediane": 30.24,
+      "p95": 48.22,
+      "min": 15.05,
+      "max": 52.44
+     }
+    },
+    {
+     "nom": "marche-160-mots",
+     "mots": 160,
+     "ms": {
+      "mediane": 198.73,
+      "p95": 294.44,
+      "min": 150.63,
+      "max": 309.94
+     }
+    },
+    {
+     "nom": "long",
+     "mots": 906,
+     "ms": {
+      "mediane": 954.06,
+      "p95": 1067.93,
+      "min": 852.93,
+      "max": 1074.27
+     }
+    },
+    {
+     "nom": "tres-long",
+     "mots": 1085,
+     "ms": {
+      "mediane": 895.8,
+      "p95": 1000.69,
+      "min": 822.2,
+      "max": 1052.73
+     }
+    }
+   ],
+   "debit": {
+    "simultanees": 16,
+    "requetes": 160,
+    "dureeMs": 24897,
+    "parSeconde": 6.4
+   }
+  },
+  {
+   "nom": "expérimental (Rust)",
+   "racine": "<branche expérimentale>",
+   "demarrageMs": [
+    274,
+    222,
+    230
+   ],
+   "memoireMo": {
+    "apresDemarrage": 102.4,
+    "apresCharge": 117.4
+   },
+   "latence": [
+    {
+     "nom": "court",
+     "mots": 4,
+     "ms": {
+      "mediane": 18.06,
+      "p95": 20.89,
+      "min": 17.05,
+      "max": 24.76
+     }
+    },
+    {
+     "nom": "marche-160-mots",
+     "mots": 160,
+     "ms": {
+      "mediane": 565.31,
+      "p95": 650.78,
+      "min": 530.96,
+      "max": 758.86
+     }
+    },
+    {
+     "nom": "long",
+     "mots": 906,
+     "ms": {
+      "mediane": 1924.28,
+      "p95": 2103.64,
+      "min": 1817.58,
+      "max": 2414.62
+     }
+    },
+    {
+     "nom": "tres-long",
+     "mots": 1085,
+     "ms": {
+      "mediane": 2526.01,
+      "p95": 2676.92,
+      "min": 2436.22,
+      "max": 2721.14
+     }
+    }
+   ],
+   "debit": {
+    "simultanees": 16,
+    "requetes": 160,
+    "dureeMs": 95990,
+    "parSeconde": 1.7
+   }
+  }
+ ]
+}

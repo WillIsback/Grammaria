@@ -1,0 +1,27 @@
+{
+ "source": "autotest de l'application réelle (WebKitGTK sous Xvfb), src/desktop/autotest.ts",
+ "userAgent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15",
+ "interface": {
+  "monteeDepuisLancementMs": 247,
+  "zoneDeSaisie": true
+ },
+ "correcteur": {
+  "chargement": {
+   "chargementMs": 91.500204,
+   "donneesOctets": 35882512
+  },
+  "controlesSuivants160MotsMs": {
+   "max": 717,
+   "mediane": 695,
+   "min": 685,
+   "n": 5
+  },
+  "identiques": 20,
+  "premierControle": {
+   "depuisLancementMs": 1020,
+   "dureeMs": 772
+  },
+  "textes": 20
+ },
+ "dureeMs": 16445
+}
