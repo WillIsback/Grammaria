@@ -118,6 +118,7 @@ export function SettingsDialog({
                   currentModel={currentModel}
                   onModelSelect={setCurrentModelState}
                   reloadKey={modelsReloadKey}
+                  awaitingTarget={serverSettings?.editable === true && !serverSettings.configured}
                 />
               </section>
             )}
