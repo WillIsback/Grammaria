@@ -42,7 +42,7 @@ COPY --from=builder /app/public ./public
 COPY --from=moteur /app/moteur ./moteur
 
 # Copier les fichiers serveur
-COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
+COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts settings.ts statique.ts telemetry.ts config.ts package.json bun.lock ./
 # api/ : gestionnaire des routes /api/* et /v1/*, partagé avec l'application de bureau
 COPY api ./api
 COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts src/utils/modeles.ts src/utils/erreursModele.ts ./src/utils/

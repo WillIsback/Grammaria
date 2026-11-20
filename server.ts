@@ -11,6 +11,7 @@ import type { FragmentModele, ModeleDeps } from "./api/deps.ts";
 import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
+import { cheminStatique } from "./statique.ts";
 import { Journal } from "./journal.ts";
 import { ouvrirPiloteBun } from "./journal.driver.bun.ts";
 import { listerModelesAmont } from "./src/utils/modeles.ts";
@@ -204,11 +205,9 @@ Bun.serve({
     if (apiResponse) return apiResponse;
 
     // === Static Files ===
-    let filePath = join(DIST_DIR, path === "/" ? "index.html" : path);
-
-    // Path traversal protection
-    const resolved = resolve(filePath);
-    if (!resolved.startsWith(DIST_DIR)) {
+    // Traversée de chemin : rien hors de DIST_DIR (voir statique.ts).
+    let filePath = cheminStatique(DIST_DIR, path);
+    if (filePath === null) {
       return new Response("Forbidden", { status: 403 });
     }
 
