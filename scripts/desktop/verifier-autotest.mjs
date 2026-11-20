@@ -153,7 +153,7 @@ ok(
 
 console.log(
   `\nTemps : interface montée à ${r.interface?.monteeDepuisLancementMs} ms ; correcteur chargé en ` +
-    `${r.correcteur?.chargement?.totalMs} ms ; premier contrôle ${premier} ms (réponse à ` +
+    `${r.correcteur?.chargement?.chargementMs} ms ; premier contrôle ${premier} ms (réponse à ` +
     `${r.correcteur?.premierControle?.depuisLancementMs} ms du lancement de la page) ; contrôles suivants ` +
     `médiane ${r.correcteur?.controlesSuivants160MotsMs?.mediane} ms ; 3000 fragments en ${m.debit?.totalMs} ms ; ` +
     `autotest complet ${r.dureeMs} ms.`,

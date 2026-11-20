@@ -38,14 +38,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"sœur\".",
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en \"qu'ils\".",
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
           "suggestions": ["qu'ils"]
         },
         {
@@ -136,7 +136,7 @@
           "regle": "A_ACCENT",
           "debut": 36,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -168,6 +168,20 @@
           "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
         },
         {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 193,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 201,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
           "regle": "QUE_AVOIR",
           "debut": 233,
           "longueur": 7,
@@ -178,7 +192,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 265,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -187,6 +201,13 @@
           "longueur": 19,
           "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
           "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 366,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
         },
         {
           "regle": "AGREEMENT_POSTPONED_ADJ",
@@ -283,7 +304,7 @@
           "regle": "SA_CA_SE",
           "debut": 0,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -311,14 +332,14 @@
           "regle": "CES_CEST",
           "debut": 125,
           "longueur": 3,
-          "message": "Voulez-vous écrire \"c'est\" au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 170,
           "longueur": 1,
-          "message": "La préposition \"à\" est attendue après \"venu\".",
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -353,7 +374,7 @@
           "regle": "SA_CA_SE",
           "debut": 253,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         }
       ]
@@ -396,6 +417,13 @@
           "longueur": 3,
           "message": "Insérez une espace après la virgule.",
           "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 116,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
         },
         {
           "regle": "WHITESPACE_RULE",
@@ -541,14 +569,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"sœur\".",
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en \"qu'ils\".",
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
           "suggestions": ["qu'ils"]
         },
         {
@@ -632,7 +660,7 @@
           "regle": "A_ACCENT",
           "debut": 987,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -664,6 +692,20 @@
           "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
         },
         {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 1144,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1152,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
           "regle": "QUE_AVOIR",
           "debut": 1184,
           "longueur": 7,
@@ -674,7 +716,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 1216,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -683,6 +725,13 @@
           "longueur": 19,
           "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
           "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1317,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
         },
         {
           "regle": "AGREEMENT_POSTPONED_ADJ",
@@ -765,7 +814,7 @@
           "regle": "SA_CA_SE",
           "debut": 1615,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -793,14 +842,14 @@
           "regle": "CES_CEST",
           "debut": 1740,
           "longueur": 3,
-          "message": "Voulez-vous écrire \"c'est\" au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 1785,
           "longueur": 1,
-          "message": "La préposition \"à\" est attendue après \"venu\".",
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -835,7 +884,7 @@
           "regle": "SA_CA_SE",
           "debut": 1868,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -865,6 +914,13 @@
           "longueur": 3,
           "message": "Insérez une espace après la virgule.",
           "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 2233,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
         },
         {
           "regle": "WHITESPACE_RULE",
@@ -989,14 +1045,14 @@
           "regle": "OE",
           "debut": 2795,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"sœur\".",
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 2847,
           "longueur": 7,
-          "message": "« que ils » s’élide en \"qu'ils\".",
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
           "suggestions": ["qu'ils"]
         },
         {
@@ -1080,7 +1136,7 @@
           "regle": "A_ACCENT",
           "debut": 3551,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -1112,6 +1168,20 @@
           "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
         },
         {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 3708,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 3716,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
           "regle": "QUE_AVOIR",
           "debut": 3748,
           "longueur": 7,
@@ -1122,7 +1192,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 3780,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -1131,6 +1201,13 @@
           "longueur": 19,
           "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
           "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 3881,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
         },
         {
           "regle": "AGREEMENT_POSTPONED_ADJ",
@@ -1213,7 +1290,7 @@
           "regle": "SA_CA_SE",
           "debut": 4179,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -1241,14 +1318,14 @@
           "regle": "CES_CEST",
           "debut": 4304,
           "longueur": 3,
-          "message": "Voulez-vous écrire \"c'est\" au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 4349,
           "longueur": 1,
-          "message": "La préposition \"à\" est attendue après \"venu\".",
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -1283,7 +1360,7 @@
           "regle": "SA_CA_SE",
           "debut": 4432,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -1313,6 +1390,13 @@
           "longueur": 3,
           "message": "Insérez une espace après la virgule.",
           "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 4797,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
         },
         {
           "regle": "WHITESPACE_RULE",
@@ -1443,7 +1527,7 @@
           "regle": "A_ACCENT",
           "debut": 81,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -1485,7 +1569,7 @@
           "regle": "SA_CA_SE",
           "debut": 143,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         }
       ]
@@ -1506,8 +1590,15 @@
           "regle": "A_A_ACCENT2",
           "debut": 40,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 42,
+          "longueur": 5,
+          "message": "Un nom de ville prend une majuscule.",
+          "suggestions": ["Paris"]
         },
         {
           "regle": "MOIS",
@@ -1515,6 +1606,13 @@
           "longueur": 7,
           "message": "Les mois de l’année s'écrivent sans majuscule.",
           "suggestions": ["juillet"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 73,
+          "longueur": 4,
+          "message": "Un prénom prend une majuscule.",
+          "suggestions": ["Jean"]
         },
         {
           "regle": "D_N",
@@ -1634,6 +1732,13 @@
           "longueur": 4,
           "message": "Vérifiez l'accord en nombre entre \"3\" et \"chat\".",
           "suggestions": ["chats"]
+        },
+        {
+          "regle": "GRM_COLLECTIF_DE_NOM_SING",
+          "debut": 114,
+          "longueur": 5,
+          "message": "On achète des fruits ou des légumes au poids : le nom se met au pluriel.",
+          "suggestions": ["pommes"]
         }
       ]
     },
@@ -1660,7 +1765,7 @@
           "regle": "OE",
           "debut": 36,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"œufs\".",
+          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
           "suggestions": ["œufs"]
         },
         {
@@ -1696,6 +1801,13 @@
           "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
           "suggestions": ["regardaient"]
+        },
+        {
+          "regle": "GRM_TU_MOTS_COMPOSES",
+          "debut": 125,
+          "longueur": 11,
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
           "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
@@ -1757,14 +1869,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"sœur\".",
+          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en \"qu'ils\".",
+          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
           "suggestions": ["qu'ils"]
         },
         {
@@ -1848,7 +1960,7 @@
           "regle": "A_ACCENT",
           "debut": 987,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -1880,6 +1992,20 @@
           "suggestions": ["sont meilleurs", "sont meilleures", "son meilleur"]
         },
         {
+          "regle": "GRM_MOTS_INVARIABLES",
+          "debut": 1144,
+          "longueur": 6,
+          "message": "Dans une comparaison, « que prévu » est invariable (ce qui était prévu).",
+          "suggestions": ["prévu"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1152,
+          "longueur": 10,
+          "message": "« Malgré que » est critiqué dans la langue soignée : préférez « bien que » ou « quoique ».",
+          "suggestions": ["bien que", "quoique"]
+        },
+        {
           "regle": "QUE_AVOIR",
           "debut": 1184,
           "longueur": 7,
@@ -1890,7 +2016,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 1216,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -1899,6 +2025,13 @@
           "longueur": 19,
           "message": "Le déterminant s'accorde avec le nom \"renseignements\".",
           "suggestions": ["tous renseignements", "tout renseignement"]
+        },
+        {
+          "regle": "GRM_LOC_DIVERS",
+          "debut": 1317,
+          "longueur": 4,
+          "message": "Le verbe est « prier » : « je vous prie de… ».",
+          "suggestions": ["prie"]
         },
         {
           "regle": "AGREEMENT_POSTPONED_ADJ",
@@ -1981,7 +2114,7 @@
           "regle": "SA_CA_SE",
           "debut": 1615,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -2009,14 +2142,14 @@
           "regle": "CES_CEST",
           "debut": 1740,
           "longueur": 3,
-          "message": "Voulez-vous écrire \"c'est\" au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 1785,
           "longueur": 1,
-          "message": "La préposition \"à\" est attendue après \"venu\".",
+          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -2051,7 +2184,7 @@
           "regle": "SA_CA_SE",
           "debut": 1868,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -2081,6 +2214,13 @@
           "longueur": 3,
           "message": "Insérez une espace après la virgule.",
           "suggestions": [", et"]
+        },
+        {
+          "regle": "GRM_ATTRIBUT_DE_CA",
+          "debut": 2233,
+          "longueur": 5,
+          "message": "L'attribut de « c' » se met au masculin singulier.",
+          "suggestions": ["cher"]
         },
         {
           "regle": "WHITESPACE_RULE",
@@ -2177,7 +2317,7 @@
           "regle": "A_ACCENT",
           "debut": 2645,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition \"à\".",
+          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
           "suggestions": ["à"]
         },
         {
@@ -2212,7 +2352,7 @@
           "regle": "SA_CA_SE",
           "debut": 2886,
           "longueur": 2,
-          "message": "Le pronom démonstratif \"ça\" est attendu devant un verbe.",
+          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -2226,8 +2366,15 @@
           "regle": "A_A_ACCENT2",
           "debut": 2950,
           "longueur": 1,
-          "message": "La préposition \"à\" est généralement attendue après un verbe conjugué.",
+          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 2952,
+          "longueur": 5,
+          "message": "Un nom de ville prend une majuscule.",
+          "suggestions": ["Paris"]
         },
         {
           "regle": "MOIS",
@@ -2235,6 +2382,13 @@
           "longueur": 7,
           "message": "Les mois de l’année s'écrivent sans majuscule.",
           "suggestions": ["juillet"]
+        },
+        {
+          "regle": "GRM_MAJ_GEOGRAPHIE",
+          "debut": 2983,
+          "longueur": 4,
+          "message": "Un prénom prend une majuscule.",
+          "suggestions": ["Jean"]
         },
         {
           "regle": "D_N",
@@ -2307,13 +2461,6 @@
           "suggestions": ["19 h 00", "19:00"]
         },
         {
-          "regle": "FR_REPEATEDWORDS_VRAIMENT",
-          "debut": 3286,
-          "longueur": 8,
-          "message": "Ce mot apparaît déjà dans l'une des phrases précédant immédiatement celle-ci. Utilisez un synonyme pour apporter plus de variété à votre texte, excepté si la répétition est intentionnelle.",
-          "suggestions": ["Réellement", "Absolument", "Complètement", "Très", "Extrêmement"]
-        },
-        {
           "regle": "TIRET",
           "debut": 3333,
           "longueur": 1,
@@ -2349,6 +2496,13 @@
           "suggestions": ["chats"]
         },
         {
+          "regle": "GRM_COLLECTIF_DE_NOM_SING",
+          "debut": 3482,
+          "longueur": 5,
+          "message": "On achète des fruits ou des légumes au poids : le nom se met au pluriel.",
+          "suggestions": ["pommes"]
+        },
+        {
           "regle": "TIRET",
           "debut": 3638,
           "longueur": 3,
@@ -2366,7 +2520,7 @@
           "regle": "OE",
           "debut": 3656,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de \"œufs\".",
+          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
           "suggestions": ["œufs"]
         },
         {
@@ -2389,6 +2543,13 @@
           "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
           "suggestions": ["regardaient"]
+        },
+        {
+          "regle": "GRM_TU_MOTS_COMPOSES",
+          "debut": 4716,
+          "longueur": 11,
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
           "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",
@@ -2417,6 +2578,13 @@
           "longueur": 9,
           "message": "Le verbe devrait être à la 3ᵉ personne du pluriel.",
           "suggestions": ["regardaient"]
+        },
+        {
+          "regle": "GRM_TU_MOTS_COMPOSES",
+          "debut": 5528,
+          "longueur": 11,
+          "message": "Le pronom s'écrit « quelques-uns ».",
+          "suggestions": ["quelques-uns"]
         },
         {
           "regle": "PAS_DE_VERBE_APRES_POSSESSIF_DEMONSTRATIF",

@@ -1,6 +1,6 @@
 /**
  * Politique de sécurité du bureau et constructions qu'elle interdit dans le code livré.
- * Partagé par scripts/desktop/verifier-correcteur.mjs (Chromium) et les tests du build.
+ * Utilisé par les tests du build (tests/unit/desktop.build.test.ts).
  */
 
 /**

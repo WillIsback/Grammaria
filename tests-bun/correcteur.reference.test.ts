@@ -8,9 +8,10 @@ import {
 } from "../scripts/desktop/reference-correcteur.ts";
 import { CORPUS } from "../tests/fixtures/correcteur/corpus.ts";
 
-// Référence versionnée des détections du serveur, que le Worker du bureau doit reproduire
-// (scripts/desktop/verifier-correcteur.mjs). Si ce test échoue après une montée de version de
-// ltjs, régénérer avec `bun scripts/desktop/reference-correcteur.ts` et relire le diff.
+// Référence versionnée des détections du serveur, que l'application de bureau doit reproduire
+// (autotest : src/desktop/autotest.ts). Si ce test échoue après un changement de révision du
+// moteur grammaria-rc, régénérer avec `bun scripts/desktop/reference-correcteur.ts` et relire
+// le diff.
 const checker = new GrammarChecker();
 afterAll(() => checker.close());
 

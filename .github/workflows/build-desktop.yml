@@ -3,9 +3,9 @@
 # (NSIS, MSI).
 #
 # Plus de serveur Bun en sidecar : la page est embarquée (`beforeBuildCommand` :
-# `npm run build:bureau`, Node seul), le correcteur tourne dans un Worker de la
-# WebView et Rust fournit SQLite, les réglages et le relais du modèle. Bun n'est
-# donc plus installé ici.
+# `npm run build:bureau`, Node seul) et Rust fournit SQLite, les réglages, le
+# relais du modèle et le correcteur grammatical (moteur grammaria-rc lié à
+# l'application, version expérimentale). Bun n'est donc plus installé ici.
 #
 # Après le build, le binaire réellement produit (celui qui est empaqueté, signé
 # en release) est lancé en mode autotest (variable GRAMMARIA_AUTOTEST_OUT, voir
@@ -63,6 +63,7 @@ on:
       - "src-tauri/**"
       - "src/**"
       - "scripts/desktop/**"
+      - "scripts/moteur/**"
       - "tests/fixtures/correcteur/**"
       - "journal*.ts"
       - "index.html"
@@ -274,8 +275,40 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # `beforeBuildCommand` (src-tauri/tauri.conf.json) construit la page et le
-      # correcteur embarqués : `npm run build:bureau`.
+      # Moteur grammatical (grammaria-rc, Rust) à la révision épinglée dans
+      # src-tauri/Cargo.toml : binaire du serveur et données (moteur/). La
+      # compilation du moteur prend quelques minutes : le dossier produit
+      # est mis en cache par révision. Le dépôt du moteur doit être lisible par
+      # le job (dépôt public, ou jeton à ajouter au clone s'il est privé).
+      - name: Révision du moteur
+        id: moteur
+        shell: bash
+        run: |
+          rev="$(sed -n 's/^grammaria_rc = .*rev = "\([0-9a-f]*\)".*/\1/p' src-tauri/Cargo.toml)"
+          test -n "$rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
+      - name: Cache du moteur
+        id: cache-moteur
+        uses: actions/cache@v4
+        with:
+          path: moteur
+          key: moteur-${{ runner.os }}-${{ steps.moteur.outputs.rev }}
+
+      - name: Construire le moteur
+        if: steps.cache-moteur.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          REV: ${{ steps.moteur.outputs.rev }}
+        run: |
+          set -euo pipefail
+          git clone https://github.com/WillIsback/grammaria-rc "$RUNNER_TEMP/grammaria-rc"
+          git -C "$RUNNER_TEMP/grammaria-rc" checkout --detach "$REV"
+          GRAMMARIA_RC_SRC="$RUNNER_TEMP/grammaria-rc" npm run build:moteur
+
+      # `beforeBuildCommand` (src-tauri/tauri.conf.json) construit la page
+      # embarquée : `npm run build:bureau`. Les données du moteur (moteur/data,
+      # étape précédente) sont empaquetées comme ressources de l'application.
       - name: Build Tauri
         id: build
         shell: bash
@@ -382,7 +415,10 @@ jobs:
           (cd dist-desktop && sha256sum -- * > "$sums" && cat "$sums")
 
       # Garde de taille sur les paquets livrés. Mesures de la 0.3.0 : .deb
-      # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Pas de seuil sur
+      # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Version
+      # expérimentale (données du moteur Rust en ressources, 15 Mio bruts) :
+      # .deb mesuré à 8,76 Mio, installeur NSIS non mesuré ; seuils de la
+      # 0.3.0 gardés (12 et 14 Mio). Pas de seuil sur
       # l'AppImage (elle embarque WebKitGTK) ni sur le MSI, seulement affichés.
       # Un paquet attendu absent fait aussi échouer l'étape.
       - name: Garde de taille des paquets

@@ -6,7 +6,7 @@
  * 1. ouvre le journal (SQLite par les commandes Rust ; schéma créé ou migré) ;
  * 2. installe le pont : les `fetch("/api/…")` et `fetch("/v1/…")` de l'interface sont traités
  *    dans la page par le même gestionnaire que le serveur ;
- * 3. préchauffe le correcteur (Worker) pendant que l'utilisateur tape ;
+ * 3. préchauffe le correcteur (moteur Rust de l'application) pendant que l'utilisateur tape ;
  * 4. affiche l'interface.
  *
  * Dès le début, les erreurs de la page vont au journal technique `grammaria.log`
@@ -88,7 +88,7 @@ export async function amorcer(rendre: () => void): Promise<void> {
     return;
   }
 
-  const correcteur = new CorrecteurBureau();
+  const correcteur = new CorrecteurBureau(api.invoke);
   const pont = installerPont(
     creerGestionnaire(
       dependancesBureau({
@@ -113,7 +113,7 @@ export async function amorcer(rendre: () => void): Promise<void> {
   const prechauffage = correcteur.prechauffer().then(
     () => {
       const duree = Math.round(performance.now() - debut);
-      journalTechnique.ecrire("info", `Correcteur prêt (règles chargées en ${duree} ms).`);
+      journalTechnique.ecrire("info", `Correcteur prêt (données chargées en ${duree} ms).`);
     },
     (error: unknown) => {
       console.error("[Bureau] Correcteur indisponible :", error);

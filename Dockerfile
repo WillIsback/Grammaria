@@ -11,7 +11,20 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2 : Runtime Bun
+# Stage 2 : moteur grammatical (grammaria-rc, Rust) — version expérimentale.
+# Le dépôt du moteur est un contexte de build nommé :
+#   docker build --build-context grammaria-rc=../grammaria-rc -t grammaria .
+# Binaire lié statiquement (musl) : il tourne tel quel dans l'image Bun (Alpine).
+FROM rust:1-alpine AS moteur
+WORKDIR /src
+COPY --from=grammaria-rc . .
+RUN cargo build --release --locked --bin grammaria --bin grammaria-build
+# Données : les fichiers de règles et dictionnaires, copiés tels quels.
+RUN mkdir -p /moteur && \
+    ./target/release/grammaria-build --assets assets/fr --out /moteur/data && \
+    cp target/release/grammaria /moteur/grammaria
+
+# Stage 3 : Runtime Bun
 FROM oven/bun:alpine
 WORKDIR /app
 
@@ -23,9 +36,12 @@ RUN apk add --no-cache tzdata
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
+# Correcteur grammatical intégré : binaire du moteur Rust et ses données
+# (grammar.ts le lance une fois : `moteur/grammaria serve --data moteur/data`)
+COPY --from=moteur /moteur ./moteur
+
 # Copier les fichiers serveur
-# grammar.worker.ts : correcteur grammatical intégré (règles LanguageTool en JavaScript)
-COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts grammar.worker.ts grammar.engine.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
+COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
 # api/ : gestionnaire des routes /api/* et /v1/*, partagé avec l'application de bureau
 COPY api ./api
 COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts src/utils/modeles.ts src/utils/erreursModele.ts ./src/utils/

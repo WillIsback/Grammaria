@@ -1,0 +1,61 @@
+{
+ "nom": "experimental",
+ "racine": "/home/user/Grammaria",
+ "demarrageMs": [
+  660,
+  696,
+  724
+ ],
+ "memoireMo": {
+  "apresDemarrage": 265.5,
+  "apresCharge": 291.8
+ },
+ "latence": [
+  {
+   "nom": "court",
+   "mots": 4,
+   "ms": {
+    "mediane": 2.24,
+    "p95": 3.63,
+    "min": 1.89,
+    "max": 3.96
+   }
+  },
+  {
+   "nom": "marche-160-mots",
+   "mots": 160,
+   "ms": {
+    "mediane": 45.34,
+    "p95": 66.96,
+    "min": 41,
+    "max": 67
+   }
+  },
+  {
+   "nom": "long",
+   "mots": 906,
+   "ms": {
+    "mediane": 288.2,
+    "p95": 376.69,
+    "min": 238.7,
+    "max": 394.76
+   }
+  },
+  {
+   "nom": "tres-long",
+   "mots": 1085,
+   "ms": {
+    "mediane": 325.47,
+    "p95": 449.11,
+    "min": 280.79,
+    "max": 476.05
+   }
+  }
+ ],
+ "debit": {
+  "simultanees": 16,
+  "requetes": 160,
+  "dureeMs": 8559,
+  "parSeconde": 18.7
+ }
+}

@@ -19,6 +19,8 @@
     "allow-llm-models",
     "allow-llm-chat",
     "allow-llm-cancel",
-    "allow-log-page"
+    "allow-log-page",
+    "allow-correcteur-prechauffer",
+    "allow-correcteur-controler"
   ]
 }

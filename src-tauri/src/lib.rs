@@ -3,13 +3,13 @@
 //! L'interface est embarquée (`frontendDist` : `dist/bureau`, servie par Tauri sous
 //! `tauri://localhost`) : ni serveur local, ni port ouvert. La logique métier reste en
 //! TypeScript, dans la page : le gestionnaire d'API partagé avec le serveur web
-//! (`api/handler.ts`) y reçoit les `fetch("/api/…")` de l'interface, le correcteur
-//! grammatical tourne dans un Web Worker (`src/desktop/`).
+//! (`api/handler.ts`) y reçoit les `fetch("/api/…")` de l'interface.
 //!
-//! Rust ne fournit que ce que la page ne peut pas faire seule, par des commandes que seule la
+//! Rust fournit ce que la page ne peut pas faire seule, par des commandes que seule la
 //! capability locale `capabilities/default.json` autorise : accès SQLite au journal (`db`),
 //! réglages, clé API et mots valides (`store`), relais du modèle en streaming (`llm`), mise à
-//! jour de l'application (`update`), journal technique `grammaria.log` (`logs`). Les
+//! jour de l'application (`update`), journal technique `grammaria.log` (`logs`), et le
+//! correcteur grammatical (`correcteur` : moteur Rust grammaria-rc, version expérimentale). Les
 //! fichiers du dossier de données sont ceux de la version 0.2 : les données sont reprises
 //! telles quelles.
 
@@ -19,6 +19,7 @@ use tauri::webview::NewWindowResponse;
 use tauri::{Manager, Url, WebviewWindowBuilder};
 
 mod autotest;
+mod correcteur;
 mod db;
 mod llm;
 mod logs;
@@ -69,6 +70,8 @@ pub fn run() {
             llm::llm_chat,
             llm::llm_cancel,
             logs::log_page,
+            correcteur::correcteur_prechauffer,
+            correcteur::correcteur_controler,
             // Inertes sans GRAMMARIA_AUTOTEST_OUT (voir autotest.rs).
             autotest::autotest_config,
             autotest::autotest_terminer,
@@ -112,6 +115,13 @@ pub fn run() {
             }
             app.manage(store);
             app.manage(llm::Llm::new()?);
+            // Correcteur grammatical : données dans les ressources de l'application,
+            // chargées à la première demande de la page (préchauffage).
+            app.manage(correcteur::Correcteur::new(
+                app.path()
+                    .resource_dir()?
+                    .join(correcteur::DOSSIER_RESSOURCES),
+            ));
 
             // La fenêtre est créée ici (`create: false` dans tauri.conf.json)
             // pour n'ajouter le drapeau d'autotest qu'en mode autotest.
@@ -275,7 +285,7 @@ mod tests {
             .collect();
         declared.sort_unstable();
         assert_eq!(declared, commandes_enregistrees());
-        assert_eq!(declared.len(), 17);
+        assert_eq!(declared.len(), 19);
     }
 
     fn json(text: &str) -> Value {
@@ -311,7 +321,7 @@ mod tests {
             .collect();
         attendues.sort_unstable();
         assert_eq!(permissions, attendues);
-        assert_eq!(permissions.len(), 15);
+        assert_eq!(permissions.len(), 17);
     }
 
     /// Une seule capability, déclarée explicitement : un fichier ajouté au
@@ -361,6 +371,18 @@ mod tests {
         }
         assert_eq!(conf["build"]["frontendDist"], "../dist/bureau");
         assert!(conf["bundle"].get("externalBin").is_none());
-        assert!(conf["bundle"].get("resources").is_none());
+        // Seules ressources : les données du moteur grammatical (lues par
+        // `correcteur.rs`), aucun exécutable.
+        let mut ressources: Vec<&str> = conf["bundle"]["resources"]
+            .as_object()
+            .expect("ressources en objet")
+            .values()
+            .map(|cible| cible.as_str().expect("chaîne"))
+            .collect();
+        ressources.sort_unstable();
+        assert_eq!(
+            ressources,
+            ["moteur/grammaria/", "moteur/lt/"]
+        );
     }
 }

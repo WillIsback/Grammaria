@@ -1,7 +1,7 @@
 /**
- * Corpus de comparaison du correcteur grammatical : le moteur du serveur (grammar.ts) et celui du
- * Worker de l'application de bureau (src/desktop/lt.worker.ts) doivent y produire exactement les
- * mêmes détections. Les neuf premiers textes viennent du prototype validé (#18).
+ * Corpus de comparaison du correcteur grammatical : le moteur du serveur (grammar.ts) et celui
+ * de l'application de bureau (src-tauri/src/correcteur.rs, même moteur Rust) doivent y produire
+ * exactement les mêmes détections. Les neuf premiers textes viennent du prototype validé (#18).
  *
  * Après une modification : `bun scripts/desktop/reference-correcteur.ts` régénère
  * reference.json (détections du serveur), puis relire le diff.
