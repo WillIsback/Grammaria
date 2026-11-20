@@ -54,6 +54,11 @@ jobs:
       # dépôt public, sans identifiant, et la compile (moins d'une minute sur
       # 4 cœurs). Le dossier produit est mis en cache par révision et par
       # version du script.
+      # Rust est préinstallé sur ubuntu-latest, mais pas garanti : version stable
+      # explicite (grammaria-rc exige 1.75 au moins).
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Révision du moteur
         id: moteur
         shell: bash
