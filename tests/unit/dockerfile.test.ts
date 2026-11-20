@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { copies, etapesDockerfile } from "./helpers/docker";
 
 // Regression test for the v1.5.14 incident (2026-10-23): server.ts imported a
 // new ./src/utils/llmJson.ts, but the runtime stage of the Dockerfile copies
@@ -9,7 +10,6 @@ import { describe, expect, it } from "vite-plus/test";
 // server entrypoint must be copied into the runtime image.
 
 const root = join(import.meta.dirname, "../..");
-const dockerfile = readFileSync(join(root, "Dockerfile"), "utf-8");
 // Les fichiers du journal importent à leur tour leurs modules (règles, badges,
 // pilote) : leurs imports sont vérifiés aussi.
 const serverSource = [
@@ -23,10 +23,11 @@ const serverSource = [
   .join("\n");
 
 describe("Dockerfile runtime stage", () => {
-  const copied = dockerfile
-    .split("\n")
-    .filter((line) => line.startsWith("COPY ") && !line.includes("--from="))
-    .flatMap((line) => line.split(/\s+/).slice(1, -1));
+  // Seulement les COPY de l'étape finale (celle qui tourne) : une copie dans une
+  // étape de construction ne met rien dans l'image.
+  const copied = copies(etapesDockerfile().at(-1)!)
+    .filter((copie) => copie.depuis === null)
+    .flatMap((copie) => copie.sources);
 
   const localImports = [...serverSource.matchAll(/from "\.\/([^"]+)"|import "\.\/([^"]+)"/g)].map(
     (m) => m[1] ?? m[2],
