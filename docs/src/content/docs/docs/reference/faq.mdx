@@ -9,7 +9,7 @@ Ils sont envoyés uniquement au modèle que vous avez configuré (`LLM_TARGET` s
 
 ## Le message « Le correcteur grammatical est indisponible » s'affiche
 
-Le correcteur grammatical intégré n'a pas pu analyser le texte. Consultez les journaux du serveur (lignes `[Grammar]`) et vérifiez que le serveur dispose d'environ 1 Go de mémoire vive libre pour charger les règles. Vous pouvez aussi l'interroger directement :
+Le correcteur grammatical intégré n'a pas pu analyser le texte. Consultez les journaux du serveur (lignes `[Grammar]`) et vérifiez que le binaire du moteur est présent (`moteur/grammaria`, construit par `npm run build:moteur` ; il est inclus dans l'image Docker). Si le moteur s'arrête ou ne répond plus, le serveur le relance à la correction suivante. Vous pouvez aussi l'interroger directement :
 
 ```bash
 curl -s -X POST http://localhost:25000/api/check -H "Content-Type: application/json" -d '{"text":"Ils on vu le film."}'
@@ -21,7 +21,7 @@ Dans l'application de bureau, un bandeau signale un correcteur qui n'a pas pu se
 
 ## Application de bureau : le premier contrôle de grammaire est lent
 
-Au lancement, l'application charge les règles de grammaire, en 4 à 5 secondes. Un texte corrigé pendant ce chargement attend qu'il se termine ; les contrôles suivants prennent autour de 0,2 seconde.
+Depuis la version 0.4.0, les règles de grammaire se chargent en moins d'une seconde au lancement (4 à 5 secondes auparavant), et chaque contrôle prend quelques dizaines de millisecondes. Si le premier contrôle reste lent, consultez le [journal technique](/docs/demarrer/application-bureau/#journal-technique) (ligne « Moteur chargé en … ms »).
 
 ## Application de bureau : où trouver le journal technique ?
 

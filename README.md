@@ -40,11 +40,11 @@ Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vo
 
 ## Application de bureau
 
-Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 8 Mo) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 9 Mo environ) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
 ## Démarrage rapide (serveur)
 
-Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, et [Rust](https://rustup.rs) pour compiler le moteur grammatical. Clonez [grammaria-rc](https://github.com/WillIsback/grammaria-rc) à côté de Grammaria (ou indiquez son chemin dans `GRAMMARIA_RC_SRC`).
+Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) 1.75 ou plus récent et `git` pour compiler le moteur grammatical. `npm run build:moteur` récupère lui-même le moteur ([grammaria-rc](https://github.com/WillIsback/grammaria-rc)) à la version prévue et le compile, en moins d'une minute.
 
 ```bash
 git clone https://github.com/WillIsback/Grammaria.git
@@ -99,7 +99,7 @@ Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/
 
 Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
-Le correcteur grammatical intégré est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), moteur Rust publié sous MPL-2.0, qui exécute les règles et le dictionnaire français de [LanguageTool](https://languagetool.org) (LGPL-2.1). Cette branche est expérimentale : elle remplace le portage JavaScript de LanguageTool (`@valueerror/ltjs-core`) de la version 0.3.0. Les gains et les pertes mesurés sont dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
+Le correcteur grammatical intégré est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), moteur Rust distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son propre code et ses règles sous MPL-2.0, les modules traduits de [LanguageTool](https://languagetool.org) et les règles et dictionnaires français de LanguageTool qu'il lit tels quels sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause (détail dans son fichier `THIRD_PARTY_LICENSES.md`). Ces licences sont compatibles avec la GPL-3.0-or-later de Grammaria. Depuis la version 0.4.0, il remplace le portage JavaScript de LanguageTool des versions précédentes ; la comparaison mesurée est dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
 
 La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
 
