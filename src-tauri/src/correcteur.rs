@@ -1,7 +1,7 @@
 //! Correcteur grammatical : le moteur Rust grammaria-rc (chaîne française de
 //! LanguageTool portée en Rust, plus ses propres règles), lié à l'application.
 //!
-//! Version expérimentale : remplace le portage JavaScript de LanguageTool, qui
+//! Depuis la 0.4.0 : remplace le portage JavaScript de LanguageTool, qui
 //! tournait dans un Worker de la WebView avec une archive de règles. Ici, la
 //! page appelle deux commandes :
 //!

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { LTMatch } from "./src/types.ts";
 
 /**
- * Correcteur grammatical intégré (version expérimentale) : le moteur Rust grammaria-rc
+ * Correcteur grammatical intégré (depuis la 0.4.0) : le moteur Rust grammaria-rc
  * (règles françaises de LanguageTool réimplémentées en natif) tourne dans un processus à
  * part, lancé une fois et gardé ouvert (`grammaria serve`). Aucun service externe à lancer.
  *

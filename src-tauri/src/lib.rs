@@ -9,7 +9,7 @@
 //! capability locale `capabilities/default.json` autorise : accès SQLite au journal (`db`),
 //! réglages, clé API et mots valides (`store`), relais du modèle en streaming (`llm`), mise à
 //! jour de l'application (`update`), journal technique `grammaria.log` (`logs`), et le
-//! correcteur grammatical (`correcteur` : moteur Rust grammaria-rc, version expérimentale). Les
+//! correcteur grammatical (`correcteur` : moteur Rust grammaria-rc). Les
 //! fichiers du dossier de données sont ceux de la version 0.2 : les données sont reprises
 //! telles quelles.
 

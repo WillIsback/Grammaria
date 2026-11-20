@@ -65,7 +65,7 @@ describe("pont — ce qui est intercepté", () => {
     const page = new URL(PAGE);
     expect(estRouteApi(new URL("tauri://localhost/api/check"), page)).toBe(true);
     expect(estRouteApi(new URL("tauri://localhost/v1/models"), page)).toBe(true);
-    expect(estRouteApi(new URL("tauri://localhost/lt/worker.js"), page)).toBe(false);
+    expect(estRouteApi(new URL("tauri://localhost/assets/index.js"), page)).toBe(false);
     expect(estRouteApi(new URL("tauri://localhost/api"), page)).toBe(false);
     expect(estRouteApi(new URL("http://127.0.0.1:31977/v1/models"), page)).toBe(false);
     expect(estRouteApi(new URL("https://localhost/api/check"), page)).toBe(false);
@@ -80,7 +80,7 @@ describe("pont — ce qui est intercepté", () => {
     const { cible, natif, tauri } = await bureau();
     const requete = new Request("https://exemple.com/api/x", { method: "POST", body: "corps" });
     await cible.fetch(requete);
-    await cible.fetch("lt/fr.pack");
+    await cible.fetch("assets/police.woff2");
     await cible.fetch(new URL("http://127.0.0.1:31977/v1/models"));
     expect(natif).toHaveBeenCalledTimes(3);
     expect(natif.mock.calls[0][0]).toBe(requete);

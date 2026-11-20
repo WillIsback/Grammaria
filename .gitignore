@@ -54,3 +54,6 @@ evals/
 # Données dupliquées (source de vérité : public/data/)
 data/
 .vitest/
+
+# Paquets du bureau rassemblés par build-desktop.yml (CI)
+/dist-desktop/

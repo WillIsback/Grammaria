@@ -1,5 +1,5 @@
 /**
- * Correcteur grammatical de l'application de bureau, côté page (version expérimentale).
+ * Correcteur grammatical de l'application de bureau, côté page.
  *
  * Le moteur est dans le backend Rust de l'application (grammaria-rc, lié à src-tauri :
  * src-tauri/src/correcteur.rs). Cette façade appelle ses deux commandes et garde le contrat de

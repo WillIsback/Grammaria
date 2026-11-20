@@ -5,7 +5,7 @@
 # Plus de serveur Bun en sidecar : la page est embarquée (`beforeBuildCommand` :
 # `npm run build:bureau`, Node seul) et Rust fournit SQLite, les réglages, le
 # relais du modèle et le correcteur grammatical (moteur grammaria-rc lié à
-# l'application, version expérimentale). Bun n'est donc plus installé ici.
+# l'application, depuis la 0.4.0). Bun n'est donc plus installé ici.
 #
 # Après le build, le binaire réellement produit (celui qui est empaqueté, signé
 # en release) est lancé en mode autotest (variable GRAMMARIA_AUTOTEST_OUT, voir
@@ -419,9 +419,9 @@ jobs:
           (cd dist-desktop && sha256sum -- * > "$sums" && cat "$sums")
 
       # Garde de taille sur les paquets livrés. Mesures de la 0.3.0 : .deb
-      # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Version
-      # expérimentale (données du moteur Rust en ressources, 15 Mio bruts) :
-      # .deb mesuré à 8,76 Mio, installeur NSIS non mesuré ; seuils de la
+      # 8,05 Mio ; installeur NSIS estimé entre 6 et 9 Mio. Depuis la 0.4.0
+      # (données du moteur Rust en ressources, 15 Mio bruts) : .deb mesuré à
+      # 8,76 Mio, installeur NSIS non mesuré ; seuils de la
       # 0.3.0 gardés (12 et 14 Mio). Pas de seuil sur
       # l'AppImage (elle embarque WebKitGTK) ni sur le MSI, seulement affichés.
       # Un paquet attendu absent fait aussi échouer l'étape.
