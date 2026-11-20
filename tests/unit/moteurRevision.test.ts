@@ -69,4 +69,14 @@ describe("révision épinglée de grammaria-rc", () => {
     }
     expect(autres).toEqual([]);
   });
+
+  it("construire.sh garde des fins de ligne LF au checkout Windows (Git Bash)", () => {
+    // Le runner Windows active core.autocrlf : sans attribut, le script arriverait en CRLF.
+    const attributs = execFileSync("git", ["check-attr", "eol", "scripts/moteur/construire.sh"], {
+      cwd: RACINE,
+      encoding: "utf-8",
+    });
+    expect(attributs.trim()).toBe("scripts/moteur/construire.sh: eol: lf");
+    expect(lire("scripts/moteur/construire.sh")).not.toContain("\r");
+  });
 });
