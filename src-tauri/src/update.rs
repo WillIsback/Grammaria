@@ -338,7 +338,7 @@ pub fn update_install(app: AppHandle, state: State<'_, UpdateState>) -> Status {
                     logs::ecrire(
                         Niveau::Info,
                         "mise à jour",
-                        "Téléchargement terminé, signature vérifiée : installation.",
+                        "Téléchargement terminé : vérification de la signature, puis installation.",
                     );
                     finished
                         .state::<UpdateState>()
