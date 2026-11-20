@@ -3,6 +3,7 @@ import type { AnalyzedCorrection } from "../analysis/analyze";
 import { type AnalysisResponse, analyzeCorrection } from "../services/journal";
 import { runLanguageTool } from "../services/languagetool";
 import type { CorrectionEntry, CorrectionSettings, CorrectionStats, LTMatch } from "../types";
+import { ErreurCorrection, MESSAGE_ECHEC_CORRECTION } from "../utils/erreursModele";
 import { correctText } from "../utils/llm";
 import { MAX_CONTENT_LENGTH, prepareInput } from "../utils/sanitize";
 
@@ -52,6 +53,8 @@ export function useCorrector() {
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [settings, setSettings] = useState<CorrectionSettings>(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
+  /** Détail technique de l'erreur, affiché replié sous « Détails ». */
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [stats, setStats] = useState<CorrectionStats>({
     processingTime: 0,
     modificationCount: 0,
@@ -75,13 +78,8 @@ export function useCorrector() {
 
   const localStorageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup à l'unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-      if (localStorageTimeoutRef.current) clearTimeout(localStorageTimeoutRef.current);
-    };
-  }, []);
+  // Cleanup à l'unmount (la sauvegarde différée est annulée par son propre effet)
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   // Debounce de la sauvegarde des settings (500ms)
   useEffect(() => {
@@ -98,22 +96,29 @@ export function useCorrector() {
     };
   }, [settings]);
 
+  /** Efface le résultat de la correction précédente. */
+  const clearResult = useCallback(() => {
+    setOutputText("");
+    setCorrections([]);
+    setAnalysis(null);
+    setAnalysisNotice(null);
+    setStats({ processingTime: 0, modificationCount: 0 });
+    setError(null);
+    setErrorDetails(null);
+  }, []);
+
   const handleCorrect = useCallback(async () => {
     if (isRunningRef.current) return;
     if (!textContent.trim()) {
       setError("Veuillez entrer du texte");
+      setErrorDetails(null);
       return;
     }
 
     isRunningRef.current = true;
     setIsLoadingText(true);
     setIsLoadingCorrections(false);
-    setError(null);
-    setOutputText("");
-    setCorrections([]);
-    setAnalysis(null);
-    setAnalysisNotice(null);
-    setStats({ processingTime: 0, modificationCount: 0 });
+    clearResult();
 
     abortControllerRef.current = new AbortController();
 
@@ -125,14 +130,18 @@ export function useCorrector() {
       // apparaîtrait comme une correction, voire comme une faute.
       const signal = abortControllerRef.current.signal;
       const input = prepareInput(textContent);
+      // Avertissements cumulés, affichés ensemble.
       const notices: string[] = [];
+      const notify = (notice: string) => {
+        notices.push(notice);
+        setAnalysisNotice(notices.join(" "));
+      };
       if (input.truncated) {
-        notices.push(
+        notify(
           `Le texte dépasse ${MAX_CONTENT_LENGTH.toLocaleString("fr-FR")} caractères : ` +
             `seuls les ${input.text.length.toLocaleString("fr-FR")} premiers ont été corrigés ` +
             `(sur ${input.originalLength.toLocaleString("fr-FR")}).`,
         );
-        setAnalysisNotice(notices.join(" "));
       }
       const ltPromise: Promise<LTMatch[] | null> = runLanguageTool(input.text, signal).catch(
         () => null,
@@ -147,7 +156,10 @@ export function useCorrector() {
       });
 
       if (!finalText || finalText.trim().length === 0) {
-        throw new Error("LLM returned empty response");
+        throw new ErreurCorrection(
+          "Le modèle a renvoyé une réponse vide. Réessayez dans un instant.",
+          "Réponse vide du modèle.",
+        );
       }
 
       setOutputText(finalText);
@@ -160,10 +172,9 @@ export function useCorrector() {
       try {
         const matches = await ltPromise;
         if (matches === null) {
-          notices.push(
+          notify(
             "Le correcteur grammatical est indisponible : l'analyse des fautes est partielle.",
           );
-          setAnalysisNotice(notices.join(" "));
         }
         const result = await analyzeCorrection(input.text, finalText, matches ?? [], signal);
         // L'astuce d'une règle n'est affichée qu'à sa première occurrence.
@@ -179,29 +190,29 @@ export function useCorrector() {
         setStats((prev) => ({ ...prev, modificationCount: entries.length }));
       } catch (analysisError) {
         if (analysisError instanceof Error && analysisError.name === "AbortError") return;
-        notices.push("L'analyse des fautes est indisponible pour ce texte.");
-        setAnalysisNotice(notices.join(" "));
+        notify("L'analyse des fautes est indisponible pour ce texte.");
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Une erreur inconnue est survenue");
+      // Message simple ; le détail technique est replié sous « Détails ».
+      if (err instanceof ErreurCorrection) {
+        setError(err.message);
+        setErrorDetails(err.details || null);
+      } else {
+        setError(err instanceof Error ? err.message : MESSAGE_ECHEC_CORRECTION);
+      }
     } finally {
       isRunningRef.current = false;
       setIsLoadingText(false);
       setIsLoadingCorrections(false);
       abortControllerRef.current = null;
     }
-  }, [textContent, settings]);
+  }, [textContent, settings, clearResult]);
 
   const handleReset = useCallback(() => {
     setTextContent("");
-    setOutputText("");
-    setCorrections([]);
-    setAnalysis(null);
-    setAnalysisNotice(null);
-    setStats({ processingTime: 0, modificationCount: 0 });
-    setError(null);
-  }, []);
+    clearResult();
+  }, [clearResult]);
 
   return {
     textContent,
@@ -215,6 +226,7 @@ export function useCorrector() {
     isLoading: isLoadingText,
     isLoadingCorrections,
     error,
+    errorDetails,
     stats,
     handleCorrect,
     handleReset,

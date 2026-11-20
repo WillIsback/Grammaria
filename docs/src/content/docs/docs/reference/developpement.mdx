@@ -18,6 +18,9 @@ Node.js `^22.18`, `^24.11` ou `>=26` est requis.
 | `npm run test:run` | Tests Vitest |
 | `npm run test:coverage` | Tests avec couverture |
 | `npm run test:journal` | Tests du journal et du correcteur grammatical, exécutés par Bun |
+| `npm run build:bureau` | Build de l'application de bureau, côté page : interface (`dist/bureau`), Worker du correcteur et archive des règles (`dist/bureau/lt/`). Sans Bun |
+| `npm run test:correcteur-bureau` | Vérifie le correcteur du bureau tel qu'il est livré, dans Chromium : détections identiques à la référence du serveur, sous la politique de sécurité du bureau. Après `npm run build:bureau` |
+| `npm run reference:correcteur` | Régénère la référence du correcteur (`tests/fixtures/correcteur/reference.json`) avec le correcteur du serveur. Nécessite Bun |
 
 ## Lancer en développement
 
@@ -35,10 +38,22 @@ npm run dev
 
 Le serveur de développement relaie `/api` et `/v1` vers le port 25000.
 
+## Application de bureau
+
+L'application de bureau n'utilise pas le serveur Bun : la page embarquée traite elle-même les routes avec `api/handler.ts`, et Rust fournit SQLite, les réglages et le relais du modèle. Pour la construire et la vérifier (tests Rust, autotest dans la vraie WebView), voir [Application de bureau (build)](/docs/reference/bureau/#construire-en-local).
+
+```bash
+npx tauri build --debug
+```
+
+```bash
+cd src-tauri && cargo test
+```
+
 ## Tests
 
 - Les tests importent depuis `vite-plus/test`.
-- Le journal utilise `bun:sqlite`, indisponible sous Vitest : ses tests sont dans `tests-bun/` et tournent avec `bun test`.
+- Le pilote du journal du serveur utilise `bun:sqlite`, indisponible sous Vitest : ses tests sont dans `tests-bun/` et tournent avec `bun test`. Sous Vitest, le journal est testé avec le SQLite de Node, par le pilote du bureau et des commandes Rust simulées.
 - `server.ts` ne peut pas être importé sous Vitest ; plusieurs tests vérifient son code source directement.
 
 ## Hook de pre-commit

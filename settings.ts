@@ -1,37 +1,35 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { config } from "./config.ts";
+import {
+  type LlmSettings,
+  parseSettingsFile,
+  parseUpdate,
+  publicSettingsView,
+  type ServerSettings,
+  settingsFileContent,
+} from "./api/reglages.ts";
+
+export {
+  normalizeTarget,
+  parseUpdate,
+  type LlmSettings,
+  type SettingsUpdate,
+} from "./api/reglages.ts";
 
 /**
  * Réglages du LLM modifiables depuis l'interface, en mode bureau uniquement.
  *
- * Sur un serveur, la configuration vient des variables d'environnement et
- * n'est jamais modifiable par un visiteur. Dans l'application de bureau,
- * l'utilisateur n'a pas de terminal : il saisit l'adresse du modèle dans les
- * réglages, enregistrés dans son dossier de données (GRAMMARIA_SETTINGS_PATH).
+ * Sur un serveur partagé, la configuration vient des variables d'environnement
+ * et n'est jamais modifiable par un visiteur. Sur un serveur local d'un seul
+ * utilisateur (GRAMMARIA_DESKTOP=1, écoute sur 127.0.0.1), l'adresse du modèle
+ * se saisit dans les réglages de l'interface, enregistrés dans
+ * GRAMMARIA_SETTINGS_PATH. L'application de bureau a son propre magasin, au même
+ * format (src-tauri/src/store.rs).
+ *
+ * La validation (pure, réutilisable hors de Node) est dans `api/reglages.ts` ;
+ * cette classe lit et écrit le fichier et applique les réglages à `config`.
  */
-
-export interface LlmSettings {
-  llmTarget: string;
-  llmApiKey: string;
-  llmModelName: string;
-  llmDisableThinking: boolean;
-}
-
-/** Vue publique : la clé API n'est jamais renvoyée au navigateur. */
-export interface PublicSettings {
-  editable: boolean;
-  configured: boolean;
-  llmTarget: string;
-  llmModelName: string;
-  llmDisableThinking: boolean;
-  hasApiKey: boolean;
-}
-
-export type SettingsUpdate = Partial<LlmSettings>;
-
-const MAX_FIELD_LENGTH = 2_000;
-
 export class SettingsStore {
   constructor(private readonly path: string | null) {
     if (path) Object.assign(config, this.readFile());
@@ -46,19 +44,16 @@ export class SettingsStore {
     return this.path ? existsSync(this.path) && config.llmTarget !== "" : config.llmTarget !== "";
   }
 
-  publicView(): PublicSettings {
-    return {
+  /** Vue publique : la clé API n'est jamais renvoyée au navigateur. */
+  publicView(): ServerSettings {
+    return publicSettingsView(currentSettings(), {
       editable: this.editable,
       configured: this.configured,
-      llmTarget: config.llmTarget,
-      llmModelName: config.llmModelName,
-      llmDisableThinking: config.llmDisableThinking,
-      hasApiKey: config.llmApiKey !== "",
-    };
+    });
   }
 
   /** Valide puis applique et enregistre les réglages. Lève une erreur lisible si invalides. */
-  update(input: unknown): PublicSettings {
+  update(input: unknown): ServerSettings {
     if (!this.path) throw new Error("Les réglages ne sont pas modifiables sur ce serveur.");
     const update = parseUpdate(input);
     const next: LlmSettings = { ...currentSettings(), ...update };
@@ -70,7 +65,7 @@ export class SettingsStore {
   private readFile(): Partial<LlmSettings> {
     if (!this.path || !existsSync(this.path)) return {};
     try {
-      return parseUpdate(JSON.parse(readFileSync(this.path, "utf-8")));
+      return parseSettingsFile(JSON.parse(readFileSync(this.path, "utf-8")));
     } catch (error) {
       console.error("[Settings] Fichier de réglages illisible, valeurs par défaut :", error);
       return {};
@@ -82,7 +77,8 @@ export class SettingsStore {
     mkdirSync(dirname(path), { recursive: true });
     const tmp = `${path}.tmp`;
     // La clé API est en clair : fichier lisible par son seul propriétaire.
-    writeFileSync(tmp, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
+    const content = settingsFileContent(settings);
+    writeFileSync(tmp, `${JSON.stringify(content, null, 2)}\n`, { mode: 0o600 });
     renameSync(tmp, path);
     try {
       chmodSync(path, 0o600);
@@ -99,47 +95,4 @@ function currentSettings(): LlmSettings {
     llmModelName: config.llmModelName,
     llmDisableThinking: config.llmDisableThinking,
   };
-}
-
-function parseUpdate(input: unknown): SettingsUpdate {
-  if (!input || typeof input !== "object") throw new Error("Réglages invalides.");
-  const raw = input as Record<string, unknown>;
-  const update: SettingsUpdate = {};
-
-  const text = (key: keyof LlmSettings): string | undefined => {
-    const value = raw[key];
-    if (value === undefined) return undefined;
-    if (typeof value !== "string" || value.length > MAX_FIELD_LENGTH) {
-      throw new Error(`Réglage invalide : ${key}.`);
-    }
-    return value.trim();
-  };
-
-  const target = text("llmTarget");
-  if (target !== undefined) update.llmTarget = normalizeTarget(target);
-  const apiKey = text("llmApiKey");
-  if (apiKey !== undefined) update.llmApiKey = apiKey;
-  const model = text("llmModelName");
-  if (model !== undefined) update.llmModelName = model;
-  if (raw.llmDisableThinking !== undefined) {
-    if (typeof raw.llmDisableThinking !== "boolean") {
-      throw new Error("Réglage invalide : llmDisableThinking.");
-    }
-    update.llmDisableThinking = raw.llmDisableThinking;
-  }
-  return update;
-}
-
-/** Adresse racine du serveur du modèle : http(s), sans « /v1 » final ni barre oblique. */
-export function normalizeTarget(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("L'adresse du modèle doit être une URL complète (http://… ou https://…).");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("L'adresse du modèle doit commencer par http:// ou https://.");
-  }
-  return url.href.replace(/\/+$/, "").replace(/\/v1$/, "");
 }

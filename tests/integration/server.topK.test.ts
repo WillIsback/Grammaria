@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { handlerSource, serverSource } from "./serverSource.ts";
 
 // Regression test for issue #12 (v1.5.9 incident, 2026-09-27):
 // commit 33140fa added `top_k: config.llmTopK` to the chat completion params
@@ -14,20 +13,21 @@ import { describe, expect, it } from "vite-plus/test";
 // top_k sent to the LLM comes from config (not a hardcoded value) and that
 // the config default is SGLang-valid.
 
-const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
-
+// v0.3.0 : les paramètres sont construits dans api/handler.ts, qui ne lit pas
+// config.ts (process.env) : server.ts lui passe config.llmTopK en option.
 function chatCompletionParamsBlock(): string {
-  const start = serverSource.indexOf("const createParams = {");
-  expect(start, "createParams block must exist in server.ts").toBeGreaterThan(-1);
-  const end = serverSource.indexOf("};", start);
+  const start = handlerSource.indexOf("const createParams = {");
+  expect(start, "createParams block must exist in api/handler.ts").toBeGreaterThan(-1);
+  const end = handlerSource.indexOf("};", start);
   expect(end, "end of createParams block must be found").toBeGreaterThan(start);
-  return serverSource.slice(start, end);
+  return handlerSource.slice(start, end);
 }
 
 describe("chat completion top_k (issue #12)", () => {
   it("top_k comes from config.llmTopK (no hardcoded value)", () => {
     const block = chatCompletionParamsBlock();
-    expect(block).toMatch(/top_k:\s*config\.llmTopK/);
+    expect(block).toMatch(/top_k:\s*options\.llmTopK/);
+    expect(serverSource).toMatch(/llmTopK:\s*config\.llmTopK/);
     // No literal top_k value in the params block (e.g. top_k: 0)
     expect(block).not.toMatch(/top_k:\s*\d+/);
   });
@@ -36,7 +36,7 @@ describe("chat completion top_k (issue #12)", () => {
   // valeur par défaut (-1, désactivé) n'est donc pas envoyée.
   it("n'envoie top_k que s'il est activé (> 0)", () => {
     expect(chatCompletionParamsBlock()).toMatch(
-      /\.\.\.\(config\.llmTopK > 0 \? \{ top_k: config\.llmTopK \} : \{\}\)/,
+      /\.\.\.\(options\.llmTopK > 0 \? \{ top_k: options\.llmTopK \} : \{\}\)/,
     );
   });
 });

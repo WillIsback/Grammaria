@@ -1,22 +1,19 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { purgeJournal } from "../services/journal";
-import type { ServerSettings } from "../services/settings";
 import type { CorrectionMode, CorrectionSettings } from "../types";
-import { getCurrentModel, subscribeToModelChange } from "../utils/models";
-import { LlmSettings } from "./LlmSettings";
-import { ModelSelector } from "./ModelSelector";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { CHECK_PATH, CloseButton, Icon } from "./Icon";
 
 interface Props {
   settings: CorrectionSettings;
   setSettings: (settings: CorrectionSettings) => void;
   open: boolean;
   onClose: () => void;
-  /** Réglages du serveur : la section « Serveur du modèle » n'apparaît que s'ils sont modifiables. */
-  serverSettings?: ServerSettings | null;
-  onServerSettingsSaved?: (settings: ServerSettings) => void;
-  /** Incrémenté quand le serveur du modèle change, pour recharger la liste des modèles. */
-  modelsReloadKey?: number;
+  /** Appelé après l'effacement du journal, pour recharger ce qui en dépend. */
+  onPurged?: () => void;
+  /** Vrai quand la barre est cachée sous un autre écran : elle devient inerte. */
+  hidden?: boolean;
 }
 
 const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
@@ -26,32 +23,26 @@ const modeLabels: Record<CorrectionMode, { label: string; icon: string }> = {
   technical: { label: "Technique", icon: "T" },
 };
 
-const sectionTitle =
+// Espace insécable avant « ? » : il ne passe pas seul à la ligne dans une fenêtre étroite.
+const PURGE_WARNING =
+  "Effacer définitivement tout le journal des fautes\u00a0? Les badges obtenus seront aussi effacés.";
+
+/** Titre de rubrique, partagé avec les rubriques du menu Paramètres. */
+export const sectionTitle =
   "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 
-export function Sidebar({
-  settings,
-  setSettings,
-  open,
-  onClose,
-  serverSettings,
-  onServerSettingsSaved,
-  modelsReloadKey,
-}: Props) {
+export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden = false }: Props) {
   const modeKeys = Object.keys(modeLabels) as CorrectionMode[];
-  const [currentModel, setCurrentModelState] = useState(getCurrentModel);
-
-  useEffect(() => {
-    return subscribeToModelChange(setCurrentModelState);
-  }, []);
-
   const [purgeStatus, setPurgeStatus] = useState<string | null>(null);
 
+  const [confirmPurge, setConfirmPurge] = useState(false);
+
   const handlePurge = async () => {
-    if (!window.confirm("Effacer définitivement tout le journal des fautes ?")) return;
+    setConfirmPurge(false);
     try {
       await purgeJournal();
-      setPurgeStatus("Journal effacé.");
+      setPurgeStatus("Journal et badges effacés.");
+      onPurged?.();
     } catch {
       setPurgeStatus("Le journal n'a pas pu être effacé.");
     }
@@ -98,16 +89,12 @@ export function Sidebar({
               : "border-gray-300 dark:border-gray-600 bg-transparent"
           }`}
       >
-        <svg
-          aria-hidden="true"
+        <Icon
           className={`w-3 h-3 text-white transition-opacity ${checked ? "opacity-100" : "opacity-0"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
           strokeWidth={3}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+          <path d={CHECK_PATH} />
+        </Icon>
       </div>
     </div>
   );
@@ -123,6 +110,7 @@ export function Sidebar({
 
       <aside
         aria-label="Réglages de correction"
+        {...(hidden ? { inert: "" } : {})}
         className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] shrink-0 overflow-y-auto
           bg-white dark:bg-gray-900 border-r border-gray-200/70 dark:border-gray-800/70
           p-5 shadow-2xl shadow-gray-900/10 transition-transform duration-300 ease-out
@@ -132,30 +120,8 @@ export function Sidebar({
       >
         <div className="lg:hidden flex items-center justify-between mb-5">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Réglages</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer les réglages"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400
-              hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200
-              transition-colors"
-          >
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton label="Fermer les réglages" onClick={onClose} />
         </div>
-
-        {serverSettings?.editable && onServerSettingsSaved && (
-          <LlmSettings settings={serverSettings} onSaved={onServerSettingsSaved} />
-        )}
 
         <div className="mb-6">
           <h2 className={sectionTitle}>Mode de correction</h2>
@@ -235,12 +201,6 @@ export function Sidebar({
           </div>
         </div>
 
-        <ModelSelector
-          currentModel={currentModel}
-          onModelSelect={setCurrentModelState}
-          reloadKey={modelsReloadKey}
-        />
-
         <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
           <h2 className={sectionTitle}>Journal des fautes</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
@@ -248,13 +208,21 @@ export function Sidebar({
           </p>
           <button
             type="button"
-            onClick={handlePurge}
+            onClick={() => setConfirmPurge(true)}
             className="w-full px-3 py-2 rounded-xl text-sm font-medium text-red-600 dark:text-red-400
               border border-red-200/80 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40
               transition-colors"
           >
             Effacer le journal
           </button>
+          <ConfirmDialog
+            open={confirmPurge}
+            title="Effacer le journal ?"
+            message={PURGE_WARNING}
+            confirmLabel="Effacer"
+            onConfirm={handlePurge}
+            onCancel={() => setConfirmPurge(false)}
+          />
           {purgeStatus && (
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400" role="status">
               {purgeStatus}

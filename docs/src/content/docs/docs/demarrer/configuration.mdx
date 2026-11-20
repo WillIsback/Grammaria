@@ -14,12 +14,27 @@ La configuration se fait par variables d'environnement, lues dans le fichier `.e
 | `LLM_DISABLE_THINKING` | `true` | Désactive le mode « réflexion » (vLLM, Qwen). Mettre `false` pour OpenAI, Groq, Mistral |
 | `LLM_TOP_K` | `-1` | Paramètre `top_k` transmis au modèle ; `-1` le désactive |
 | `JOURNAL_PATH` | `./data/grammaria.db` | Fichier SQLite du journal des fautes |
+| `TZ` | fuseau du système | Fuseau horaire du serveur, par exemple `Europe/Paris`. Il fixe le « jour » des interventions sur les fautes récurrentes (une par règle et par jour). Dans l'image Docker, le fuseau est UTC si `TZ` n'est pas définie |
 | `CORS_ORIGIN` | vide | Origines autorisées, séparées par des virgules ; `localhost` est toujours autorisé |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | vide | Active la [télémétrie](/docs/exploiter/telemetrie/) |
 
 ## La clé d'API reste côté serveur
 
 Le navigateur n'a jamais accès à `LLM_API_KEY`. Il appelle le serveur Grammaria, qui ajoute la clé avant de relayer la requête au modèle.
+
+## Serveur local d'un seul utilisateur
+
+Pour lancer le serveur sur votre propre ordinateur, sans Docker, et régler le modèle depuis l'interface plutôt que dans `.env`, activez le mode bureau du serveur :
+
+| Variable | Rôle |
+|---|---|
+| `GRAMMARIA_DESKTOP=1` | Réglages du modèle modifiables dans **Paramètres → IA** ; requêtes venues d'un autre hôte ou d'une autre origine refusées |
+| `HOST=127.0.0.1` | Écoute sur cet ordinateur seulement |
+| `GRAMMARIA_SETTINGS_PATH` | Fichier où l'interface enregistre les réglages du modèle ; obligatoire pour qu'ils soient modifiables (la clé API y est en clair, fichier lisible par votre seul compte) |
+| `GRAMMARIA_VALID_WORDS_PATH` | Mots ajoutés au dictionnaire (défaut : `public/data/valid-words.json`) |
+| `GRAMMARIA_DIST_DIR` | Fichiers de l'interface (défaut : `dist/`) |
+
+L'[application de bureau](/docs/demarrer/application-bureau/) n'utilise pas ce serveur : elle n'a besoin d'aucune de ces variables.
 
 ## Réglages de l'interface
 

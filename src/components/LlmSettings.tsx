@@ -1,13 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { saveServerSettings, type ServerSettings } from "../services/settings";
+import { sectionTitle } from "./Sidebar";
 
 interface Props {
   settings: ServerSettings;
   onSaved: (settings: ServerSettings) => void;
 }
 
-const sectionTitle =
-  "text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3";
 const input =
   "w-full px-3 py-2 rounded-xl text-sm bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 " +
   "text-gray-900 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 " +
@@ -21,6 +20,7 @@ const input =
 export function LlmSettings({ settings, onSaved }: Props) {
   const [target, setTarget] = useState(settings.llmTarget);
   const [apiKey, setApiKey] = useState("");
+  const [disableThinking, setDisableThinking] = useState(settings.llmDisableThinking);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +31,7 @@ export function LlmSettings({ settings, onSaved }: Props) {
     try {
       const saved = await saveServerSettings({
         llmTarget: target,
+        llmDisableThinking: disableThinking,
         ...(apiKey ? { llmApiKey: apiKey } : {}),
       });
       setApiKey("");
@@ -64,13 +65,24 @@ export function LlmSettings({ settings, onSaved }: Props) {
     <form onSubmit={handleSubmit} className="mb-6" aria-label="Serveur du modèle">
       <h2 className={sectionTitle}>Serveur du modèle</h2>
 
-      {!settings.configured && (
+      {settings.settingsUnreadable ? (
         <p
-          className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
-          role="status"
+          className="mb-3 px-3 py-2 rounded-xl text-xs leading-relaxed bg-red-50 dark:bg-red-950/40
+            border border-red-200/70 dark:border-red-800/40 text-red-700 dark:text-red-300"
+          role="alert"
         >
-          Indiquez l&rsquo;adresse de votre modèle de langage pour commencer à corriger.
+          Vos réglages n&rsquo;ont pas pu être lus. Saisissez à nouveau l&rsquo;adresse du modèle et
+          la clé.
         </p>
+      ) : (
+        !settings.configured && (
+          <p
+            className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+            role="status"
+          >
+            Indiquez l&rsquo;adresse de votre modèle de langage pour commencer à corriger.
+          </p>
+        )
       )}
 
       <label htmlFor="llm-target" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -116,6 +128,21 @@ export function LlmSettings({ settings, onSaved }: Props) {
           Supprimer la clé enregistrée
         </button>
       )}
+
+      <label className="mt-3 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={disableThinking}
+          onChange={(e) => setDisableThinking(e.target.checked)}
+          className="mt-0.5 accent-brand-600"
+        />
+        <span>
+          Couper le raisonnement du modèle (recommandé)
+          <span className="block text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+            Un modèle qui raisonne (Qwen3…) réfléchit plusieurs secondes avant d&rsquo;écrire.
+          </span>
+        </span>
+      </label>
 
       <button
         type="submit"

@@ -5,10 +5,11 @@
   "version": "../package.json",
   "identifier": "fr.willisback.grammaria",
   "build": {
-    "beforeBuildCommand": "npm run build && bun scripts/desktop/prepare-sidecar.ts",
-    "frontendDist": "splash"
+    "beforeBuildCommand": "npm run build:bureau",
+    "frontendDist": "../dist/bureau"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -17,11 +18,35 @@
         "height": 840,
         "minWidth": 380,
         "minHeight": 560,
-        "center": true
+        "center": true,
+        "create": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "worker-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost",
+        "img-src": "'self' data: blob:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "capabilities": ["default"]
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJBN0FGQzkzRjlFRjE2QkEKUldTNkZ1LzVrL3g2dXRrZnJMWHJOdERtalNOSXRuWTJ1bEY2ZGJUQWo4SFpTZzFhYjhOWGcvY0gK",
+      "requireSignedVersion": true,
+      "endpoints": ["https://github.com/WillIsback/Grammaria/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {
@@ -34,11 +59,6 @@
     "copyright": "GPL-3.0-or-later",
     "license": "GPL-3.0-or-later",
     "licenseFile": "../LICENSE",
-    "externalBin": ["binaries/grammaria-server"],
-    "resources": {
-      "resources/dist/": "dist/",
-      "resources/lt/": "lt/"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -22,6 +22,19 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     expect(screen.getByRole("status").textContent).toContain("pour commencer");
   });
 
+  it("settings.json illisible : avertissement clair à la place de l'invitation", () => {
+    render(<LlmSettings settings={{ ...base, settingsUnreadable: true }} onSaved={vi.fn()} />);
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Vos réglages n’ont pas pu être lus. Saisissez à nouveau l’adresse du modèle et la clé.",
+    );
+    expect(screen.queryByText(/pour commencer/)).toBeNull();
+  });
+
+  it("serveur web ou réglages lisibles (champ absent ou faux) : pas d'avertissement", () => {
+    render(<LlmSettings settings={{ ...base, settingsUnreadable: false }} onSaved={vi.fn()} />);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("enregistre l'adresse et la clé, puis vide le champ de la clé", async () => {
     const saved = {
       ...base,
@@ -46,6 +59,7 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     expect(init.method).toBe("PUT");
     expect(JSON.parse(init.body as string)).toEqual({
       llmTarget: "http://localhost:11434/v1",
+      llmDisableThinking: false,
       llmApiKey: "sk-test",
     });
     expect((screen.getByLabelText(/Clé API/) as HTMLInputElement).value).toBe("");
@@ -68,7 +82,10 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(JSON.parse(init.body as string)).toEqual({ llmTarget: "https://api.example.com" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      llmTarget: "https://api.example.com",
+      llmDisableThinking: false,
+    });
   });
 
   it("affiche l'erreur renvoyée par le serveur", async () => {
@@ -78,5 +95,29 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     render(<LlmSettings settings={{ ...base, llmTarget: "ftp://x" }} onSaved={vi.fn()} />);
     fireEvent.submit(screen.getByRole("form", { name: "Serveur du modèle" }));
     await waitFor(() => expect(screen.getByText(/doit commencer par http/)).toBeTruthy());
+  });
+
+  // Issue #10 : le raisonnement du modèle rendait la correction ~7 fois plus lente.
+  it("envoie le choix « couper le raisonnement » (coché par défaut)", async () => {
+    const settings = {
+      ...base,
+      configured: true,
+      llmTarget: "http://gpu:8000",
+      llmDisableThinking: true,
+    };
+    const fetchMock = vi.fn(() => jsonResponse(settings));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    render(<LlmSettings settings={settings} onSaved={vi.fn()} />);
+
+    const box = screen.getByRole("checkbox", {
+      name: /Couper le raisonnement/,
+    }) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).llmDisableThinking).toBe(false);
   });
 });

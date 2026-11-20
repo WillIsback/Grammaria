@@ -1,6 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { serverSource } from "./serverSource.ts";
 
 // Regression test for issue #4 (llm.chat 404 'no body' after image 1.5.1):
 // commit 3425666 changed the OpenAI SDK client baseURL in server.ts from
@@ -13,8 +12,6 @@ import { describe, expect, it } from "vite-plus/test";
 // server.chatCompletions.test.ts — that the OpenAI client baseURL appends
 // exactly one /v1, and that the endpoint the SDK will hit for
 // chat.completions.create() is <LLM_TARGET>/v1/chat/completions.
-
-const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
 
 /** Placeholder text inside the baseURL template, split so biome's
  * noTemplateCurlyInString doesn't flag it as an accidental template string. */

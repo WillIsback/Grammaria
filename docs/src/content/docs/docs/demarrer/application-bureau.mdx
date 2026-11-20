@@ -3,7 +3,7 @@ title: "Application de bureau"
 description: "Installer Grammaria sur Windows ou Linux, sans serveur à configurer."
 ---
 
-L'application de bureau contient tout Grammaria : l'interface, le correcteur grammatical (règles françaises de LanguageTool) et le journal des fautes. Il n'y a ni Docker ni serveur à installer. Il vous faut seulement un **modèle de langage**, sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
+L'application de bureau contient tout Grammaria : l'interface, le correcteur grammatical (règles françaises de LanguageTool) et le journal des fautes. Il n'y a ni Docker ni serveur à installer, et l'application n'ouvre aucun port sur votre ordinateur. Il vous faut seulement un **modèle de langage**, sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
 
 ## Installer
 
@@ -16,17 +16,46 @@ Téléchargez le paquet de votre système dans la page [Releases](https://github
 | Ubuntu, Debian | `Grammaria_x.y.z_amd64.deb` | Double-cliquez, ou `sudo apt install ./Grammaria_x.y.z_amd64.deb`. |
 | Autres distributions | `Grammaria_x.y.z_amd64.AppImage` | Rendez le fichier exécutable, puis lancez-le. |
 
+Les paquets sont légers : le paquet `.deb` pèse 8 Mo. L'AppImage reste plus volumineuse, car elle contient le moteur web de Linux.
+
 Les paquets Windows sont signés : Windows affiche l'éditeur au lieu d'un avertissement « éditeur inconnu ». Les sommes de contrôle SHA-256 sont publiées avec chaque version (`SHA256SUMS-windows`, `SHA256SUMS-linux`).
 
 ## Premier lancement
 
-1. Au démarrage, Grammaria charge ses règles de grammaire, en quelques secondes.
-2. Les réglages s'ouvrent sur **Serveur du modèle** : indiquez l'adresse de votre modèle, puis **Enregistrer**.
+1. Au démarrage, Grammaria charge ses règles de grammaire, en 4 à 5 secondes. Si vous corrigez un texte tout de suite, le premier contrôle de grammaire attend donc la fin de ce chargement ; les suivants prennent autour de 0,2 seconde.
+2. Le menu **Paramètres → IA** s'ouvre de lui-même : dans **Serveur du modèle**, indiquez l'adresse de votre modèle, puis **Enregistrer**. Ce menu reste accessible à tout moment par le bouton ⚙️ de l'en-tête, à côté du thème clair/sombre.
    - Ollama sur le même ordinateur : `http://localhost:11434`.
    - API compatible OpenAI : son adresse, par exemple `https://api.mistral.ai`, et votre clé API.
-3. Choisissez le modèle dans la liste **Modèle LLM**, puis corrigez votre premier texte.
+   - L'adresse s'écrit sans identifiants ni paramètres (`https://utilisateur:motdepasse@…` et `…?cle=…` sont refusés) ; le `/v1` final est facultatif.
+3. Dans la même rubrique, choisissez le modèle dans la liste **Modèle LLM**, fermez le menu, puis corrigez votre premier texte.
+
+La case **Couper le raisonnement du modèle** est cochée par défaut. Un modèle qui raisonne (Qwen3 servi par vLLM ou SGLang, par exemple) réfléchit sinon plusieurs secondes avant d'écrire, sans rien afficher. Si le serveur du modèle refuse ce réglage, Grammaria renvoie la requête sans lui. Le [journal technique](#journal-technique) indique pour chaque correction le délai avant le premier mot et le nombre de fragments de raisonnement reçus.
 
 Vos textes ne sont envoyés qu'au modèle que vous avez choisi. L'analyse grammaticale et le journal restent sur votre ordinateur.
+
+## Mises à jour
+
+À chaque démarrage, Grammaria regarde si une version plus récente a été publiée. Si c'est le cas, un bandeau vous la propose en haut de la fenêtre :
+
+- **Installer et redémarrer** télécharge la nouvelle version, vérifie qu'elle vient bien de l'éditeur de Grammaria (signature), l'installe et relance l'application ;
+- **Plus tard** ferme le bandeau jusqu'au prochain lancement.
+
+Rien n'est jamais installé sans votre accord. Vos réglages et votre journal sont conservés.
+
+Vous pouvez aussi lancer la recherche vous-même : bouton ⚙️ de l'en-tête, rubrique **Mises à jour**, puis **Rechercher une mise à jour**. La rubrique affiche la version installée.
+
+| Paquet installé | Mise à jour |
+|---|---|
+| Windows, `…-setup.exe` | Automatique, sur votre accord |
+| Linux, AppImage | Automatique, sur votre accord. Le fichier AppImage est remplacé : il doit se trouver dans un dossier où vous pouvez écrire. |
+| Linux, `.deb` | Grammaria vous prévient et ouvre la page de téléchargement : installez le nouveau `.deb` par-dessus l'ancien. |
+| Windows, MSI (parc géré) | Grammaria vous prévient ; la nouvelle version est déployée par votre administrateur. |
+
+Seules les versions stables sont proposées, jamais les versions d'essai. Si la rubrique indique que les mises à jour automatiques ne sont pas encore actives, téléchargez la nouvelle version dans la page [Releases](https://github.com/WillIsback/Grammaria/releases) et installez-la par-dessus l'ancienne.
+
+### Depuis la version 0.2
+
+La version 0.3 reprend votre journal des fautes, vos réglages du modèle, votre clé API et vos mots ajoutés au dictionnaire. Seuls reviennent à leurs valeurs par défaut les préférences de la barre latérale (mode de correction et types de corrections) et la case **Couper le raisonnement du modèle** (cochée) : choisissez-les à nouveau une fois.
 
 ## Où sont mes données ?
 
@@ -35,12 +64,23 @@ Vos textes ne sont envoyés qu'au modèle que vous avez choisi. L'analyse gramma
 | Windows | `%APPDATA%\fr.willisback.grammaria\` |
 | Linux | `~/.local/share/fr.willisback.grammaria/` |
 
-Le dossier contient le journal des fautes (`grammaria.db`) et les réglages (`settings.json`). La clé API y est enregistrée en clair, dans un fichier lisible par votre seul compte. Le journal technique du moteur (`server.log`) est dans le dossier de logs de l'application : `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` sous Windows, `~/.local/share/fr.willisback.grammaria/logs/` sous Linux.
+Le dossier contient le journal des fautes (`grammaria.db`), les réglages (`settings.json`) et les mots ajoutés au dictionnaire (`valid-words.json`). La clé API y est enregistrée en clair, dans un fichier lisible par votre seul compte.
+
+### Journal technique
+
+En cas de problème, le support peut vous demander le journal technique, `grammaria.log` :
+
+| Système | Dossier |
+|---|---|
+| Windows | `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` |
+| Linux | `~/.local/share/fr.willisback.grammaria/logs/` |
+
+Il note le démarrage et la fermeture de l'application, les erreurs (par exemple un modèle injoignable ou un fichier de réglages illisible), les mises à jour et la durée de chaque correction. Il ne contient ni vos textes, ni les corrections, ni votre clé API. Sa taille est limitée : au-delà de 1 Mio, il est renommé `grammaria.log.1` et un nouveau fichier commence.
 
 ## Configuration requise
 
 - Windows 10 ou 11 (64 bits), ou une distribution Linux récente (64 bits) avec WebKitGTK 4.1.
-- Environ 1 Go de mémoire vive pour le correcteur grammatical, en plus du modèle s'il tourne sur la même machine.
+- Environ 1 Go de mémoire vive pour le correcteur grammatical une fois ses règles chargées (mesuré sous Linux), en plus du modèle s'il tourne sur la même machine.
 
 ## Code source
 

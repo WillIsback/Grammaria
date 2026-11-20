@@ -15,14 +15,20 @@ RUN npm run build
 FROM oven/bun:alpine
 WORKDIR /app
 
+# Fuseaux horaires : sans tzdata, la variable TZ est ignorée et le « jour » des
+# sollicitations (une par règle et par jour) changerait à minuit UTC.
+RUN apk add --no-cache tzdata
+
 # Copier les artefacts du build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
 # Copier les fichiers serveur
 # grammar.worker.ts : correcteur grammatical intégré (règles LanguageTool en JavaScript)
-COPY server.ts journal.ts grammar.ts grammar.worker.ts grammar.engine.ts grammar.resources.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
-COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts ./src/utils/
+COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts grammar.worker.ts grammar.engine.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
+# api/ : gestionnaire des routes /api/* et /v1/*, partagé avec l'application de bureau
+COPY api ./api
+COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts src/utils/modeles.ts src/utils/erreursModele.ts ./src/utils/
 COPY src/analysis ./src/analysis
 COPY src/types.ts ./src/
 

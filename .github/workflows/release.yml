@@ -49,7 +49,8 @@ jobs:
     needs: check-tag
     uses: ./.github/workflows/ci.yml
 
-  # Application de bureau : seule une release signe les paquets Windows.
+  # Application de bureau : seule une release signe les paquets Windows et
+  # produit les signatures de mise à jour.
   desktop:
     needs: ci
     uses: ./.github/workflows/build-desktop.yml
@@ -101,12 +102,63 @@ jobs:
         run: |
           sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${{ github.repository }}:${IMAGE_TAG}|g" install.sh
 
+      # Seulement les paquets (grammaria-desktop-linux, grammaria-desktop-windows) :
+      # les résultats de l'autotest (autotest-*) ne sont pas publiés.
       - name: Download desktop packages
         uses: actions/download-artifact@v4
         with:
           pattern: grammaria-desktop-*
           path: desktop
           merge-multiple: true
+
+      # Les fichiers publiés sont exactement ceux que build-desktop a contrôlés
+      # (signatures Azure vérifiées sur Windows, autotest, garde de taille) :
+      # on revérifie leurs sommes de contrôle et la présence de chaque paquet.
+      # Windows : installeur NSIS et MSI ; Linux : .deb et AppImage.
+      - name: Vérifier les paquets et leurs sommes de contrôle
+        run: |
+          set -euo pipefail
+          cd desktop
+          ls -l
+          for motif in '*-setup.exe' '*.msi' '*.deb' '*.AppImage' SHA256SUMS-linux SHA256SUMS-windows; do
+            if ! compgen -G "$motif" > /dev/null; then
+              echo "::error::Paquet absent de la release : $motif"
+              exit 1
+            fi
+          done
+          sha256sum --check --strict SHA256SUMS-linux SHA256SUMS-windows
+
+      # Manifeste de mise à jour de l'application de bureau. Les applications
+      # installées le lisent sur la dernière release stable
+      # (…/releases/latest/download/latest.json) : il n'est donc écrit que pour
+      # une version stable, jamais pour une pré-version (alpha, rc).
+      # scripts/desktop/update-manifest.ts tourne sous Node (≥ 22.18, types
+      # effacés) : plus besoin de Bun dans ce job.
+      - name: Setup Node.js
+        if: env.PRERELEASE != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Manifeste de mise à jour (version stable uniquement)
+        if: env.PRERELEASE != 'true'
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pubkey=$(jq -r '.plugins.updater.pubkey' src-tauri/tauri.conf.json | tr -d '[:space:]')
+          if ! ls desktop/*.sig > /dev/null 2>&1; then
+            if [ -n "$pubkey" ]; then
+              # Mises à jour activées mais aucune signature : sans manifeste, les
+              # applications installées ne verraient jamais cette version.
+              echo "::error::Version stable sans signature de mise à jour alors que la clé publique est renseignée (secret TAURI_SIGNING_PRIVATE_KEY manquant ?)."
+              exit 1
+            fi
+            echo "::warning::Mises à jour automatiques pas encore activées (clé publique vide dans src-tauri/tauri.conf.json) : release publiée sans latest.json."
+            exit 0
+          fi
+          node scripts/desktop/update-manifest.ts desktop "$TAG" "$REPO"
+          cat desktop/latest.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

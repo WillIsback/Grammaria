@@ -29,7 +29,10 @@ Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
 5. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
 6. Une **note sur 20**, calculée sur la densité de fautes, suit votre progression texte par texte et sur sept jours.
 
-Les interventions sur les fautes récurrentes (astuce puis choix entre deux formes sur le bouton « Copier ») sont la prochaine étape. Elles sont décrites dans la [feuille de route](https://grammaria.fr/docs/decouvrir/feuille-de-route/) et ne sont pas encore disponibles.
+7. Quand une faute **revient**, Grammaria intervient là où vous regardez, près du bouton « Copier » : d'abord une astuce d'une ligne, puis, si la faute persiste, le bouton propose les deux formes sur votre propre phrase. Un seul clic dans tous les cas : la copie n'est jamais retardée.
+8. L'écran **Progression** montre votre évolution : score de maîtrise, note semaine après semaine, règles acquises ou à travailler, mots pièges. Des **badges** sobres constatent les étapes franchies, sans série à ne pas casser.
+
+Le détail est dans [Corriger un texte](https://grammaria.fr/docs/utiliser/corriger/), [Progression](https://grammaria.fr/docs/utiliser/progression/), [Badges](https://grammaria.fr/docs/utiliser/badges/) et la [feuille de route](https://grammaria.fr/docs/decouvrir/feuille-de-route/).
 
 ## Vos textes restent chez vous
 
@@ -37,7 +40,7 @@ Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vo
 
 ## Application de bureau
 
-Pour Windows et Linux, sans serveur à installer : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 8 Mo) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
 ## Démarrage rapide (serveur)
 
@@ -90,5 +93,7 @@ Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/
 Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
 Le correcteur grammatical intégré s'appuie sur [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de [LanguageTool](https://languagetool.org), eux-mêmes sous GPL-3.0-or-later : l'ensemble est donc publié sous cette licence.
+
+La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
 
 Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector), publié sous licence MIT. Sa notice d'origine est conservée dans [LICENSE-MIT](LICENSE-MIT).

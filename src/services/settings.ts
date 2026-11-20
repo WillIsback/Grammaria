@@ -6,12 +6,21 @@ export interface ServerSettings {
   llmModelName: string;
   llmDisableThinking: boolean;
   hasApiKey: boolean;
+  /**
+   * Application de bureau : `settings.json` existe mais n'a pas pu être lu.
+   * Ses réglages et la clé sont ignorés ; l'utilisateur en est prévenu dans
+   * Paramètres → IA. Absent (ou faux) sur le serveur web et après un
+   * enregistrement réussi.
+   */
+  settingsUnreadable?: boolean;
 }
 
 export interface SettingsInput {
   llmTarget?: string;
   /** Absent : la clé enregistrée est conservée. */
   llmApiKey?: string;
+  /** Coupe le raisonnement du modèle (plus rapide). */
+  llmDisableThinking?: boolean;
 }
 
 export async function fetchServerSettings(): Promise<ServerSettings> {

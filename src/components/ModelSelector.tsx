@@ -7,11 +7,22 @@ interface Props {
   onModelSelect: (model: string) => void;
   /** Change quand le serveur du modèle change : la liste est rechargée. */
   reloadKey?: number;
+  /**
+   * Application de bureau, premier lancement : aucune adresse de modèle n'est
+   * encore enregistrée. La liste n'est pas demandée (elle échouerait
+   * forcément) : un texte neutre invite à saisir l'adresse au-dessus.
+   */
+  awaitingTarget?: boolean;
 }
 
-export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Props) {
+export function ModelSelector({
+  currentModel,
+  onModelSelect,
+  reloadKey = 0,
+  awaitingTarget = false,
+}: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!awaitingTarget);
   const [error, setError] = useState<string | null>(null);
 
   const loadModels = useCallback(async () => {
@@ -29,8 +40,9 @@ export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Pr
   }, []);
 
   useEffect(() => {
+    if (awaitingTarget) return;
     void loadModels();
-  }, [loadModels, reloadKey]);
+  }, [loadModels, reloadKey, awaitingTarget]);
 
   const handleSelect = (modelId: string) => {
     setCurrentModel(modelId);
@@ -43,16 +55,24 @@ export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Pr
         Modèle LLM
       </h2>
 
-      {loading && (
+      {awaitingTarget && (
+        <p role="status" className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+          Indiquez d&rsquo;abord l&rsquo;adresse du modèle ci-dessus.
+        </p>
+      )}
+
+      {!awaitingTarget && loading && (
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="w-3 h-3 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
           <span className="text-xs text-gray-400">Chargement…</span>
         </div>
       )}
 
-      {error && !loading && (
+      {!awaitingTarget && error && !loading && (
         <div className="px-3 py-2">
-          <p className="text-xs text-red-400">{error}</p>
+          <p role="alert" className="text-xs text-red-400">
+            {error}
+          </p>
           <button
             type="button"
             onClick={loadModels}
@@ -63,13 +83,13 @@ export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Pr
         </div>
       )}
 
-      {!loading && !error && models.length === 0 && (
+      {!awaitingTarget && !loading && !error && models.length === 0 && (
         <div className="px-3 py-2">
           <p className="text-xs text-gray-400">Aucun modèle disponible</p>
         </div>
       )}
 
-      {!loading && models.length > 0 && (
+      {!awaitingTarget && !loading && models.length > 0 && (
         <div className="space-y-0.5">
           {models.map((m) => {
             const isActive = currentModel === m.id;
@@ -102,7 +122,7 @@ export function ModelSelector({ currentModel, onModelSelect, reloadKey = 0 }: Pr
         </div>
       )}
 
-      {!loading && models.length > 0 && (
+      {!awaitingTarget && !loading && models.length > 0 && (
         <button
           type="button"
           onClick={loadModels}

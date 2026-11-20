@@ -1,35 +1,64 @@
 ---
-title: "Application de bureau : build et signature"
-description: "Comment l'application Tauri est construite, publiée et signée."
+title: "Application de bureau : build, signature et mise à jour"
+description: "Comment l'application Tauri est construite, vérifiée, publiée, signée et mise à jour."
 ---
 
 ## Architecture
 
-L'application de bureau est une coquille [Tauri 2](https://tauri.app) (`src-tauri/`) autour du serveur Grammaria habituel :
+L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-tauri/`). Depuis la version 0.3.0, elle n'embarque plus le serveur Bun : ni serveur local, ni port ouvert, ni processus annexe.
 
-1. `scripts/desktop/prepare-sidecar.ts` compile `server.ts` et le worker du correcteur en un exécutable Bun autonome (`bun build --compile`), nommé `grammaria-server-<plateforme>`, et copie à côté l'interface construite (`dist/`) et les règles de LanguageTool.
-2. Au lancement, la coquille choisit un port libre sur `127.0.0.1`, démarre ce serveur avec `GRAMMARIA_DESKTOP=1`, attend qu'il réponde, puis affiche son interface. Le serveur est arrêté à la fermeture.
-3. Aucune commande Tauri n'est exposée à la page : l'interface parle au serveur en HTTP, comme dans la version web.
+1. **La page est embarquée.** L'interface est construite dans `dist/bureau` (`npm run build:bureau`) et servie par Tauri lui-même, sous l'origine `tauri://localhost` (`http://tauri.localhost` sous Windows).
+2. **La logique métier est la même que sur le serveur web.** Au chargement, `src/desktop/amorce.ts` remplace `window.fetch` pour les seules routes `/api/*` et `/v1/*` de la page et les confie au gestionnaire d'API partagé avec le serveur, `api/handler.ts`. L'interface ne fait pas la différence avec la version web.
+3. **Le correcteur grammatical tourne dans la page**, dans un Web Worker (`src/desktop/lt.worker.ts`), avec les règles françaises de LanguageTool rangées dans une archive (`dist/bureau/lt/fr.pack`). Les règles se chargent en 4 à 5 secondes au lancement ; les contrôles suivants prennent autour de 0,2 seconde.
+4. **Rust ne fournit que ce que la page ne peut pas faire seule**, par des commandes (`src-tauri/src/`) :
 
-En mode bureau, le serveur :
+| Module | Rôle |
+|---|---|
+| `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien |
+| `store.rs` | Réglages du modèle (`settings.json`), clé API, mots valides (`valid-words.json`) |
+| `llm.rs` | Relais du modèle en streaming : Rust ajoute l'adresse et la clé API, que la page ne connaît jamais |
+| `update.rs` | Mise à jour de l'application |
+| `logs.rs` | Journal technique `grammaria.log` |
 
-- n'écoute que sur `127.0.0.1` ;
-- refuse un en-tête `Host` étranger (DNS rebinding) et toute requête de modification venue d'une autre origine (CSRF) ;
-- rend les réglages du LLM modifiables depuis l'interface (`GET`/`PUT /api/settings`), enregistrés dans `settings.json`. Sur un serveur web, ces réglages restent en lecture seule et viennent de l'environnement.
+Le journal, les réglages, la clé API et les mots valides de la version 0.2.x sont repris tels quels (mêmes fichiers, même dossier). Les préférences d'affichage (mode de correction et types de corrections de la barre latérale) étaient gardées par la page elle-même ; l'origine de la page ayant changé, elles ne sont pas reprises. Un `settings.json` de la version 0.2 (sans `settingsVersion`) est relu sans son réglage « Couper le raisonnement du modèle », qui revient à sa valeur par défaut (coupé) ; le fichier n'est réécrit qu'au prochain enregistrement des réglages.
 
-## Variables d'environnement du serveur embarqué
+## Sécurité de la page
+
+- **Une seule capability, locale.** `src-tauri/capabilities/default.json` autorise la fenêtre `main`, pour la page embarquée seulement, à appeler les commandes de l'application, une par une : ni les commandes de Tauri (`core:default`), ni celles des plugins, ni aucune origine distante. La liste des commandes est aussi déclarée dans `src-tauri/build.rs` ; un test Rust vérifie que les commandes enregistrées, celles de `build.rs` et celles de la capability coïncident.
+- **Une politique de sécurité stricte** (`tauri.conf.json`) : la page ne charge que ses propres fichiers, sans `unsafe-eval` ni ressource distante. Elle ne joint jamais le modèle elle-même : tout passe par `llm.rs`. La police Inter est embarquée : aucune requête vers Google.
+- **Une fenêtre verrouillée sur la page embarquée** (`lib.rs`) : toute navigation vers une autre origine et toute nouvelle fenêtre sont refusées, et notées dans le journal technique (origine seule). La page de téléchargement d'une mise à jour s'ouvre dans le navigateur du système, par une commande Rust dont l'adresse est fixe.
+- **Un relais du modèle borné** (`llm.rs`, `store.rs`) : l'adresse du modèle ne doit contenir ni identifiants (`utilisateur:motdepasse@`), ni paramètres (`?…`), ni fragment (`#…`) ; le `/v1` final est facultatif. Une redirection du serveur du modèle n'est suivie que vers la même origine, et un événement du flux est limité à 8 Mio.
+- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
+- **Un journal d'une version plus récente n'est jamais ouvert.** Si `grammaria.db` porte une version de schéma (`PRAGMA user_version`) supérieure à celle que l'application connaît, elle affiche l'écran d'erreur « Ce journal a été créé par une version plus récente de Grammaria » et n'écrit rien ; le serveur web refuse de démarrer avec le même message.
+
+## Journal technique
+
+L'application écrit `grammaria.log` dans son dossier de journaux :
+
+| Système | Dossier |
+|---|---|
+| Windows | `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` |
+| Linux | `~/.local/share/fr.willisback.grammaria/logs/` |
+
+Il contient le démarrage (version, système) et la fermeture, les erreurs des commandes (journal, réglages, relais du modèle : statut et message), un fichier de réglages illisible au démarrage (`settings.json` ou `valid-words.json` : son nom seulement, les valeurs par défaut s'appliquent), les étapes de la mise à jour, le chargement du correcteur, les erreurs de la page (erreurs JavaScript non interceptées, promesses rejetées) et une ligne par correction terminée : durée totale, délai avant le premier mot, nombre de fragments de raisonnement, raisonnement coupé ou non.
+
+Il ne contient jamais la clé API, les en-têtes d'authentification, le texte de l'utilisateur ni le contenu des corrections : chaque ligne est en plus filtrée pour masquer tout ce qui ressemble à un secret. Au-delà de 1 Mio, le fichier devient `grammaria.log.1` et un nouveau commence. La page n'écrit que par une seule commande, `log_page`, dont le débit et la taille des messages sont limités. Les erreurs des commandes le sont aussi : une erreur identique à la précédente n'est pas réécrite mais comptée (« répété N fois »).
+
+## Variables d'environnement
+
+L'application n'en lit que trois, toutes pour l'[autotest](#autotest) :
 
 | Variable | Rôle |
 |---|---|
-| `GRAMMARIA_DESKTOP=1` | Active le mode bureau |
-| `HOST`, `PORT` | `127.0.0.1` et le port choisi par la coquille |
-| `GRAMMARIA_DIST_DIR` | Interface construite |
-| `GRAMMARIA_LT_RESOURCES` | Règles de LanguageTool (`core/`, `unicode/`, `fr/`) |
-| `JOURNAL_PATH`, `GRAMMARIA_SETTINGS_PATH`, `GRAMMARIA_VALID_WORDS_PATH` | Fichiers du dossier de données de l'utilisateur |
+| `GRAMMARIA_AUTOTEST_OUT` | Fichier de résultats ; sa présence lance l'autotest |
+| `GRAMMARIA_AUTOTEST_MODELE` | Adresse du faux serveur du modèle (défaut : `http://127.0.0.1:31977`) |
+| `GRAMMARIA_AUTOTEST_DELAI` | Délai maximal en secondes avant de fermer l'application en échec (défaut : 170) |
+
+Les variables du serveur web (`LLM_TARGET`, `JOURNAL_PATH`, `GRAMMARIA_DESKTOP`…) ne concernent pas l'application de bureau : son modèle se règle dans **Paramètres → IA**.
 
 ## Construire en local
 
-Prérequis : Rust stable, Bun, Node.js, et sous Linux `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`.
+Prérequis : Rust stable, Node.js (`^22.18`, `^24.11` ou `>=26`), et sous Linux `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`. Bun n'est pas nécessaire.
 
 ```bash
 npm ci
@@ -39,7 +68,25 @@ npm ci
 npx tauri build --bundles deb,appimage
 ```
 
-Sous Windows : `npx tauri build --bundles nsis,msi`. Les paquets sont dans `src-tauri/target/release/bundle/`.
+Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm run build:bureau` (interface, Worker du correcteur et archive des règles). Les paquets sont dans `src-tauri/target/release/bundle/`. Le paquet `.deb` pèse 8 Mo (62 Mo en 0.2.0) ; l'AppImage reste volumineuse, car elle embarque le moteur web de Linux.
+
+## Vérifier
+
+| Commande | Ce qu'elle vérifie |
+|---|---|
+| `cargo test` (dans `src-tauri/`) | Commandes Rust, capability, politique de sécurité, journal technique. À lancer après `npm run build:bureau` : la compilation exige la page embarquée (`dist/bureau`), que `npm run build` (version web) efface |
+| `npm run test:correcteur-bureau` | Le correcteur livré (`dist/bureau/lt/`), dans Chromium sous la politique de sécurité du bureau : détections identiques à la référence du serveur, aucune construction qui évalue du code. À lancer après `npm run build:bureau` |
+| `npm run reference:correcteur` | Régénère la référence (`tests/fixtures/correcteur/reference.json`) avec le correcteur du serveur. Nécessite Bun |
+
+### Autotest
+
+L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal, réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
+
+1. Lancer le faux serveur du modèle : `node scripts/desktop/faux-modele.mjs`.
+2. Lancer l'application avec `GRAMMARIA_AUTOTEST_OUT=/chemin/autotest.json` (sous Linux sans écran : `xvfb-run`). Elle écrit ses résultats puis se ferme, avec le code 0 si tout est tenu.
+3. Vérifier les résultats : `node scripts/desktop/verifier-autotest.mjs /chemin/autotest.json`.
+
+En mode autotest, les données et le journal technique vont dans un dossier neuf à côté du fichier de résultats, jamais dans celui de l'utilisateur. Sans la variable, les commandes d'autotest ne sont autorisées par aucune capability et ne font rien.
 
 ## Publication et signature
 
@@ -57,4 +104,83 @@ Secrets du dépôt à créer (les mêmes valeurs que dans Syntheo) :
 
 Variables facultatives (par défaut : le compte et le profil de Syntheo) : `AZURE_SIGNING_ENDPOINT` (`https://neu.codesigning.azure.net`), `AZURE_SIGNING_ACCOUNT` (`willisback-signing`), `AZURE_SIGNING_PROFILE` (`syntheo-public`).
 
-Sans ces secrets, une release publie des paquets Windows non signés et le workflow l'indique par un avertissement. Après le build, un test de fumée démarre le serveur embarqué (signé ou non) et vérifie que le correcteur grammatical répond.
+Sans ces secrets, une release publie des paquets Windows non signés et le workflow l'indique par un avertissement. Après le build, l'application (signée ou non) est vérifiée par l'[autotest](#autotest).
+
+## Mise à jour automatique
+
+L'application se met à jour avec le plugin officiel [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/).
+
+### Fonctionnement
+
+1. Au démarrage, l'interface demande à l'application de chercher une mise à jour. L'application lit le manifeste `latest.json` de la **dernière release stable** : `https://github.com/WillIsback/Grammaria/releases/latest/download/latest.json`.
+2. Si la version annoncée est stable et plus récente, l'interface la propose (bandeau, et rubrique **Paramètres → Mises à jour**).
+3. Sur accord de l'utilisateur, l'application télécharge le paquet, vérifie sa signature avec la clé publique embarquée, l'installe et redémarre. Un paquet modifié, ou signé pour une autre version que celle annoncée, est refusé et la version en place est conservée.
+
+Toute la logique est dans `src-tauri/src/update.rs`. La page déclenche les étapes par quatre commandes, autorisées comme les autres par la capability locale (`src-tauri/capabilities/default.json`) :
+
+| Commande | Rôle |
+|---|---|
+| `update_status` | État courant |
+| `update_check` | Cherche une version ; ne télécharge rien |
+| `update_install` | Télécharge, vérifie, installe, redémarre |
+| `update_open_release_page` | Ouvre la page de la dernière release (adresse fixe) dans le navigateur |
+
+Les commandes de Tauri et des plugins (dont celles du plugin de mise à jour) restent fermées à la page. Les étapes de la mise à jour sont notées dans le [journal technique](#journal-technique).
+
+### Paquets concernés
+
+| Paquet | Comportement |
+|---|---|
+| Installeur Windows NSIS (`-setup.exe`) | Mise à jour automatique |
+| AppImage | Mise à jour automatique |
+| MSI, `.deb` | L'application signale la nouvelle version et renvoie vers la page de téléchargement |
+
+Le manifeste ne décrit que l'installeur NSIS et l'AppImage. L'application reconnaît le paquet dont elle vient (marqueur posé par Tauri au build) : une installation MSI ou `.deb` n'installe jamais un paquet d'un autre type.
+
+### Versions stables uniquement
+
+Une pré-version (étiquette avec un tiret : `v0.4.0-rc.1`, `v0.4.0-1`) n'est jamais proposée :
+
+- GitHub ne la désigne pas comme « dernière release », donc l'adresse du manifeste ne pointe jamais dessus ;
+- `release.yml` n'écrit `latest.json` que pour une version stable ;
+- l'application elle-même refuse une version annoncée qui porte un suffixe de pré-version.
+
+### Signature des mises à jour
+
+Les mises à jour sont signées par une paire de clés propre à Tauri (minisign), **distincte de la signature Windows** : elle ne consomme aucune signature Azure.
+
+- La **clé publique** est dans `src-tauri/tauri.conf.json`, champ `plugins.updater.pubkey`. Tant qu'il est vide, l'application n'effectue aucune recherche et la rubrique indique que les mises à jour automatiques ne sont pas encore actives.
+- La **clé privée** n'existe que dans les secrets du dépôt. Elle ne doit jamais être écrite dans le dépôt, dans une issue ou dans un journal.
+
+| Secret | Valeur |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | Contenu du fichier de clé privée |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Mot de passe de la clé (ne pas créer ce secret si la clé n'en a pas) |
+
+`build-desktop.yml` ne produit les signatures (`.sig`) que pour une release, quand le secret existe et que la clé publique est renseignée. Dans les autres cas (pull request, lancement manuel, fork), le build est identique à avant, sans artefact de mise à jour. Les signatures sont listées dans `SHA256SUMS-windows` et `SHA256SUMS-linux`, avec les paquets.
+
+Pour une version stable, deux cas :
+
+- **clé publique vide** (mises à jour pas encore activées) : la release est publiée sans `latest.json`, avec un avertissement ;
+- **clé publique renseignée mais secret absent** : la release **échoue** avant toute publication. Sans manifeste, les applications installées ne verraient jamais cette version.
+
+Une pré-version sans secret est publiée sans signature, avec un avertissement. Côté application, un manifeste introuvable s'affiche « Aucune mise à jour disponible pour le moment », pas comme une panne de connexion.
+
+### Activer les mises à jour (une seule fois)
+
+À faire par le propriétaire du dépôt, sur son ordinateur :
+
+1. Dans le dossier du projet, générer la paire de clés, en dehors du dépôt :
+
+   ```bash
+   npx tauri signer generate -w ~/.tauri/grammaria.key
+   ```
+
+   La commande demande un mot de passe (recommandé) et crée deux fichiers : `~/.tauri/grammaria.key` (clé privée) et `~/.tauri/grammaria.key.pub` (clé publique).
+
+2. Sauvegarder la clé privée et son mot de passe dans un gestionnaire de mots de passe. **Si elle est perdue, les applications déjà installées ne pourront plus être mises à jour** : il faudrait réinstaller à la main une version signée avec une nouvelle clé.
+3. Sur GitHub, dans **Settings → Secrets and variables → Actions**, créer le secret `TAURI_SIGNING_PRIVATE_KEY` avec le contenu de `~/.tauri/grammaria.key`, et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` avec le mot de passe.
+4. Copier le contenu de `~/.tauri/grammaria.key.pub` (une seule ligne) dans `src-tauri/tauri.conf.json`, champ `plugins.updater.pubkey`, puis fusionner ce changement. La clé publique n'est pas secrète.
+5. Publier une version stable : la release contient alors `latest.json` et les fichiers `.sig`. Les versions installées **à partir de celle-ci** se mettront à jour seules ; les versions plus anciennes doivent être réinstallées une dernière fois à la main.
+
+Pour vérifier une release : `latest.json` est joint, sa `version` est celle de l'étiquette, et il contient les plateformes `linux-x86_64` et `windows-x86_64`.

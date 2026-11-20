@@ -1,0 +1,75 @@
+---
+title: "Badges"
+description: "Badges de progression : liste, critères, notification et effacement."
+---
+
+Les badges constatent vos progrès dans la maîtrise des règles. Ils reposent uniquement sur ce que contient le [journal des fautes](/docs/utiliser/note-et-journal/) : textes corrigés, règles acquises, réponses au choix à deux formes. Ils ne vous comparent à personne.
+
+La régularité est **cumulative** : les jours et les semaines comptés n'ont pas besoin de se suivre. Une pause ne fait rien perdre, et un badge obtenu n'est jamais retiré, même si la note baisse ensuite.
+
+## Quand un badge est obtenu
+
+Un badge peut tomber après une correction ou après une réponse au choix à deux formes. Une notification discrète s'affiche alors : sous l'en-tête sur mobile, en bas à gauche sur un écran large, loin du bouton **Copier** et de la note. Elle ne bloque rien et disparaît d'elle-même au bout de quelques secondes (bouton de fermeture ou touche Échap pour la fermer plus tôt). Si plusieurs badges tombent en même temps, ils sont regroupés dans une seule notification. Si le menu **Paramètres** ou les réglages de correction sont ouverts à ce moment-là, elle attend leur fermeture.
+
+## Où voir ses badges
+
+La galerie des badges est en bas de l'écran [Progression](/docs/utiliser/progression/), ouvert par le bouton en forme de graphique en haut à droite. Elle présente les badges obtenus avec leur date, et les badges à venir avec leur critère et une barre de progression, regroupés par famille. Elle apparaît dès le premier texte corrigé.
+
+## Liste des badges
+
+L'identifiant est celui de l'API (`GET /api/badges`).
+
+### Premiers pas
+
+| Badge | Identifiant | Critère |
+|---|---|---|
+| Premier texte | `premier-texte` | Corriger un premier texte. |
+| Dix textes | `textes-10` | Corriger 10 textes. |
+| Cinquante textes | `textes-50` | Corriger 50 textes. |
+| Deux cents textes | `textes-200` | Corriger 200 textes. |
+
+### Régularité
+
+| Badge | Identifiant | Critère |
+|---|---|---|
+| Cinq jours d'écriture | `jours-5` | Corriger des textes sur 5 jours différents, consécutifs ou non. |
+| Trente jours d'écriture | `jours-30` | Corriger des textes sur 30 jours différents, consécutifs ou non. |
+| Quatre semaines | `semaines-4` | Corriger au moins un texte au cours de 4 semaines différentes (du lundi au dimanche), consécutives ou non. |
+| Douze semaines | `semaines-12` | Corriger au moins un texte au cours de 12 semaines différentes, consécutives ou non. |
+
+### Justesse
+
+| Badge | Identifiant | Critère |
+|---|---|---|
+| Premier sans-faute | `premier-sans-faute` | Corriger un texte d'au moins 30 mots sans faute comptée dans la note. |
+| Dix sans-faute | `sans-faute-10` | Corriger 10 textes d'au moins 30 mots sans faute comptée dans la note. |
+| Plume sûre | `note-18` | Atteindre une note moyenne d'au moins 18 sur 20 sur 30 jours glissants, avec au moins 10 textes corrigés sur la période. |
+
+Seules les fautes comptées dans la note entrent en jeu (voir [Ce qui est compté comme une faute](/docs/utiliser/corrections/#ce-qui-est-compté-comme-une-faute)) : une retouche de typographie ou de style n'empêche pas un sans-faute.
+
+### Maîtrise des règles
+
+Une règle est **acquise** après 14 jours sans faute sur cette règle, pendant lesquels vous avez corrigé au moins 5 textes sur au moins 3 jours (voir [Corriger un texte](/docs/utiliser/corriger/)). Une règle acquise, perdue puis acquise de nouveau ne compte qu'une fois.
+
+| Badge | Identifiant | Critère |
+|---|---|---|
+| Première règle acquise | `premiere-regle` | Acquérir une première règle. |
+| Trois règles acquises | `regles-3` | Acquérir 3 règles différentes. |
+| Cinq règles acquises | `regles-5` | Acquérir 5 règles différentes. |
+| Dix règles acquises | `regles-10` | Acquérir 10 règles différentes. |
+| Homophones apprivoisés | `homophones-3` | Acquérir 3 fiches d'homophones différentes parmi les 11 : a / à, ou / où, et / est, on / ont, son / sont, ces / ses, ce / se, c'est / s'est, la / là, sa / ça, peu / peut / peux. |
+
+### Persévérance
+
+| Badge | Identifiant | Critère |
+|---|---|---|
+| Rechute surmontée | `rechute-surmontee` | Acquérir de nouveau une règle après une rechute (une faute sur une règle acquise). |
+| Dix bons choix | `choix-10` | Choisir 10 fois la bonne forme lorsque le bouton Copier propose deux formes. |
+
+## Mise à jour depuis une version précédente
+
+Rien à faire. Au premier démarrage, les badges que votre journal justifie déjà sont attribués à la date où leur critère a été rempli, sans notification.
+
+## Effacer les badges
+
+Le bouton **Effacer le journal** (barre latérale, section **Journal des fautes**) efface aussi les badges obtenus. Le message de confirmation le rappelle. Voir [Effacer le journal](/docs/utiliser/note-et-journal/#effacer-le-journal).

@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "tests", "tests-bun", "*.ts"]
+  "include": ["api", "src", "tests", "tests-bun", "scripts", "*.ts"]
 }

@@ -5,7 +5,7 @@ description: "Questions fréquentes et dépannage."
 
 ## Mes textes sont-ils envoyés quelque part ?
 
-Ils sont envoyés uniquement au modèle que vous avez configuré dans `LLM_TARGET` : l'analyse grammaticale tourne dans le serveur Grammaria. Avec un modèle local, rien ne quitte votre réseau. Le journal ne conserve que les phrases contenant une faute.
+Ils sont envoyés uniquement au modèle que vous avez configuré (`LLM_TARGET` sur un serveur, **Paramètres → IA** dans l'application de bureau) : l'analyse grammaticale tourne dans Grammaria même. Avec un modèle local, rien ne quitte votre réseau. Le journal ne conserve que les phrases contenant une faute.
 
 ## Le message « Le correcteur grammatical est indisponible » s'affiche
 
@@ -16,6 +16,20 @@ curl -s -X POST http://localhost:25000/api/check -H "Content-Type: application/j
 ```
 
 Sans correcteur grammatical, la correction fonctionne mais seules les confusions des fiches et les accords sont classés.
+
+Dans l'application de bureau, un bandeau signale un correcteur qui n'a pas pu se charger, et la cause est notée dans le [journal technique](/docs/demarrer/application-bureau/#journal-technique).
+
+## Application de bureau : le premier contrôle de grammaire est lent
+
+Au lancement, l'application charge les règles de grammaire, en 4 à 5 secondes. Un texte corrigé pendant ce chargement attend qu'il se termine ; les contrôles suivants prennent autour de 0,2 seconde.
+
+## Application de bureau : où trouver le journal technique ?
+
+Dans `grammaria.log`, sous `%LOCALAPPDATA%\fr.willisback.grammaria\logs\` (Windows) ou `~/.local/share/fr.willisback.grammaria/logs/` (Linux). Il ne contient ni vos textes ni votre clé API : vous pouvez le joindre à une demande d'aide. Voir [Application de bureau](/docs/demarrer/application-bureau/#journal-technique).
+
+## Application de bureau : mon mode de correction a changé après la mise à jour vers la 0.3
+
+C'est attendu : le journal, les réglages du modèle, la clé API et les mots ajoutés au dictionnaire sont repris, mais pas les préférences de la barre latérale (mode et types de corrections). Choisissez-les à nouveau une fois.
 
 ## La correction échoue ou ne démarre pas
 

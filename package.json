@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vp dev",
     "build": "tsc && vp build",
+    "build:bureau": "vp build --mode bureau-interface --outDir dist/bureau && vp build --mode bureau",
     "preview": "vp preview",
     "test": "vp test",
     "test:run": "vp test run",
@@ -15,6 +16,8 @@
     "check": "vp check",
     "serve": "bun run server.ts",
     "test:journal": "bun test tests-bun",
+    "test:correcteur-bureau": "node scripts/desktop/verifier-correcteur.mjs",
+    "reference:correcteur": "bun scripts/desktop/reference-correcteur.ts",
     "prepare": "vp config"
   },
   "dependencies": {
@@ -24,7 +27,6 @@
     "@opentelemetry/sdk-trace-base": "^2.8.0",
     "@valueerror/ltjs-core": "^0.3.0",
     "@valueerror/ltjs-lang-fr": "^0.3.0",
-    "compromise": "^14.15.0",
     "diff-match-patch": "^1.0.5",
     "openai": "^6.44.0",
     "react": "^18.3.1",

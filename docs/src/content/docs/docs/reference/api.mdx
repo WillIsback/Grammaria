@@ -58,7 +58,7 @@ Les détections suivent le format de LanguageTool. Erreurs : 400 si le JSON ou l
 
 ### `POST /api/analyze`
 
-Calcule le diff, le croise avec les détections, enregistre le résultat dans le journal et le renvoie.
+Calcule le diff, le croise avec les détections, enregistre le résultat dans le journal, met à jour l'état des règles et renvoie le tout, avec ce qu'il faut afficher près du bouton Copier.
 
 ```json
 {
@@ -76,6 +76,8 @@ Réponse :
 {
   "corrections": [
     {
+      "start": 4,
+      "end": 6,
       "avant": "on",
       "apres": "ont",
       "faults": [{ "ruleKey": "PAIRE:on/ont", "source": "fiche", "counted": true }],
@@ -86,17 +88,257 @@ Réponse :
   "faultCount": 1,
   "unclassifiedCount": 0,
   "score": 0,
-  "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 }
+  "week": { "texts": 12, "words": 840, "faults": 9, "score": 17.9 },
+  "intervention": null,
+  "reussites": [],
+  "nouveauxBadges": []
 }
 ```
+
+`start` et `end` situent le passage dans le texte d'origine (fin exclue).
+
+`intervention` vaut `null`, ou l'une des deux formes suivantes. Le serveur en choisit au plus une par texte et la compte dans le budget de la règle (une par règle et par jour).
+
+```json
+{
+  "type": "astuce",
+  "ruleKey": "PAIRE:on/ont",
+  "titre": "on / ont",
+  "texte": "Remplacez par « avaient »…"
+}
+```
+
+```json
+{
+  "type": "choix",
+  "choiceId": 57,
+  "ruleKey": "PAIRE:on/ont",
+  "titre": "on / ont",
+  "explication": "Remplacez par « avaient »…",
+  "avant": "Ils ",
+  "apres": " vu le film.",
+  "formes": [
+    { "texte": "on", "correcte": false },
+    { "texte": "ont", "correcte": true }
+  ]
+}
+```
+
+`choiceId` identifie ce choix précis (c'est l'`id` de l'événement `choix` dans l'historique) : il est à renvoyer à `POST /api/rules/answer`. `avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
+
+`reussites` liste les règles devenues « acquises » avec ce texte : `[{ "ruleKey": "PAIRE:on/ont", "titre": "on / ont" }]`.
+
+`nouveauxBadges` liste les [badges](#badges) obtenus grâce à ce texte, dans l'ordre du catalogue : `[{ "id": "premier-texte", "titre": "Premier texte", "description": "Votre premier texte est corrigé : le journal de progression commence." }]`. Une erreur du calcul des badges ne fait jamais échouer l'analyse : la liste est alors vide.
+
+## Cycle de vie des règles
+
+L'état des règles est mis à jour à chaque `POST /api/analyze`. Les seuils sont définis dans `src/analysis/regles/seuils.ts`, la logique de transition dans `src/analysis/regles/cycle.ts`. Les dates sont en millisecondes depuis 1970.
+
+### `GET /api/rules`
+
+Toutes les règles suivies, de la plus récemment fautive à la plus ancienne.
+
+```json
+{
+  "rules": [
+    {
+      "ruleKey": "PAIRE:on/ont",
+      "label": "on / ont",
+      "categoryName": "Confusion de mots",
+      "fiche": { "titre": "on / ont", "astuce": "Remplacez par « avaient »…" },
+      "state": "travaillee",
+      "stateSince": 1795000000000,
+      "occurrences": 9,
+      "firstFaultAt": 1794000000000,
+      "lastFaultAt": 1795000000000,
+      "tipsShown": 3,
+      "choicesShown": 2,
+      "choicesCorrect": 1,
+      "choicesWrong": 1,
+      "lastSolicitedAt": 1795000000000,
+      "solicitationsThatDay": 1,
+      "acquiredAt": null,
+      "relapses": 0
+    }
+  ],
+  "counts": { "observee": 4, "signalee": 1, "travaillee": 1, "acquise": 0 },
+  "thresholds": { "signalementOccurrences": 3, "signalementFenetreJours": 7, "…": "…" }
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `state` | `observee`, `signalee`, `travaillee` ou `acquise` |
+| `stateSince` | date d'entrée dans l'état courant |
+| `label`, `fiche` | nom lisible de la règle ; `fiche` vaut `null` pour une règle sans fiche |
+| `occurrences` | nombre total de fautes sur la règle |
+| `tipsShown` | astuces affichées depuis la dernière entrée en « signalée » |
+| `choicesShown`, `choicesCorrect`, `choicesWrong` | choix à deux formes proposés, bonnes et mauvaises réponses |
+| `acquiredAt` | date d'acquisition ; `null` si la règle n'est pas acquise |
+| `relapses` | nombre de rechutes (faute après acquisition) |
+| `thresholds` | les seuils en vigueur |
+
+### `GET /api/rules/events?limit=200&ruleKey=…`
+
+Historique daté, du plus récent au plus ancien. `limit` va de 1 à 1000 (200 par défaut) ; `ruleKey` restreint à une règle.
+
+```json
+{
+  "events": [
+    { "id": 12, "ruleKey": "PAIRE:on/ont", "at": 1796300000000, "type": "rechute", "from": "acquise", "to": "signalee" },
+    { "id": 11, "ruleKey": "PAIRE:on/ont", "at": 1796200000000, "type": "acquise", "from": "travaillee", "to": "acquise" },
+    { "id": 10, "ruleKey": "PAIRE:on/ont", "at": 1795000000000, "type": "reponse_juste", "from": null, "to": null }
+  ]
+}
+```
+
+`type` vaut `observee`, `signalee`, `travaillee`, `acquise` ou `rechute` pour un changement d'état (`from` et `to` sont alors renseignés ; `from` est `null` à la première faute), et `astuce`, `choix`, `reponse_juste` ou `reponse_fausse` pour une sollicitation.
+
+### `POST /api/rules/answer`
+
+Enregistre la forme cliquée lors d'un choix à deux formes. `choiceId` est celui reçu dans l'intervention. L'interface appelle cette route après avoir copié le texte ; un échec n'empêche pas la copie.
+
+```json
+{ "choiceId": 57, "correct": true }
+```
+
+Réponse : `{"recorded": true, "nouveauxBadges": []}`. Chaque choix ne reçoit qu'une réponse. `nouveauxBadges` a la même forme que dans `POST /api/analyze` (par exemple « Dix bons choix »).
+
+| Code | Cas |
+|---|---|
+| 400 | corps invalide (`choiceId` entier, `correct` booléen) |
+| 404 | aucun choix ne porte cet identifiant |
+| 409 | le choix a déjà reçu sa réponse, ou un choix plus récent l'a remplacé pour la même règle |
 
 ### `GET /api/journal?days=7`
 
 Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illisible, 1 pour une valeur inférieure à 1) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
 
+### `GET /api/progress`
+
+Tout l'écran **Progression** en une seule requête, calculé depuis le journal par `src/analysis/progression/calcul.ts` (réglages dans `reglages.ts`). Les semaines vont du lundi 0 h au lundi suivant, heure locale du serveur ; la dernière est la semaine en cours. L'état des règles est celui qui est enregistré : « acquise » n'est réévalué qu'à un `POST /api/analyze`. Mêmes contrôles que les autres routes du journal (en-tête `Host` et origine en mode bureau, CORS) ; 405 pour une autre méthode que `GET` ou `OPTIONS`.
+
+Réponse (extrait, deux semaines sur douze) :
+
+```json
+{
+  "generatedAt": 1795115893520,
+  "empty": false,
+  "weeks": 12,
+  "since": 1788134400000,
+  "mastery": {
+    "score": 68,
+    "level": "En bonne voie",
+    "quality": 81,
+    "rulesShare": 50,
+    "acquired": 2,
+    "inCycle": 4,
+    "recent": { "texts": 24, "words": 1343 },
+    "minimum": { "texts": 5, "words": 300 },
+    "weights": { "quality": 0.6, "rules": 0.4 },
+    "recentWeeks": 4
+  },
+  "totals": { "texts": 65, "words": 3884, "faults": 98, "score": 15, "faultsPer100": 2.52 },
+  "period": { "texts": 65, "words": 3884, "faults": 98, "score": 15, "faultsPer100": 2.52 },
+  "recent": { "texts": 24, "words": 1343, "faults": 26, "score": 16.1, "faultsPer100": 1.94 },
+  "previous": { "texts": 26, "words": 1547, "faults": 39, "score": 15, "faultsPer100": 2.52 },
+  "trend": "baisse",
+  "series": [
+    { "start": 1788134400000, "end": 1788739200000, "texts": 0, "words": 0, "faults": 0, "score": null, "faultsPer100": null },
+    { "start": 1788739200000, "end": 1789344000000, "texts": 3, "words": 252, "faults": 5, "score": 16, "faultsPer100": 1.98 }
+  ],
+  "rules": {
+    "counts": { "observee": 2, "signalee": 0, "travaillee": 2, "acquise": 2 },
+    "active": [
+      { "ruleKey": "PAIRE:et/est", "label": "et / est", "categoryName": "Confusion de mots", "state": "travaillee", "stateSince": 1794900000000, "occurrences": 15, "lastFaultAt": 1795000000000, "acquiredAt": null }
+    ],
+    "acquired": [
+      { "ruleKey": "PAIRE:on/ont", "label": "on / ont", "categoryName": "Confusion de mots", "state": "acquise", "stateSince": 1792600000000, "occurrences": 11, "lastFaultAt": 1791300000000, "acquiredAt": 1792600000000 }
+    ]
+  },
+  "frequentRules": [
+    { "ruleKey": "PAIRE:a/à", "label": "a / à", "categoryName": "Confusion de mots", "count": 17, "state": "travaillee" }
+  ],
+  "trapWords": [{ "word": "apareil", "replacement": "appareil", "count": 14 }]
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `empty` | `true` quand le journal ne contient aucun texte |
+| `since` | début de la première des `weeks` semaines affichées |
+| `mastery.score` | score de maîtrise de 0 à 100 ; `null` tant que la fenêtre récente compte moins de `minimum.texts` textes ou `minimum.words` mots |
+| `mastery.quality` | note moyenne des `recentWeeks` dernières semaines, ramenée sur 100 |
+| `mastery.rulesShare` | part (sur 100) des règles acquises parmi les règles entrées dans le cycle (`inCycle` : signalées, travaillées, acquises) ; `null` s'il n'y en a aucune, le score vaut alors la qualité seule |
+| `totals`, `period`, `recent`, `previous` | depuis le premier texte, sur les semaines affichées, sur les `recentWeeks` dernières semaines, et sur les semaines d'avant de même durée |
+| `faultsPer100`, `score` | fautes pour 100 mots et note sur 20 ; `null` sans aucun mot |
+| `trend` | `baisse`, `hausse` ou `stable` pour les fautes pour 100 mots (`recent` contre `previous`) ; `null` si l'une des périodes n'a aucun mot |
+| `series` | une entrée par semaine, de la plus ancienne à la plus récente |
+| `rules.active`, `rules.acquired` | règles signalées ou travaillées (les plus récemment fautives d'abord), et règles acquises (les plus récemment acquises d'abord) |
+| `frequentRules` | les huit règles les plus fréquentes sur les semaines affichées, hors `FR_SPELLING_RULE` ; `state` vaut `null` pour une règle hors cycle |
+| `trapWords` | les dix mots le plus souvent mal orthographiés (`FR_SPELLING_RULE`) sur les semaines affichées, en minuscules, avec la correction la plus fréquente |
+
+Score : `arrondi(100 × (0,6 × qualité + 0,4 × part des règles acquises))`, qualité et part étant comprises entre 0 et 1 avant arrondi (qualité = note récente / 20). Sans règle entrée dans le cycle : `arrondi(100 × qualité)`. Explication en langage simple dans [Progression](/docs/utiliser/progression/).
+
 ### `DELETE /api/journal`
 
-Efface tout le journal. Réponse : `{"purged": true}`.
+Efface tout le journal, remet à zéro l'état des règles et leur historique, et efface les badges obtenus. Réponse : `{"purged": true}`.
+
+## Badges
+
+Le catalogue est défini dans `src/analysis/badges/catalogue.ts`, l'évaluation dans `src/analysis/badges/evaluation.ts` (logique pure). Les badges sont réévalués après chaque `POST /api/analyze` et chaque réponse enregistrée par `POST /api/rules/answer`. Un badge obtenu est conservé avec sa date dans la table `badges` du journal et n'est jamais retiré par un recalcul ; seul `DELETE /api/journal` l'efface. Liste et critères : [Badges](/docs/utiliser/badges/).
+
+### `GET /api/badges`
+
+Catalogue complet, dans l'ordre d'affichage : chaque badge, obtenu ou non, avec sa progression.
+
+```json
+{
+  "familles": [{ "id": "premiers-pas", "titre": "Premiers pas" }, { "id": "regularite", "titre": "Régularité" }, "…"],
+  "badges": [
+    {
+      "id": "premier-texte",
+      "famille": "premiers-pas",
+      "titre": "Premier texte",
+      "description": "Votre premier texte est corrigé : le journal de progression commence.",
+      "critere": "Corriger un premier texte.",
+      "mesure": "textes",
+      "unite": { "singulier": "texte", "pluriel": "textes" },
+      "obtenu": true,
+      "obtenuLe": 1795000000000,
+      "progression": { "valeur": 7, "seuil": 1 }
+    },
+    {
+      "id": "note-18",
+      "famille": "justesse",
+      "titre": "Plume sûre",
+      "…": "…",
+      "obtenu": false,
+      "obtenuLe": null,
+      "progression": {
+        "valeur": 16.4,
+        "seuil": 18,
+        "detail": "7 textes corrigés sur les 30 derniers jours (10 au minimum)."
+      }
+    }
+  ],
+  "obtenus": 3,
+  "total": 18
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `id` | identifiant stable du badge |
+| `famille` | `premiers-pas`, `regularite`, `justesse`, `maitrise` ou `perseverance` |
+| `critere` | critère en clair, affiché tant que le badge est à venir |
+| `mesure` | ce qui est compté : `textes`, `jours`, `semaines`, `textesSansFaute`, `noteMoyenne`, `reglesAcquises`, `homophonesAcquis`, `rechutesSurmontees` ou `reponsesJustes` |
+| `obtenuLe` | date d'obtention (date du fait qui a rempli le critère) ; `null` si le badge est à venir |
+| `progression.valeur` | valeur actuelle de la mesure ; pour `noteMoyenne`, note moyenne des 30 derniers jours (0 sans texte) |
+| `progression.seuil` | valeur à atteindre ; pour `noteMoyenne`, une note sur 20 |
+| `progression.detail` | précision éventuelle, en clair |
+
+Cette route est soumise aux mêmes contrôles que les autres routes du journal (en mode bureau : en-tête `Host` local obligatoire). 405 pour une autre méthode que `GET`.
 
 ## Mots valides
 

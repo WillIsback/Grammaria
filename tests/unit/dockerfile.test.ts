@@ -10,7 +10,17 @@ import { describe, expect, it } from "vite-plus/test";
 
 const root = join(import.meta.dirname, "../..");
 const dockerfile = readFileSync(join(root, "Dockerfile"), "utf-8");
-const serverSource = readFileSync(join(root, "server.ts"), "utf-8");
+// Les fichiers du journal importent à leur tour leurs modules (règles, badges,
+// pilote) : leurs imports sont vérifiés aussi.
+const serverSource = [
+  "server.ts",
+  "journal.ts",
+  "journal.rules.ts",
+  "journal.badges.ts",
+  "journal.driver.bun.ts",
+]
+  .map((file) => readFileSync(join(root, file), "utf-8"))
+  .join("\n");
 
 describe("Dockerfile runtime stage", () => {
   const copied = dockerfile
@@ -26,7 +36,7 @@ describe("Dockerfile runtime stage", () => {
   const isCopied = (file: string) =>
     copied.some((entry) => entry === file || file.startsWith(`${entry.replace(/\/$/, "")}/`));
 
-  it.each(localImports)("copies %s imported by server.ts", (file) => {
+  it.each([...new Set(localImports)])("copies %s imported by the server", (file) => {
     expect(isCopied(file), `${file} is missing from the runtime image`).toBe(true);
   });
 });

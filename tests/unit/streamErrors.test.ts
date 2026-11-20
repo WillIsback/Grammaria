@@ -47,30 +47,33 @@ describe("isStreamTeardownError — stream close-race classifier (issue #14)", (
   });
 });
 
-describe("server.ts — llm.chat stream loop guards the close-race (issue #14)", () => {
-  // server.ts runs under Bun (Bun.serve) and cannot be imported in the vitest
-  // jsdom environment, so we guard at the source level that the guard is wired
-  // into the handler (same technique as the issue #1 regression test).
-  const serverSource = readFileSync(join(import.meta.dirname, "../../server.ts"), "utf-8");
+describe("api/handler.ts — llm.chat stream loop guards the close-race (issue #14)", () => {
+  // We guard at the source level that the guard is wired into the handler
+  // (same technique as the issue #1 regression test). Since v0.3.0 the chat
+  // route lives in api/handler.ts (shared with the desktop app); server.ts only
+  // supplies the OpenAI SDK stream to it.
+  const handlerSource = readFileSync(join(import.meta.dirname, "../../api/handler.ts"), "utf-8");
 
   function handlerBody(): string {
-    const start = serverSource.indexOf('path === "/v1/chat/completions"');
-    expect(start, "handler for /v1/chat/completions must exist in server.ts").toBeGreaterThan(-1);
-    const end = serverSource.indexOf("// === API: LLM Proxy", start);
+    const start = handlerSource.indexOf('path === "/v1/chat/completions"');
+    expect(start, "handler for /v1/chat/completions must exist in api/handler.ts").toBeGreaterThan(
+      -1,
+    );
+    const end = handlerSource.indexOf("// === API: LLM Proxy", start);
     expect(end, "end of /v1/chat/completions handler section must be found").toBeGreaterThan(start);
-    return serverSource.slice(start, end);
+    return handlerSource.slice(start, end);
   }
 
   it("imports and references isStreamTeardownError inside the chat handler", () => {
-    expect(serverSource).toMatch(
-      /import\s*{[^}]*isStreamTeardownError[^}]*}\s*from\s*"\.\/src\/utils\/streamErrors/,
+    expect(handlerSource).toMatch(
+      /import\s*{[^}]*isStreamTeardownError[^}]*}\s*from\s*"\.\.\/src\/utils\/streamErrors/,
     );
     expect(handlerBody()).toMatch(/isStreamTeardownError\(/);
   });
 
   it("guards the for-await stream loop with a teardown-aware catch", () => {
     const handler = handlerBody();
-    const loop = handler.indexOf("for await (const chunk of stream)");
+    const loop = handler.indexOf("for await (const fragment of stream)");
     expect(loop, "the SDK stream for-await loop must exist").toBeGreaterThan(-1);
     // A catch block using the classifier must come after the loop.
     const guard = handler.indexOf("isStreamTeardownError(loopErr)", loop);

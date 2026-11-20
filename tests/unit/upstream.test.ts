@@ -6,6 +6,7 @@ import {
   pickChatModel,
   resolveModel,
   upstreamHeaders,
+  isThinkingParamRejection,
 } from "../../src/utils/upstream";
 
 describe("upstreamHeaders", () => {
@@ -162,5 +163,25 @@ describe("createModelDetector", () => {
     const html = createModelDetector("http://x", "", (() =>
       Promise.resolve(new Response("<html>", { status: 200 }))) as unknown as typeof fetch);
     expect(await html()).toBeNull();
+  });
+});
+
+// Issue #10 : relancer sans chat_template_kwargs quand une API le refuse.
+describe("isThinkingParamRejection", () => {
+  it.each([
+    [{ status: 400, message: "Unrecognized request argument supplied: chat_template_kwargs" }],
+    [{ status: 422, message: "extra fields not permitted: chat_template_kwargs" }],
+    [{ status: 400, message: "Unknown parameter: 'chat_template_kwargs'." }],
+  ])("reconnaît un refus du paramètre : %j", (err) => {
+    expect(isThinkingParamRejection(err)).toBe(true);
+  });
+
+  it.each([
+    [{ status: 401, message: "chat_template_kwargs" }],
+    [{ status: 400, message: "maximum context length exceeded" }],
+    [new Error("fetch failed")],
+    [null],
+  ])("ignore une autre erreur : %j", (err) => {
+    expect(isThinkingParamRejection(err)).toBe(false);
   });
 });

@@ -1,11 +1,22 @@
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { config } from "../../config";
+import {
+  type LlmSettings,
+  parseSettingsFile,
+  parseUpdate,
+  publicSettingsView,
+  settingsFileContent,
+} from "../../api/reglages";
 import { normalizeTarget, SettingsStore } from "../../settings";
 
 const initial = { ...config };
+
+/** Chemin d'un fichier de réglages dans un dossier temporaire neuf. */
+const tempSettingsPath = () =>
+  join(mkdtempSync(join(tmpdir(), "grammaria-settings-")), "settings.json");
 
 describe("SettingsStore — réglages du LLM en mode bureau", () => {
   beforeEach(() => {
@@ -13,8 +24,7 @@ describe("SettingsStore — réglages du LLM en mode bureau", () => {
   });
 
   function store() {
-    const dir = mkdtempSync(join(tmpdir(), "grammaria-settings-"));
-    const path = join(dir, "settings.json");
+    const path = tempSettingsPath();
     return { path, store: new SettingsStore(path) };
   }
 
@@ -85,5 +95,123 @@ describe("normalizeTarget", () => {
     ["  https://api.mistral.ai/v1/ ".trim(), "https://api.mistral.ai"],
   ])("%s → %s", (input, expected) => {
     expect(normalizeTarget(input)).toBe(expected);
+  });
+
+  // Mêmes cas que `les_parametres_et_identifiants_sont_refuses` (src-tauri/src/store.rs).
+  it.each([
+    "http://moi:secret@exemple.fr",
+    "http://moi@exemple.fr/v1",
+    "http://:secret@exemple.fr",
+    "https://api.exemple.fr/v1?cle=1",
+    "https://api.exemple.fr/?",
+    "https://api.exemple.fr/v1#ancre",
+    "https://api.exemple.fr#",
+  ])("refuse paramètres et identifiants : %s", (input) => {
+    expect(() => normalizeTarget(input)).toThrow(
+      "L'adresse du modèle ne doit contenir ni paramètres ni identifiants.",
+    );
+  });
+
+  it("garde un chemin sans paramètres", () => {
+    expect(normalizeTarget("https://api.exemple.fr/openai/v1/")).toBe(
+      "https://api.exemple.fr/openai",
+    );
+  });
+});
+
+// Issue #10 : l'application de bureau démarrait avec le raisonnement actif et
+// recopiait cette valeur dans settings.json sans choix de l'utilisateur.
+describe("SettingsStore — migration du raisonnement (v1 → v2)", () => {
+  beforeEach(() => {
+    Object.assign(config, initial, { llmDisableThinking: true });
+  });
+
+  function fileWith(content: object) {
+    const path = tempSettingsPath();
+    writeFileSync(path, JSON.stringify(content));
+    return path;
+  }
+
+  it("ignore llmDisableThinking d'un fichier de version 1", () => {
+    const path = fileWith({
+      llmTarget: "http://gpu.tailnet:8000",
+      llmApiKey: "",
+      llmModelName: "",
+      llmDisableThinking: false,
+    });
+    new SettingsStore(path);
+    expect(config.llmTarget).toBe("http://gpu.tailnet:8000");
+    expect(config.llmDisableThinking).toBe(true);
+  });
+
+  it("garde le choix explicite d'un fichier de version 2", () => {
+    const path = fileWith({
+      settingsVersion: 2,
+      llmTarget: "http://gpu:8000",
+      llmDisableThinking: false,
+    });
+    new SettingsStore(path);
+    expect(config.llmDisableThinking).toBe(false);
+  });
+
+  it("écrit la version 2 à l'enregistrement", () => {
+    const path = fileWith({ llmTarget: "http://gpu:8000" });
+    new SettingsStore(path).update({ llmDisableThinking: false });
+    expect(JSON.parse(readFileSync(path, "utf-8"))).toMatchObject({
+      settingsVersion: 2,
+      llmDisableThinking: false,
+    });
+  });
+});
+
+// v0.3.0 : la validation est pure (api/reglages.ts), sans fichier ni Node,
+// pour servir aussi au gestionnaire d'API dans la WebView du bureau.
+describe("api/reglages — validation pure", () => {
+  const reglages: LlmSettings = {
+    llmTarget: "http://gpu:8000",
+    llmApiKey: "sk-secret",
+    llmModelName: "m",
+    llmDisableThinking: true,
+  };
+
+  it("parseUpdate normalise et ne garde que les champs connus", () => {
+    expect(
+      parseUpdate({ llmTarget: " https://api.example.com/v1/ ", llmModelName: " m ", autre: 1 }),
+    ).toEqual({ llmTarget: "https://api.example.com", llmModelName: "m" });
+    expect(parseUpdate({})).toEqual({});
+  });
+
+  it.each([[null], ["texte"], [{ llmApiKey: 1 }], [{ llmModelName: "x".repeat(2_001) }]])(
+    "parseUpdate refuse %j",
+    (input) => {
+      expect(() => parseUpdate(input)).toThrow();
+    },
+  );
+
+  it("parseSettingsFile : migration v1 → v2 sans modifier l'objet lu", () => {
+    const v1 = { llmTarget: "http://gpu:8000", llmDisableThinking: false };
+    expect(parseSettingsFile(v1)).toEqual({ llmTarget: "http://gpu:8000" });
+    expect(v1).toEqual({ llmTarget: "http://gpu:8000", llmDisableThinking: false });
+    expect(parseSettingsFile({ settingsVersion: 2, llmDisableThinking: false })).toEqual({
+      llmDisableThinking: false,
+    });
+    expect(() => parseSettingsFile(null)).toThrow();
+  });
+
+  it("settingsFileContent ajoute la version", () => {
+    expect(settingsFileContent(reglages)).toEqual({ settingsVersion: 2, ...reglages });
+  });
+
+  it("publicSettingsView ne renvoie jamais la clé", () => {
+    const vue = publicSettingsView(reglages, { editable: true, configured: true });
+    expect(vue).toEqual({
+      editable: true,
+      configured: true,
+      llmTarget: "http://gpu:8000",
+      llmModelName: "m",
+      llmDisableThinking: true,
+      hasApiKey: true,
+    });
+    expect(JSON.stringify(vue)).not.toContain("sk-secret");
   });
 });

@@ -4,7 +4,7 @@ import { countWords, diffHunks, type Hunk } from "./diff";
 import { detecterConfusion, FICHES, type Fiche } from "./fiches";
 import { noteSur20 } from "./score";
 
-export interface Fault {
+interface Fault {
   /** Clé stable de la règle : fiche interne ou identifiant LanguageTool. */
   ruleKey: string;
   source: "fiche" | "lt" | "accord";
@@ -23,6 +23,9 @@ export interface Fault {
 }
 
 export interface AnalyzedCorrection {
+  /** Position du passage dans le texte d'origine (fin exclue). */
+  start: number;
+  end: number;
   avant: string;
   apres: string;
   /** Vide : modification du correcteur non classée. */
@@ -165,6 +168,8 @@ export function analyze(original: string, corrected: string, matches: LTMatch[])
     if (faults.length === 0) unclassifiedCount++;
 
     corrections.push({
+      start: hunk.start,
+      end: hunk.end,
       avant: hunk.before,
       apres: hunk.after,
       faults,

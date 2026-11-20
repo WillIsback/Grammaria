@@ -1,15 +1,15 @@
 import type { CorrectionSettings, LlmResult, StreamCallbacks } from "../types";
+import { ErreurCorrection, MESSAGE_ECHEC_CORRECTION, messageErreurModele } from "./erreursModele";
 import { cleanLlmOutput } from "./llmText";
 import { getCurrentModel } from "./models";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { sanitizeInput } from "./sanitize";
 
-let currentAbortController: AbortController | null = null;
+/** Message de l'abandon (`AbortError`) d'une correction remplacée par une nouvelle. */
+export const CORRECTION_REMPLACEE = "Correction remplacée par une nouvelle demande.";
 
-export function abortOngoingRequest(): void {
-  currentAbortController?.abort();
-  currentAbortController = null;
-}
+/** Requête en cours : une nouvelle correction l'annule. */
+let currentAbortController: AbortController | null = null;
 
 export async function correctText(
   text: string,
@@ -25,7 +25,9 @@ export async function correctText(
       { role: "system" as const, content: systemPrompt },
       { role: "user" as const, content: userPrompt },
     ],
-    temperature: 0.3,
+    // Basse : reproduire le texte en ne changeant que les fautes. Pas 0, qui
+    // fait boucler certains modèles sur les textes longs.
+    temperature: 0.1,
     correction_mode: settings.mode,
   };
 
@@ -34,14 +36,9 @@ export async function correctText(
   currentAbortController = controller;
 
   const streamTimeoutMs = 120_000;
-  let streamTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  function clearStreamTimeout(): void {
-    if (streamTimeoutId) {
-      clearTimeout(streamTimeoutId);
-      streamTimeoutId = null;
-    }
-  }
+  let streamTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  /** Vrai quand l'abandon vient du délai ci-dessus, pas d'une nouvelle correction. */
+  let delaiDepasse = false;
 
   try {
     const response = await fetch("/v1/chat/completions", {
@@ -52,23 +49,28 @@ export async function correctText(
     });
 
     if (!response.ok) {
-      // Le serveur renvoie { error, details } : afficher la cause plutôt qu'un code nu.
+      // Le gestionnaire renvoie { message, details } : un message simple, et le
+      // détail technique replié sous « Détails ».
+      let message = "";
       let details = "";
       try {
         const body = await response.json();
+        message = typeof body?.message === "string" ? body.message : "";
         details = typeof body?.details === "string" ? body.details : "";
       } catch {
         /* corps absent ou non JSON */
       }
-      throw new Error(
-        details
-          ? `Le serveur de correction a échoué (HTTP ${response.status}) : ${details}`
-          : `Le serveur de correction a échoué (HTTP ${response.status}).`,
+      throw new ErreurCorrection(
+        message || MESSAGE_ECHEC_CORRECTION,
+        details ? `HTTP ${response.status} : ${details}` : `HTTP ${response.status}`,
       );
     }
-    if (!response.body) throw new Error("No response body");
+    if (!response.body) throw new ErreurCorrection(MESSAGE_ECHEC_CORRECTION, "Réponse sans corps.");
 
-    streamTimeoutId = setTimeout(() => controller.abort(), streamTimeoutMs);
+    streamTimeoutId = setTimeout(() => {
+      delaiDepasse = true;
+      controller.abort();
+    }, streamTimeoutMs);
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -88,7 +90,12 @@ export async function correctText(
         if (!line.startsWith("data: ")) continue;
         const payload = JSON.parse(line.slice(6));
 
-        if (payload.error) throw new Error(payload.error);
+        if (payload.error) {
+          throw new ErreurCorrection(
+            String(payload.error),
+            typeof payload.details === "string" ? payload.details : "",
+          );
+        }
 
         if (typeof payload.delta === "string") {
           received += payload.delta;
@@ -96,7 +103,7 @@ export async function correctText(
         }
 
         if (payload.done) {
-          clearStreamTimeout();
+          clearTimeout(streamTimeoutId);
           return {
             text: typeof payload.text === "string" ? payload.text : cleanLlmOutput(received),
             duration: payload.duration ?? 0,
@@ -105,10 +112,22 @@ export async function correctText(
       }
     }
 
-    throw new Error("Stream ended without done event");
+    throw new ErreurCorrection(MESSAGE_ECHEC_CORRECTION, "Flux terminé sans événement de fin.");
   } catch (error) {
+    // DOMException n'hérite pas toujours d'Error (jsdom) : le nom suffit.
+    if ((error as { name?: unknown } | null)?.name === "AbortError") {
+      // Remplacée par une nouvelle correction : abandon, que l'interface ignore.
+      if (!delaiDepasse) {
+        const remplacee = new Error(CORRECTION_REMPLACEE);
+        remplacee.name = "AbortError";
+        throw remplacee;
+      }
+      throw new ErreurCorrection(
+        messageErreurModele("delai", false),
+        "Délai d'attente dépassé (aucune fin de réponse en 120 s).",
+      );
+    }
     if (error instanceof Error) {
-      if (error.name === "AbortError") throw new Error("Délai d'attente dépassé.");
       if (error.message.includes("Failed to fetch"))
         throw new Error("Impossible de contacter le serveur Grammaria. Vérifiez qu'il est lancé.");
     }

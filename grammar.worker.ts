@@ -12,9 +12,8 @@ interface CheckRequest {
   text: string;
 }
 
-// Import relatif : résolu dans le code embarqué, y compris dans l'exécutable
-// compilé. Le gestionnaire ci-dessous est posé tout de suite, pendant le
-// chargement : un message reçu avant serait perdu.
+// Chargement en arrière-plan : le gestionnaire ci-dessous est posé tout de
+// suite, pendant le chargement des règles ; un message reçu avant serait perdu.
 const engine = import("./grammar.engine.ts");
 
 self.onmessage = async (event: MessageEvent<CheckRequest>) => {

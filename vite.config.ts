@@ -2,8 +2,71 @@ import react from "@vitejs/plugin-react";
 import autoprefixer from "autoprefixer";
 import tailwindcss from "tailwindcss";
 import { defineConfig, lazyPlugins } from "vite-plus";
+import { construireArchiveLt } from "./scripts/desktop/pack-lt.ts";
 
-export default defineConfig({
+/**
+ * Build du correcteur de l'application de bureau (`vp build --mode bureau`, après le build de
+ * l'interface dans dist/bureau : voir le script `build:bureau` de package.json).
+ *
+ * Mode séparé plutôt qu'un `new Worker(new URL(...))` dans l'interface : le build web habituel
+ * (`vp build`) ne produit ni le Worker (environ 1 Mo) ni l'archive des règles (environ 14 Mo).
+ * Produit dist/bureau/lt/worker.js (Worker module, minifié) et dist/bureau/lt/fr.pack.
+ *
+ * Noms non conservés (pas de `keepNames`) : le portage de LanguageTool enregistre ses classes
+ * sous leur nom Java écrit en toutes lettres (`static FQCN`, ClassBroker) ; `constructor.name`
+ * ne sert qu'en repli d'une clé de cache (les langues ont un FQCN) et dans un `toString` de
+ * débogage. Vérifié : mêmes détections que le serveur sur tout le corpus
+ * (scripts/desktop/verifier-correcteur.mjs), pour 60 ko de moins.
+ */
+const buildBureau = {
+  outDir: "dist/bureau/lt",
+  emptyOutDir: true,
+  copyPublicDir: false,
+  sourcemap: false,
+  target: "es2022",
+  // Build d'application plutôt que `build.lib` : en mode bibliothèque, le format ES n'est pas
+  // minifié (espaces conservés), soit 2,2 Mo au lieu de 1,1 Mo.
+  minify: true,
+  // Un Worker unique d'environ 1 Mo, chargé une fois au démarrage : pas d'avertissement.
+  chunkSizeWarningLimit: 1500,
+  rolldownOptions: {
+    input: "src/desktop/lt.worker.ts",
+    output: {
+      format: "es" as const,
+      entryFileNames: "worker.js",
+      // Un seul fichier : un Worker module ne charge rien d'autre que l'archive.
+      codeSplitting: false,
+    },
+  },
+};
+
+/**
+ * Plugins du build du bureau :
+ * - l'archive des ressources de LanguageTool (scripts/desktop/pack-lt.ts) est ajoutée au build ;
+ * - le module Hunspell (WebAssembly, 0,5 Mo, et son chargeur) est remplacé par un module vide :
+ *   le français utilise Morfologik et le Worker ne l'initialise pas (`hunspellWasm: false`).
+ */
+const pluginsBureau = () => [
+  {
+    name: "grammaria:archive-lt",
+    generateBundle(this: { emitFile(file: object): string }) {
+      this.emitFile({ type: "asset", fileName: "fr.pack", source: construireArchiveLt().octets });
+    },
+  },
+  {
+    name: "grammaria:sans-hunspell",
+    enforce: "pre" as const,
+    load(id: string) {
+      if (!/[\\/]ltjs-core[\\/]src[\\/]lib[\\/]hunspell[\\/]wasm[\\/]hunspell\.js$/.test(id))
+        return null;
+      return `export default async function () {
+        throw new Error("Hunspell n'est pas embarqué dans le correcteur du bureau.");
+      }`;
+    },
+  },
+];
+
+export default defineConfig(({ mode }) => ({
   staged: {
     "*": "vp check --fix",
   },
@@ -25,7 +88,7 @@ export default defineConfig({
     },
     options: { typeAware: true, typeCheck: true },
   },
-  plugins: lazyPlugins(() => [react()]),
+  plugins: mode === "bureau" ? pluginsBureau() : lazyPlugins(() => [react()]),
   css: {
     postcss: {
       plugins: [
@@ -93,14 +156,17 @@ export default defineConfig({
       },
     },
   },
-  build: {
-    outDir: "dist",
-    sourcemap: false,
-  },
+  build:
+    mode === "bureau"
+      ? buildBureau
+      : {
+          outDir: "dist",
+          sourcemap: false,
+        },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
   },
-});
+}));

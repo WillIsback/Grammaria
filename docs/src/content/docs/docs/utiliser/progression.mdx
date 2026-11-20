@@ -1,0 +1,76 @@
+---
+title: "Progression"
+description: "L'écran Progression : score de maîtrise, note semaine après semaine, règles et mots pièges."
+---
+
+L'écran **Progression** montre votre évolution dans le temps, et pas seulement la note du dernier texte. Il s'ouvre avec le bouton en forme de graphique, en haut à droite, à côté du bouton **Paramètres**. Le bouton **Retour à la correction** (ou la touche Échap) vous ramène à votre texte, qui n'a pas bougé. Si un texte finit d'être corrigé pendant que l'écran est ouvert, les chiffres se mettent à jour d'eux-mêmes.
+
+Tout est calculé à partir du [journal des fautes](/docs/utiliser/note-et-journal/), sur votre serveur. Les graphiques couvrent les **12 dernières semaines** ; une semaine va du lundi au dimanche.
+
+## Le score de maîtrise
+
+Un nombre de 0 à 100, lisible d'un coup d'œil, accompagné d'une appréciation en mots.
+
+Il combine deux choses :
+
+- **la qualité récente (60 %)** : votre note moyenne sur 20 des 4 dernières semaines, ramenée sur 100. Une note de 16/20 donne une qualité de 80 ;
+- **les règles acquises (40 %)** : parmi les règles qui vous ont posé problème (signalées, travaillées ou déjà acquises), la part de celles que vous avez acquises. Deux règles acquises sur quatre donnent 50.
+
+```
+score = 0,6 × qualité récente + 0,4 × part des règles acquises
+```
+
+Exemple : qualité 80 et deux règles acquises sur quatre (50) donnent 0,6 × 80 + 0,4 × 50 = **68**.
+
+Tant qu'aucune faute n'est revenue assez souvent pour être suivie, le score est simplement la qualité récente.
+
+**Écrire plus ne fait jamais baisser le score.** La note repose sur la proportion de fautes (fautes pour 100 mots), pas sur leur nombre : dix textes de même qualité donnent le même score qu'un seul.
+
+| Score | Appréciation |
+|---|---|
+| 85 à 100 | Excellente maîtrise |
+| 70 à 84 | Bonne maîtrise |
+| 50 à 69 | En bonne voie |
+| 0 à 49 | Les bases à consolider |
+
+### « Pas encore assez de textes »
+
+Sur deux ou trois textes, un score serait trompeur. Il n'apparaît qu'à partir de **5 textes et 300 mots** corrigés sur les 4 dernières semaines. En dessous, l'écran indique où vous en êtes (par exemple « 2 / 5 textes »).
+
+## Note et fautes pour 100 mots
+
+- **Note moyenne** : sur les 12 semaines et sur les 4 dernières. Un graphique en barres donne la note de chaque semaine ; une semaine sans texte est marquée d'un tiret.
+- **Fautes pour 100 mots** : sur les 4 dernières semaines, comparées aux 4 semaines d'avant. La tendance est « en baisse » (vous progressez), « en hausse » ou « stable » (écart de moins d'un quart de faute pour 100 mots). Un second graphique la montre semaine après semaine.
+- **Textes et mots corrigés** : depuis votre premier texte.
+
+Sous chaque graphique, **Voir les valeurs semaine par semaine** affiche les chiffres exacts dans un tableau.
+
+## Vos règles
+
+Le nombre de règles dans chaque état du cycle de vie (voir [Corriger un texte](/docs/utiliser/corriger/)) :
+
+| État | Ce que cela veut dire |
+|---|---|
+| Observée | faute vue, sans intervention |
+| Signalée | la faute revient : une astuce s'affiche près du bouton Copier |
+| Travaillée | la faute persiste : le bouton Copier propose les deux formes |
+| Acquise | plus de faute depuis 14 jours d'usage |
+
+Suivent la liste des règles **à travailler** (signalées et travaillées) et celle des règles **acquises**. L'état « acquise » est mis à jour à chaque correction : une règle peut donc devenir acquise au prochain texte que vous corrigez, pas en ouvrant l'écran.
+
+## Règles les plus fréquentes et mots pièges
+
+- **Règles les plus fréquentes** : les fautes de grammaire et de conjugaison qui reviennent le plus sur les 12 semaines.
+- **Mots pièges** : les mots que vous écrivez le plus souvent de travers (fautes d'orthographe), avec leur bonne forme. Par exemple : ~~apareil~~ → **appareil**, 14 fois.
+
+## Badges
+
+Le bas de l'écran présente la galerie des [badges](/docs/utiliser/badges/), par famille : les badges obtenus avec leur date, les badges à venir avec leur critère et une barre de progression. Les badges de la famille **Maîtrise des règles** comptent les mêmes règles acquises que la section **Vos règles** ; seule différence, une règle acquise puis perdue (rechute) reste comptée pour les badges.
+
+## Journal vide
+
+Tant qu'aucun texte n'a été corrigé, l'écran l'explique et propose de **corriger un premier texte** ; la galerie des badges apparaît dès le premier texte. Après [l'effacement du journal](/docs/utiliser/note-et-journal/#effacer-le-journal), l'écran repart de zéro, sans avoir à recharger la page.
+
+:::note
+Les seuils (60 % / 40 %, 5 textes et 300 mots, 4 et 12 semaines) sont des choix de départ, réunis dans `src/analysis/progression/reglages.ts`. Ils seront ajustés sur des données réelles.
+:::
