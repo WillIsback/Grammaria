@@ -381,14 +381,6 @@ export class Journal {
     return { days, period, unclassified: unclassified.n, rules, words };
   }
 
-  /**
-   * Tous les textes corrigés (date, mots, fautes), du plus ancien au plus
-   * récent : pour l'écran « Progression » et pour les badges.
-   */
-  async texts(): Promise<LigneTexte[]> {
-    return this.driver.read<LigneTexte>(REQUETE_TEXTES.sql);
-  }
-
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
   async progress(now: number = Date.now()): Promise<Progression> {
     const [texts, faults, states, dernieres] = await this.driver.readMany([
