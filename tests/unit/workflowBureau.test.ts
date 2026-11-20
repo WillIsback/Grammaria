@@ -67,10 +67,10 @@ describe("workflow build-desktop (bureau sans Bun)", () => {
     expect(publication).not.toContain("grammaria-desktop-");
   });
 
-  it("garde la taille du .deb (12 Mio) et de l'installeur NSIS (14 Mio)", () => {
+  it("garde la taille du .deb et de l'installeur NSIS (20 Mio avec les données du moteur)", () => {
     const garde = etape(build, "Garde de taille des paquets");
-    expect(garde).toContain("seuil_deb=$((12 * mio))");
-    expect(garde).toContain("seuil_nsis=$((14 * mio))");
+    expect(garde).toContain("seuil_deb=$((20 * mio))");
+    expect(garde).toContain("seuil_nsis=$((20 * mio))");
     expect(garde).toContain("*.AppImage");
     expect(garde).toContain("*.msi");
     expect(garde).toContain("GITHUB_STEP_SUMMARY");
@@ -79,14 +79,18 @@ describe("workflow build-desktop (bureau sans Bun)", () => {
 
 describe("workflows ci et release", () => {
   const ci = lire(".github/workflows/ci.yml");
+  const conf = JSON.parse(lire("src-tauri/tauri.conf.json"));
   const release = lire(".github/workflows/release.yml");
   const scripts = JSON.parse(lire("package.json")).scripts;
 
-  it("vérifie le correcteur du bureau dans Chromium en CI", () => {
-    expect(scripts["test:correcteur-bureau"]).toBe("node scripts/desktop/verifier-correcteur.mjs");
-    expect(ci).toContain("npm run build:bureau");
-    expect(ci).toContain("npm run test:correcteur-bureau");
-    expect(ci).toContain("install --only-shell chromium");
+  it("le correcteur du bureau n'est plus un Worker : plus de contrôle dans Chromium", () => {
+    expect(scripts["test:correcteur-bureau"]).toBeUndefined();
+    expect(scripts["build:moteur"]).toBe("bash scripts/moteur/construire.sh");
+    expect(ci).not.toContain("chromium");
+    // Données du moteur Rust : ressources de l'application.
+    expect(new Set(Object.values(conf.bundle.resources))).toEqual(
+      new Set(["moteur/fr.disambig.xml", "moteur/fr.lex", "moteur/fr.rules", "moteur/fr.words"]),
+    );
   });
 
   it("écrit le manifeste de mise à jour avec Node, sans Bun, après contrôle des sommes", () => {

@@ -59,6 +59,12 @@
     "copyright": "GPL-3.0-or-later",
     "license": "GPL-3.0-or-later",
     "licenseFile": "../LICENSE",
+    "resources": {
+      "../moteur/data/fr.lex": "moteur/fr.lex",
+      "../moteur/data/fr.words": "moteur/fr.words",
+      "../moteur/data/fr.rules": "moteur/fr.rules",
+      "../moteur/data/fr.disambig.xml": "moteur/fr.disambig.xml"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

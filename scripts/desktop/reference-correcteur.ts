@@ -1,9 +1,9 @@
 /**
  * Génère tests/fixtures/correcteur/reference.json : pour chaque texte du corpus
  * (tests/fixtures/correcteur/corpus.ts), les détections du moteur du SERVEUR (grammar.ts),
- * dans l'ordre. C'est la référence que le Worker du bureau doit reproduire
- * (scripts/desktop/verifier-correcteur.mjs) et que le serveur doit continuer à produire
- * (tests-bun/correcteur.reference.test.ts).
+ * dans l'ordre. C'est la référence que l'application de bureau doit reproduire (autotest :
+ * src/desktop/autotest.ts ; même moteur Rust, lié à l'application) et que le serveur doit
+ * continuer à produire (tests-bun/correcteur.reference.test.ts).
  *
  * Usage : bun scripts/desktop/reference-correcteur.ts [--verifier]
  *   --verifier : n'écrit rien, sort en erreur si le serveur ne produit plus la référence.

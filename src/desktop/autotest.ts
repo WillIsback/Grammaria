@@ -13,7 +13,8 @@
  * Étapes (toutes par le pont, comme l'interface, sauf mention) :
  *  1. interface montée ;
  *  2. correcteur : premier contrôle (temps depuis le lancement), détections du corpus
- *     comparées à la référence du serveur (tests/fixtures/correcteur/reference.json) ;
+ *     comparées à la référence du serveur (tests/fixtures/correcteur/reference.json), produite
+ *     par le même moteur Rust ;
  *  3. journal : analyses enregistrées (astuce à la 3ᵉ faute), lot SQLite atomique et lots
  *     refusés par le pilote Tauri (rien d'écrit), effacement ;
  *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ;
@@ -191,7 +192,7 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
     let identiques = 0;
     for (const { nom, texte, detections: attendues } of textes) {
       // POST /api/check refuse un texte vide ou blanc (400) : ces textes de la référence
-      // sont soumis directement au correcteur (même Worker, même moteur).
+      // sont soumis directement au correcteur (même moteur).
       const matches = texte.trim()
         ? ((await (await postJson("/api/check", { text: texte })).json()) as { matches: LTMatch[] })
             .matches

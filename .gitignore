@@ -46,6 +46,10 @@ docs/superpowers/
 # Expérimentations ML
 evals/
 
+# Moteur grammatical (grammaria-rc) : binaire et données produits par
+# scripts/moteur/construire.sh
+/moteur/
+
 # Données dupliquées (source de vérité : public/data/)
 data/
 .vitest/

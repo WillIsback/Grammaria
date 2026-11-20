@@ -21,6 +21,8 @@ fn main() {
             "llm_chat",
             "llm_cancel",
             "log_page",
+            "correcteur_prechauffer",
+            "correcteur_controler",
             "autotest_config",
             "autotest_terminer",
         ]));
