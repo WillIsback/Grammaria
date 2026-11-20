@@ -8,9 +8,9 @@ import {
   REQUETES_BADGES,
   SCHEMA_BADGES,
 } from "./journal.badges.ts";
+import type { AnswerResult } from "./api/deps.ts";
 import type { JournalDriver, Statement } from "./journal.driver.ts";
 import {
-  type AnswerResult,
   type FollowOptions,
   lireInstantaneSuivi,
   type PlanSuivi,

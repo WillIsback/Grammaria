@@ -1,3 +1,4 @@
+import type { AnswerResult } from "./api/deps.ts";
 import { estConflit, type JournalDriver, type Query, type Statement } from "./journal.driver.ts";
 import type { Analysis } from "./src/analysis/analyze.ts";
 import { FICHES, type Fiche, libelleSansFiche } from "./src/analysis/fiches.ts";
@@ -46,9 +47,6 @@ export interface RuleHistoryEntry {
   from: EtatCycle | null;
   to: EtatCycle | null;
 }
-
-/** Issue de l'enregistrement d'une réponse à un choix à deux formes. */
-export type AnswerResult = "recorded" | "unknown" | "conflict";
 
 /** Ce que le serveur demande d'afficher près du bouton Copier pour un texte. */
 export interface Suivi {
