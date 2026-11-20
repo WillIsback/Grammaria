@@ -397,8 +397,8 @@ export function creerGestionnaire(
         const readable = new ReadableStream({
           async start(controller) {
             let fullContent = "";
-            // Must stay below Bun.serve's idle timeout (10s default) so the
-            // keepalive actually prevents idle disconnects (issue #17).
+            // Doit rester sous le délai d'inactivité de Bun.serve (10 s par
+            // défaut) pour que le keepalive empêche vraiment les coupures.
             const keepaliveIntervalMs = 5_000;
             let keepaliveId: ReturnType<typeof setInterval> | null = null;
 
@@ -412,7 +412,7 @@ export function creerGestionnaire(
             // A client disconnect or an idle-timeout close can close the stream
             // controller while the keepalive interval is still firing. Guard
             // every enqueue so a closed controller can never throw uncaught and
-            // crash the process (issue #17).
+            // crash the process.
             function safeEnqueue(chunk: Uint8Array): boolean {
               try {
                 controller.enqueue(chunk);
@@ -449,7 +449,7 @@ export function creerGestionnaire(
                   safeEnqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
                 }
               } catch (loopErr) {
-                // Issue #14: at the end of a successful stream, Bun/Node can
+                // At the end of a successful stream, Bun/Node can
                 // double-close the response-body ReadableStream controller and
                 // surface "Controller is already closed" from the SDK iterator.
                 // The stream has already delivered all its data (fullContent is

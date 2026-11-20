@@ -46,6 +46,14 @@ docs/superpowers/
 # Expérimentations ML
 evals/
 
+# Moteur grammatical (grammaria-rc) : binaire et données produits par
+# scripts/moteur/construire.sh, et son dossier de travail (sources récupérées, compilation)
+/moteur/
+/.moteur-build/
+
 # Données dupliquées (source de vérité : public/data/)
 data/
 .vitest/
+
+# Paquets du bureau rassemblés par build-desktop.yml (CI)
+/dist-desktop/

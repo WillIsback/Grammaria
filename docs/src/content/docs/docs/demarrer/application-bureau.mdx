@@ -3,7 +3,7 @@ title: "Application de bureau"
 description: "Installer Grammaria sur Windows ou Linux, sans serveur à configurer."
 ---
 
-L'application de bureau contient tout Grammaria : l'interface, le correcteur grammatical (règles françaises de LanguageTool) et le journal des fautes. Il n'y a ni Docker ni serveur à installer, et l'application n'ouvre aucun port sur votre ordinateur. Il vous faut seulement un **modèle de langage**, sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
+L'application de bureau contient tout Grammaria : l'interface, le correcteur grammatical (moteur grammaria-rc, avec les règles françaises de LanguageTool) et le journal des fautes. Il n'y a ni Docker ni serveur à installer, et l'application n'ouvre aucun port sur votre ordinateur. Il vous faut seulement un **modèle de langage**, sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
 
 ## Installer
 
@@ -16,13 +16,13 @@ Téléchargez le paquet de votre système dans la page [Releases](https://github
 | Ubuntu, Debian | `Grammaria_x.y.z_amd64.deb` | Double-cliquez, ou `sudo apt install ./Grammaria_x.y.z_amd64.deb`. |
 | Autres distributions | `Grammaria_x.y.z_amd64.AppImage` | Rendez le fichier exécutable, puis lancez-le. |
 
-Les paquets sont légers : le paquet `.deb` pèse 8 Mo. L'AppImage reste plus volumineuse, car elle contient le moteur web de Linux.
+Les paquets sont légers : le paquet `.deb` pèse environ 9 Mo. L'AppImage reste plus volumineuse, car elle contient le moteur web de Linux.
 
 Les paquets Windows sont signés : Windows affiche l'éditeur au lieu d'un avertissement « éditeur inconnu ». Les sommes de contrôle SHA-256 sont publiées avec chaque version (`SHA256SUMS-windows`, `SHA256SUMS-linux`).
 
 ## Premier lancement
 
-1. Au démarrage, Grammaria charge ses règles de grammaire, en 4 à 5 secondes. Si vous corrigez un texte tout de suite, le premier contrôle de grammaire attend donc la fin de ce chargement ; les suivants prennent autour de 0,2 seconde.
+1. Au démarrage, Grammaria charge ses règles de grammaire, en moins d'une seconde. Chaque contrôle de grammaire prend ensuite quelques dizaines de millisecondes.
 2. Le menu **Paramètres → IA** s'ouvre de lui-même : dans **Serveur du modèle**, indiquez l'adresse de votre modèle, puis **Enregistrer**. Ce menu reste accessible à tout moment par le bouton ⚙️ de l'en-tête, à côté du thème clair/sombre.
    - Ollama sur le même ordinateur : `http://localhost:11434`.
    - API compatible OpenAI : son adresse, par exemple `https://api.mistral.ai`, et votre clé API.
@@ -80,8 +80,8 @@ Il note le démarrage et la fermeture de l'application, les erreurs (par exemple
 ## Configuration requise
 
 - Windows 10 ou 11 (64 bits), ou une distribution Linux récente (64 bits) avec WebKitGTK 4.1.
-- Environ 1 Go de mémoire vive pour le correcteur grammatical une fois ses règles chargées (mesuré sous Linux), en plus du modèle s'il tourne sur la même machine.
+- Environ 0,7 Go de mémoire vive pour l'application (mesuré sous Linux après dix corrections ; environ 0,9 Go en version 0.3), en plus du modèle s'il tourne sur la même machine.
 
 ## Code source
 
-Grammaria est distribué sous licence GPL-3.0-or-later. Le code source de chaque version est disponible sur [GitHub](https://github.com/WillIsback/Grammaria), à l'étiquette de la version.
+Grammaria est distribué sous licence GPL-3.0-or-later. Son correcteur grammatical, [grammaria-rc](https://github.com/WillIsback/grammaria-rc), est sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` (il contient les règles et dictionnaires français de LanguageTool, sous LGPL). Le code source de chaque version est disponible sur [GitHub](https://github.com/WillIsback/Grammaria), à l'étiquette de la version.

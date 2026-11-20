@@ -11,7 +11,21 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2 : Runtime Bun
+# Stage 2 : moteur grammatical (grammaria-rc, Rust).
+# scripts/moteur/construire.sh récupère depuis GitHub (dépôt public, sans
+# identifiant) la révision épinglée dans src-tauri/Cargo.toml — la même que
+# l'application de bureau —, la compile et copie ses données dans /app/moteur.
+# Image Alpine : le binaire est lié statiquement (musl) et tourne tel quel dans
+# l'image Bun (Alpine), sans bibliothèque à installer.
+# grammaria-rc exige Rust >= 1.75 (rust-version de son Cargo.toml).
+FROM rust:1-alpine AS moteur
+RUN apk add --no-cache bash git musl-dev
+WORKDIR /app
+COPY scripts/moteur/construire.sh ./scripts/moteur/
+COPY src-tauri/Cargo.toml ./src-tauri/
+RUN bash scripts/moteur/construire.sh
+
+# Stage 3 : Runtime Bun
 FROM oven/bun:alpine
 WORKDIR /app
 
@@ -23,9 +37,12 @@ RUN apk add --no-cache tzdata
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
+# Correcteur grammatical intégré : binaire du moteur Rust, ses données et sa
+# révision (grammar.ts le lance une fois : `moteur/grammaria serve --data moteur/data`)
+COPY --from=moteur /app/moteur ./moteur
+
 # Copier les fichiers serveur
-# grammar.worker.ts : correcteur grammatical intégré (règles LanguageTool en JavaScript)
-COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts grammar.worker.ts grammar.engine.ts settings.ts telemetry.ts config.ts package.json bun.lock ./
+COPY server.ts journal.ts journal.rules.ts journal.badges.ts journal.driver.ts journal.driver.bun.ts grammar.ts settings.ts statique.ts telemetry.ts config.ts package.json bun.lock ./
 # api/ : gestionnaire des routes /api/* et /v1/*, partagé avec l'application de bureau
 COPY api ./api
 COPY src/utils/streamErrors.ts src/utils/llmText.ts src/utils/upstream.ts src/utils/modeles.ts src/utils/erreursModele.ts ./src/utils/
@@ -46,7 +63,9 @@ VOLUME /app/data
 
 EXPOSE 25000
 
+# `bun -e` et non `bun run -e` : avec Bun 1.4, `bun run -e` affiche l'aide et sort
+# avec le code 0, et le conteneur paraissait toujours en bonne santé.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD bun run -e 'fetch("http://localhost:25000").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
+  CMD bun -e 'fetch("http://localhost:25000").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
 
 CMD ["bun", "run", "server.ts"]

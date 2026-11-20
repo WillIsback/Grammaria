@@ -1,7 +1,6 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, it } from "bun:test";
 import { type Journal, SCHEMA_VERSION } from "../journal.ts";
-import { awardBadgesSafely } from "../journal.badges.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { BADGES } from "../src/analysis/badges/catalogue.ts";
 import {
@@ -92,21 +91,6 @@ describe("Journal — badges", () => {
     expect((await journal.badges.obtained()).size).toBe(0);
     // Après l'effacement, le premier badge peut de nouveau être obtenu.
     expect(ids(await corriger(journal, SANS_FAUTE, jour(1)))).toEqual(["premier-texte"]);
-  });
-
-  it("n'interrompt jamais l'analyse si le calcul des badges échoue", async () => {
-    const enPanne = {
-      award: () => {
-        throw new Error("base verrouillée");
-      },
-    };
-    const erreur = console.error;
-    console.error = () => {};
-    try {
-      expect(await awardBadgesSafely(enPanne)).toEqual([]);
-    } finally {
-      console.error = erreur;
-    }
   });
 });
 

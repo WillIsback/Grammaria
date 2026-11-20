@@ -36,6 +36,12 @@ tokio = { version = "1", features = ["macros", "sync"] }
 regex = "1"
 url = "2"
 
+# Correcteur grammatical : moteur Rust grammaria-rc, lié à l'application. Le paquet s'appelle
+# aussi « grammaria » : il est renommé ici. La révision ci-dessous est la seule source de
+# vérité : scripts/moteur/construire.sh la lit pour construire les données (moteur/data), le
+# moteur du serveur et celui de l'image Docker (test : tests/unit/moteurRevision.test.ts).
+grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "db00af631709811fb5cf61c2400b7483604bab54" }
+
 [dev-dependencies]
 tempfile = "3"
 

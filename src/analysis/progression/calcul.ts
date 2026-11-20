@@ -4,7 +4,9 @@
  * Logique pure : des lignes du journal et l'heure (horloge injectée) donnent
  * tout ce qu'affiche l'écran. Aucun accès à la base ni à l'horloge du système,
  * pour que les tests puissent rejouer n'importe quelle situation. Les
- * semaines commencent le lundi à minuit, heure locale du serveur.
+ * semaines commencent le lundi à minuit, heure locale de la machine qui
+ * exécute le calcul (le serveur web, ou l'ordinateur pour l'application de
+ * bureau).
  *
  * L'état des règles est repris tel qu'il est enregistré : l'état « acquise »
  * n'est réévalué qu'au moment d'une analyse (`POST /api/analyze`).

@@ -244,6 +244,35 @@ describe("/api/settings", () => {
     await attendJson(await appel("/api/settings", json("PUT", { llmModelName: "" })), 200);
   });
 
+  it("PUT vers un autre serveur sans nouvelle clé efface la clé : elle ne part jamais vers lui", async () => {
+    let authorization: string | null | undefined;
+    const autre = Bun.serve({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch(req) {
+        authorization = req.headers.get("Authorization");
+        return Response.json({ data: [{ id: "autre-modele" }] });
+      },
+    });
+    try {
+      const vue = await attendJson(
+        await appel("/api/settings", json("PUT", { llmTarget: `http://127.0.0.1:${autre.port}` })),
+        200,
+      );
+      expect(vue.hasApiKey).toBe(false);
+      expect((await appel("/v1/models")).status).toBe(200);
+      expect(authorization).toBeDefined();
+      expect(authorization ?? "").not.toContain(CLE_API);
+    } finally {
+      // Revient au faux modèle, avec sa clé, pour la suite.
+      await attendJson(
+        await appel("/api/settings", json("PUT", { llmTarget: CIBLE, llmApiKey: CLE_API })),
+        200,
+      );
+      await autre.stop(true);
+    }
+  });
+
   it("refuse les autres méthodes, OPTIONS compris (405)", async () => {
     for (const method of ["DELETE", "POST", "OPTIONS"]) {
       await attendJson(await appel("/api/settings", { method }), 405, METHODE_REFUSEE);

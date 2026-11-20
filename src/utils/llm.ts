@@ -35,10 +35,18 @@ export async function correctText(
   const controller = new AbortController();
   currentAbortController = controller;
 
+  /**
+   * Délai maximal de toute la correction, armé dès l'envoi de la requête : une
+   * connexion qui n'aboutit jamais, ou une réponse qui tarde à commencer, est
+   * bornée comme un flux qui n'en finit pas.
+   */
   const streamTimeoutMs = 120_000;
-  let streamTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  /** Vrai quand l'abandon vient du délai ci-dessus, pas d'une nouvelle correction. */
+  /** Vrai quand l'abandon vient du délai ci-dessous, pas d'une nouvelle correction. */
   let delaiDepasse = false;
+  const streamTimeoutId = setTimeout(() => {
+    delaiDepasse = true;
+    controller.abort();
+  }, streamTimeoutMs);
 
   try {
     const response = await fetch("/v1/chat/completions", {
@@ -66,11 +74,6 @@ export async function correctText(
       );
     }
     if (!response.body) throw new ErreurCorrection(MESSAGE_ECHEC_CORRECTION, "Réponse sans corps.");
-
-    streamTimeoutId = setTimeout(() => {
-      delaiDepasse = true;
-      controller.abort();
-    }, streamTimeoutMs);
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -103,7 +106,6 @@ export async function correctText(
         }
 
         if (payload.done) {
-          clearTimeout(streamTimeoutId);
           return {
             text: typeof payload.text === "string" ? payload.text : cleanLlmOutput(received),
             duration: payload.duration ?? 0,
@@ -132,5 +134,7 @@ export async function correctText(
         throw new Error("Impossible de contacter le serveur Grammaria. Vérifiez qu'il est lancé.");
     }
     throw error;
+  } finally {
+    clearTimeout(streamTimeoutId);
   }
 }

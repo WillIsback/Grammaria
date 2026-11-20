@@ -6,8 +6,8 @@ description: "Installer Grammaria depuis les sources ou avec Docker."
 ## Prérequis
 
 - Un modèle de langage exposé par une API compatible OpenAI.
-- Pour une installation depuis les sources : [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`. Pour une installation par conteneur : Docker.
-- Environ 1 Go de mémoire vive pour le serveur, qui charge les règles du correcteur grammatical.
+- Pour une installation depuis les sources : [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) (1.75 au moins) et `git`, pour compiler le correcteur grammatical. Pour une installation par conteneur : Docker.
+- Environ 300 Mo de mémoire vive pour le serveur et son correcteur grammatical.
 
 ## Depuis les sources
 
@@ -33,11 +33,17 @@ npm install
 npm run build
 ```
 
+Construisez le correcteur grammatical (moteur Rust grammaria-rc, récupéré à la version prévue et compilé en moins d'une minute ; binaire et données dans `moteur/`) :
+
+```bash
+npm run build:moteur
+```
+
 ```bash
 bun run server.ts
 ```
 
-L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000). Le correcteur grammatical (règles françaises de [LanguageTool](https://languagetool.org)) est intégré au serveur : aucun service supplémentaire n'est à lancer. Ses règles se chargent en arrière-plan au démarrage, en quelques secondes.
+L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000). Le correcteur grammatical (moteur grammaria-rc, avec les règles françaises de [LanguageTool](https://languagetool.org)) est lancé par le serveur : aucun service supplémentaire n'est à lancer. Ses règles se chargent en arrière-plan au démarrage, en moins d'une seconde.
 
 ## Avec Docker
 
@@ -46,6 +52,8 @@ Construisez l'image à partir du dépôt :
 ```bash
 docker build -t grammaria .
 ```
+
+La construction compile aussi le correcteur grammatical ; elle a besoin d'un accès à GitHub pour récupérer son code (dépôt public).
 
 Lancez-la ensuite comme décrit dans [Déploiement Docker](/docs/exploiter/docker/).
 

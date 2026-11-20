@@ -14,7 +14,7 @@ avant (barré)   →   après   règle
 La colonne « règle » contient, selon le cas :
 
 - le **titre d'une fiche**, pour une confusion reconnue (par exemple « on / ont ») ;
-- le **message de LanguageTool**, pour une faute qu'il a détectée ;
+- le **message du correcteur grammatical**, pour une faute qu'il a détectée (règle de LanguageTool, ou règle propre à Grammaria dont l'identifiant commence par `GRM_`) ;
 - **Accord (nombre, genre ou personne)**, quand seule la terminaison d'un mot change (« était → étaient », « content → contents ») et que LanguageTool ne l'a pas signalé ;
 - **Non classé**, pour une modification du modèle qu'aucune détection n'explique. C'est souvent une reformulation.
 
@@ -49,7 +49,7 @@ Une fiche donne un test à appliquer soi-même, à la première occurrence de la
 | Type | Affiché | Compté dans la note |
 |---|---|---|
 | Confusion d'une fiche | oui | oui |
-| Grammaire, conjugaison, orthographe (LanguageTool) | oui | oui |
+| Grammaire, conjugaison, orthographe (correcteur grammatical) | oui | oui |
 | Accord déduit du diff | oui | oui |
 | Retouche de ponctuation ou d'espaces | non | non |
 | Typographie, style | oui | non |
@@ -58,3 +58,12 @@ Une fiche donne un test à appliquer soi-même, à la première occurrence de la
 :::note
 Le tri entre fautes comptées et fautes de typographie ou de style s'appuie sur les catégories renvoyées par LanguageTool. Il reste à affiner sur un usage réel.
 :::
+
+## Règles propres à Grammaria (depuis la version 0.4)
+
+Le correcteur grammatical de la version 0.4 ajoute aux règles de LanguageTool environ 1 300 règles écrites pour des fautes que LanguageTool ne voyait pas : accord du participe avec le sujet, infinitif ou participe, homophones, groupe nominal, majuscules des noms de lieux et de personnes, typographie. Leur identifiant commence par `GRM_` (par exemple `GRM_MAJ_GEOGRAPHIE`).
+
+- Elles sont suivies comme les autres : une faute récurrente classée par une règle `GRM_` peut recevoir une astuce ou un choix à deux formes, et apparaît dans l'écran [Progression](/docs/utiliser/progression/).
+- Quand LanguageTool voit la même faute, c'est sa règle qui est gardée : les règles que vous suiviez déjà conservent leur identifiant et leur historique.
+- Vous pouvez donc voir apparaître de nouvelles règles dans votre suivi après la mise à jour : ce sont des fautes qui n'étaient pas classées avant, pas des fautes nouvelles.
+

@@ -2,6 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { dirname } from "node:path";
 import { config } from "./config.ts";
 import {
+  applySettingsUpdate,
   type LlmSettings,
   parseSettingsFile,
   parseUpdate,
@@ -55,8 +56,8 @@ export class SettingsStore {
   /** Valide puis applique et enregistre les réglages. Lève une erreur lisible si invalides. */
   update(input: unknown): ServerSettings {
     if (!this.path) throw new Error("Les réglages ne sont pas modifiables sur ce serveur.");
-    const update = parseUpdate(input);
-    const next: LlmSettings = { ...currentSettings(), ...update };
+    // Adresse vers un autre serveur sans nouvelle clé : la clé enregistrée est effacée.
+    const next: LlmSettings = applySettingsUpdate(currentSettings(), parseUpdate(input));
     this.writeFile(next);
     Object.assign(config, next);
     return this.publicView();

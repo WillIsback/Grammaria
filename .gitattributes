@@ -1,0 +1,3 @@
+# Scripts shell exécutés aussi sous Windows (Git Bash, build-desktop.yml) : fins de ligne LF
+# même si core.autocrlf est actif, sinon bash échoue sur « $'\r' ».
+*.sh text eol=lf

@@ -1,0 +1,61 @@
+{
+ "nom": "reference",
+ "racine": "/tmp/claude-0/-home-user/df25e29c-a4b6-5777-aca5-81dafd0c57b5/scratchpad/grammaria-v0.3.0",
+ "demarrageMs": [
+  4807,
+  4684,
+  5057
+ ],
+ "memoireMo": {
+  "apresDemarrage": 680.3,
+  "apresCharge": 1087.1
+ },
+ "latence": [
+  {
+   "nom": "court",
+   "mots": 4,
+   "ms": {
+    "mediane": 30.23,
+    "p95": 43.39,
+    "min": 22.99,
+    "max": 50.27
+   }
+  },
+  {
+   "nom": "marche-160-mots",
+   "mots": 160,
+   "ms": {
+    "mediane": 240.96,
+    "p95": 306.62,
+    "min": 169.55,
+    "max": 347.53
+   }
+  },
+  {
+   "nom": "long",
+   "mots": 906,
+   "ms": {
+    "mediane": 1206.11,
+    "p95": 1545.49,
+    "min": 912.11,
+    "max": 1621.06
+   }
+  },
+  {
+   "nom": "tres-long",
+   "mots": 1085,
+   "ms": {
+    "mediane": 1218.24,
+    "p95": 1363.31,
+    "min": 986.59,
+    "max": 1397.44
+   }
+  }
+ ],
+ "debit": {
+  "simultanees": 16,
+  "requetes": 160,
+  "dureeMs": 33322,
+  "parSeconde": 4.8
+ }
+}

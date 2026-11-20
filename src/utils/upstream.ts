@@ -86,46 +86,6 @@ export async function resolveModel(
 }
 
 /**
- * Détecte le modèle par défaut du serveur amont via GET /v1/models. Le
- * résultat est mis en cache ; un échec ne l'est pas, pour réessayer ensuite.
- * Renvoie null si la liste ne contient aucun modèle ; lève une erreur
- * explicite si le serveur est injoignable ou refuse la requête.
- */
-export function createModelDetector(
-  llmTarget: string,
-  apiKey: string,
-  fetchImpl: typeof fetch = fetch,
-): () => Promise<string | null> {
-  let cached: string | null = null;
-  return async () => {
-    if (cached) return cached;
-    const headers: Record<string, string> = {};
-    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-    let res: Response;
-    try {
-      res = await fetchImpl(`${llmTarget}/v1/models`, { headers });
-    } catch (err) {
-      throw new Error(
-        `Le serveur du modèle (${llmTarget}) est injoignable : ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    if (!res.ok) {
-      throw new Error(
-        `Le serveur du modèle (${llmTarget}) refuse GET /v1/models : HTTP ${res.status}`,
-      );
-    }
-    let body: { data?: UpstreamModel[] } | null = null;
-    try {
-      body = (await res.json()) as { data?: UpstreamModel[] };
-    } catch {
-      /* réponse non JSON : traitée comme une liste vide */
-    }
-    cached = pickChatModel(Array.isArray(body?.data) ? body.data : []);
-    return cached;
-  };
-}
-
-/**
  * Vrai si l'erreur d'une API compatible OpenAI signale le refus du paramètre
  * `chat_template_kwargs` (propre à vLLM / SGLang, qui coupe le raisonnement).
  * Le serveur relance alors la requête sans ce paramètre.

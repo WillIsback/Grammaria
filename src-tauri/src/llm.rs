@@ -561,7 +561,8 @@ pub async fn llm_models(store: State<'_, Store>, llm: State<'_, Llm>) -> Result<
 
 /// Erreur du relais dans le journal technique : statut et message (corps de la
 /// réponse amont, tronqué et masqué), jamais la clé ni le texte envoyé. Une
-/// annulation (bouton « Arrêter ») n'est pas une erreur.
+/// annulation (correction remplacée par une nouvelle, délai dépassé côté page)
+/// n'est pas une erreur.
 fn journaliser(commande: &str, error: &LlmError, cle: Option<&str>) {
     if error.cancelled {
         return;
@@ -633,7 +634,8 @@ pub async fn llm_chat(
     on_event.send(last).map_err(|error| error.to_string())
 }
 
-/// Annule la requête `request_id` (bouton « Arrêter », nouvelle correction).
+/// Annule la requête `request_id` (correction remplacée par une nouvelle,
+/// délai dépassé côté page).
 #[tauri::command]
 pub fn llm_cancel(llm: State<'_, Llm>, request_id: u64) -> bool {
     llm.cancel(request_id)
@@ -890,7 +892,7 @@ mod tests {
             json!({}),
             |event| {
                 events.push(event);
-                // Premier fragment reçu : l'utilisateur clique sur « Arrêter ».
+                // Premier fragment reçu : la page annule (nouvelle correction).
                 assert!(canceller.cancel(7));
                 true
             },

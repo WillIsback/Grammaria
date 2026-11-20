@@ -20,7 +20,7 @@ Les routes de l'interface (`/api/*`, `/v1/*`) sont traitées par un seul gestion
           ┌───────────────────────┴────────────────────────┐
    journal : bun:sqlite                           journal : SQLite par Rust (db.rs)
    (journal.driver.bun.ts)                        (src/desktop/journal.driver.tauri.ts)
-   correcteur : worker Bun (grammar.ts)           correcteur : Web Worker (src/desktop/)
+   correcteur : processus grammaria (grammar.ts)  correcteur : moteur lié (correcteur.rs)
    réglages, mots : fichiers (settings.ts)        réglages, clé, mots : Rust (store.rs)
    modèle : SDK OpenAI                            modèle : relais Rust (llm.rs)
 ```
@@ -33,7 +33,8 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`). L'app
 |---|---|
 | `server.ts` | Serveur Bun : fichiers statiques et dépendances réelles du gestionnaire d'API (SQLite, fichiers, SDK OpenAI) |
 | `api/handler.ts` | Gestionnaire des routes `/api/*` et `/v1/*`, partagé par le serveur et le bureau ; `api/deps.ts` décrit ses dépendances |
-| `grammar.ts`, `grammar.worker.ts` | Correcteur grammatical du serveur : règles françaises de LanguageTool exécutées dans un worker |
+| `grammar.ts` | Correcteur grammatical du serveur : lance le moteur Rust `moteur/grammaria serve` une fois, lui confie les textes, le relance s'il s'arrête ou ne répond plus |
+| `scripts/moteur/construire.sh` | Construit le moteur (`npm run build:moteur`) : récupère [grammaria-rc](https://github.com/WillIsback/grammaria-rc) à la révision épinglée dans `src-tauri/Cargo.toml`, le compile et copie ses données dans `moteur/` |
 | `journal.ts` | Journal des fautes, indépendant du moteur SQLite |
 | `journal.driver.ts` | Interface des pilotes du journal ; `journal.driver.bun.ts` (serveur, `bun:sqlite`) et `src/desktop/journal.driver.tauri.ts` (bureau, commandes Rust) |
 | `journal.rules.ts` | État des règles et historique dans la base du journal ; migration du schéma |
@@ -55,8 +56,8 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`). L'app
 | `src/components/BadgeGallery.tsx`, `BadgeNotice.tsx` | Galerie des badges (en bas de l'écran Progression) et notification d'un badge obtenu |
 | `src/hooks/useCorrector.ts` | Orchestration côté interface |
 | `src/utils/prompt.ts` | Construction du prompt |
-| `src/desktop/` | Application de bureau, côté page : amorce, pont `fetch`, dépendances par les commandes Rust, Worker du correcteur, journal technique, autotest |
-| `src-tauri/` | Application de bureau, côté Rust : commandes (SQLite, réglages, relais du modèle, mise à jour, journal technique `grammaria.log`) |
+| `src/desktop/` | Application de bureau, côté page : amorce, pont `fetch`, dépendances par les commandes Rust (dont le correcteur), journal technique, autotest |
+| `src-tauri/` | Application de bureau, côté Rust : commandes (SQLite, réglages, relais du modèle, correcteur grammatical, mise à jour, journal technique `grammaria.log`) |
 | `vite.config.ts` | Toute la configuration de l'outillage |
 
 ## Choix de conception
@@ -64,5 +65,6 @@ Le serveur Bun sert aussi les fichiers statiques de l'interface (`dist/`). L'app
 - **Le code d'analyse est partagé.** `src/analysis` et `api/handler.ts` ne dépendent ni de Bun ni de Node ; ils sont exécutés par le serveur web, par la page de l'application de bureau, et testés sous Vitest.
 - **L'analyse ne bloque jamais la correction.** Si le correcteur grammatical ou le journal échoue, le texte corrigé reste affiché et copiable.
 - **Une clé stable par règle.** Les confusions des fiches ont une clé interne (`PAIRE:on/ont`) ; les autres fautes utilisent l'identifiant de règle de LanguageTool. C'est ce qui permet de compter les récurrences.
-- **Un correcteur grammatical intégré.** Les règles françaises de LanguageTool tournent dans le serveur Bun grâce à [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de LanguageTool distribué sous licence GPL-3.0-or-later. Elles s'exécutent dans un worker pour ne pas bloquer le serveur, se chargent en arrière-plan au démarrage (quelques secondes) et occupent plusieurs centaines de Mo de mémoire vive. L'application de bureau exécute les mêmes règles dans un Web Worker de sa page ; un corpus de référence garantit des détections identiques.
+- **Un correcteur grammatical intégré.** Depuis la version 0.4.0, c'est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), un moteur écrit en Rust : il exécute la chaîne française de LanguageTool (découpage, dictionnaire, désambiguïsation, règles XML et règles écrites en Java, orthographe) en lisant tels quels ses fichiers de règles et ses dictionnaires, plus environ 1 300 règles propres dont l'identifiant commence par `GRM_`. Le serveur le lance dans un processus à part (`grammaria serve`, relancé s'il s'arrête, tué s'il ne répond plus en 15 secondes, jamais laissé orphelin) ; l'application de bureau le lie à son backend Rust (`src-tauri/src/correcteur.rs`). Les deux utilisent la même révision, épinglée à un seul endroit (`src-tauri/Cargo.toml`), et un corpus de référence garantit des détections identiques. Il remplace le portage JavaScript de LanguageTool des versions 0.2 et 0.3 : chargement en moins d'une seconde au lieu de 4 à 5, environ 300 Mo de mémoire pour le serveur au lieu de 1 Go (mesures dans `benchmark/moteur-rust/rapport.md`).
+- **Licences.** Grammaria est sous GPL-3.0-or-later. Le moteur grammaria-rc est sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son code et ses règles propres sous MPL-2.0, les modules traduits de LanguageTool et les données françaises de LanguageTool sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause ; ces licences sont compatibles avec la GPL. La police Inter est sous SIL Open Font License 1.1.
 - **Mono-utilisateur.** Il n'y a pas d'authentification. Les tables `texts` et `faults` gardent une colonne `user_id` (toujours `local`), héritée de la version 0.2 ; les tables ajoutées depuis (`rule_states`, `rule_events`, `badges`) n'en ont pas.

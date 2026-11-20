@@ -10,6 +10,13 @@ tests/
 .vscode/
 .idea/
 src-tauri/
+# Révision épinglée du moteur grammatical (seule source de vérité), lue par
+# scripts/moteur/construire.sh dans l'étape « moteur » du Dockerfile.
+!src-tauri/Cargo.toml
+# Moteur construit en local (binaire glibc) et son dossier de travail :
+# l'image construit le sien (musl) dans l'étape « moteur ».
+moteur/
+.moteur-build/
 # La référence du correcteur est importée par src/desktop/autotest.ts : tsc en a
 # besoin pour compiler, même si le serveur ne s'en sert pas.
 !tests/fixtures/

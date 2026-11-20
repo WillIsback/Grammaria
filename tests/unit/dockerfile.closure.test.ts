@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { copies, etapesDockerfile } from "./helpers/docker";
 
 // Complète dockerfile.test.ts (qui lit les imports directs de server.ts et
 // journal.ts) : depuis la v0.3.0, server.ts importe api/handler.ts, qui
@@ -8,12 +9,12 @@ import { describe, expect, it } from "vite-plus/test";
 // server.ts, de proche en proche, doit être copié dans l'image.
 
 const root = join(import.meta.dirname, "../..");
-const dockerfile = readFileSync(join(root, "Dockerfile"), "utf-8");
 
-const copied = dockerfile
-  .split("\n")
-  .filter((line) => line.startsWith("COPY ") && !line.includes("--from="))
-  .flatMap((line) => line.split(/\s+/).slice(1, -1));
+// Seulement les COPY de l'étape finale (celle qui tourne) : une copie dans une
+// étape de construction ne met rien dans l'image.
+const copied = copies(etapesDockerfile().at(-1)!)
+  .filter((copie) => copie.depuis === null)
+  .flatMap((copie) => copie.sources);
 
 const isCopied = (file: string) =>
   copied.some((entry) => entry === file || file.startsWith(`${entry.replace(/\/$/, "")}/`));

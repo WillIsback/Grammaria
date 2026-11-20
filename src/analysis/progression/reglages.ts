@@ -7,6 +7,8 @@
  * cycle de vie des règles, ce sont des choix de départ, à ajuster sur des
  * données réelles.
  */
+import { REGLE_ORTHOGRAPHE } from "../regles/seuils";
+
 export const PROGRESSION = {
   /** Nombre de semaines affichées dans les graphiques (semaine en cours comprise). */
   semainesAffichees: 12,
@@ -55,7 +57,7 @@ export const PROGRESSION = {
   /** « Mots pièges » affichés (fautes d'orthographe des semaines affichées). */
   motsPiegesMax: 10,
   /** Règle LanguageTool des fautes de frappe : suivie par mot, pas comme une règle. */
-  regleOrthographe: "FR_SPELLING_RULE",
+  regleOrthographe: REGLE_ORTHOGRAPHE,
 
   /**
    * Paliers du score de maîtrise, pour une lecture en mots (la couleur n'est

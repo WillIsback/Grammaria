@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
+import { horsContexte, RACINE } from "./helpers/docker";
 
 /**
  * L'image Docker lance `npm run build` (tsc puis vp build) dans un contexte
@@ -8,26 +9,8 @@ import { describe, expect, it } from "vite-plus/test";
  * importe un fichier ignoré fait donc échouer la construction de l'image,
  * et seulement elle : la release v0.3.0 a échoué ainsi à sa dernière étape.
  */
-const RACINE = join(__dirname, "../..");
-const regles = readFileSync(join(RACINE, ".dockerignore"), "utf-8")
-  .split("\n")
-  .map((l) => l.trim())
-  .filter((l) => l && !l.startsWith("#"));
-
-/** Vrai si le chemin (relatif à la racine) est absent du contexte Docker. */
-function ignore(chemin: string): boolean {
-  let resultat = false;
-  for (const regle of regles) {
-    const negation = regle.startsWith("!");
-    const motif = (negation ? regle.slice(1) : regle).replace(/\/$/, "");
-    if (motif.startsWith("*.")) {
-      if (chemin.endsWith(motif.slice(1))) resultat = !negation;
-    } else if (chemin === motif || chemin.startsWith(`${motif}/`)) {
-      resultat = !negation;
-    }
-  }
-  return resultat;
-}
+// Sémantique de Docker (négations, dossiers parents) : voir helpers/docker.ts.
+const ignore = horsContexte;
 
 function fichiers(dossier: string): string[] {
   const absolu = join(RACINE, dossier);
@@ -62,5 +45,11 @@ describe(".dockerignore", () => {
   it("écarte toujours les tests de l'image, sauf leurs données de référence", () => {
     expect(ignore("tests/unit/dockerignore.test.ts")).toBe(true);
     expect(ignore("tests/fixtures/correcteur/reference.json")).toBe(false);
+  });
+
+  it("réinclut un fichier d'un dossier exclu, et seulement lui (négation de Docker)", () => {
+    expect(ignore("src-tauri/Cargo.toml")).toBe(false);
+    expect(ignore("src-tauri/Cargo.lock")).toBe(true);
+    expect(ignore("src-tauri/tauri.conf.json")).toBe(true);
   });
 });

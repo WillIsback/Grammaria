@@ -59,6 +59,30 @@ export function parseUpdate(input: unknown): SettingsUpdate {
   return update;
 }
 
+/** Origine (schéma, hôte, port) d'une adresse enregistrée ; `null` si elle n'en est pas une. */
+function origin(target: string): string | null {
+  try {
+    return new URL(target).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Réglages après une modification venue de l'interface. Décision du PO : si
+ * l'adresse du modèle change de serveur (origine : schéma, hôte, port) sans
+ * qu'une nouvelle clé soit fournie, la clé enregistrée est effacée : elle ne
+ * doit jamais partir vers un autre serveur. Même règle que `apply_update`
+ * (`src-tauri/src/store.rs`).
+ */
+export function applySettingsUpdate(current: LlmSettings, update: SettingsUpdate): LlmSettings {
+  const next: LlmSettings = { ...current, ...update };
+  if (update.llmApiKey === undefined && origin(next.llmTarget) !== origin(current.llmTarget)) {
+    next.llmApiKey = "";
+  }
+  return next;
+}
+
 /**
  * Contenu d'un fichier de réglages déjà décodé (JSON) → réglages valides.
  * Un fichier antérieur à la version 2 perd son `llmDisableThinking`.

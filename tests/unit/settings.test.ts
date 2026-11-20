@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { config } from "../../config";
 import {
+  applySettingsUpdate,
   type LlmSettings,
   parseSettingsFile,
   parseUpdate,
@@ -73,6 +74,16 @@ describe("SettingsStore — réglages du LLM en mode bureau", () => {
     s.update({ llmTarget: "http://localhost:11434", llmApiKey: "k" });
     s.update({ llmModelName: "autre" });
     expect(config.llmApiKey).toBe("k");
+  });
+
+  it("une adresse vers un autre serveur sans nouvelle clé efface la clé enregistrée", () => {
+    const { path, store: s } = store();
+    s.update({ llmTarget: "https://a.exemple.fr/v1", llmApiKey: "cle-a" });
+
+    const vue = s.update({ llmTarget: "https://b.exemple.fr" });
+    expect(vue.hasApiKey).toBe(false);
+    expect(config.llmApiKey).toBe("");
+    expect(JSON.parse(readFileSync(path, "utf-8")).llmApiKey).toBe("");
   });
 
   it.each([
@@ -196,6 +207,49 @@ describe("api/reglages — validation pure", () => {
       llmDisableThinking: false,
     });
     expect(() => parseSettingsFile(null)).toThrow();
+  });
+
+  describe("applySettingsUpdate : clé effacée quand le serveur change (comme store.rs)", () => {
+    const actuels: LlmSettings = { ...reglages, llmTarget: "https://c.exemple.fr" };
+
+    it("même serveur (chemin différent, port par défaut explicite) : la clé reste", () => {
+      for (const llmTarget of ["https://c.exemple.fr/proxy", "https://C.exemple.fr:443"]) {
+        expect(applySettingsUpdate(actuels, { llmTarget }).llmApiKey).toBe("sk-secret");
+      }
+      expect(applySettingsUpdate(actuels, { llmModelName: "autre" }).llmApiKey).toBe("sk-secret");
+    });
+
+    it.each(["https://b.exemple.fr", "https://c.exemple.fr:8443", "http://c.exemple.fr"])(
+      "autre serveur (%s) sans nouvelle clé : la clé est effacée",
+      (llmTarget) => {
+        expect(applySettingsUpdate(actuels, { llmTarget })).toEqual({
+          ...actuels,
+          llmTarget,
+          llmApiKey: "",
+        });
+      },
+    );
+
+    it("autre serveur avec sa clé (même vide) : la clé fournie est retenue", () => {
+      const autre = { llmTarget: "https://b.exemple.fr" };
+      expect(applySettingsUpdate(actuels, { ...autre, llmApiKey: "cle-b" }).llmApiKey).toBe(
+        "cle-b",
+      );
+      expect(applySettingsUpdate(actuels, { ...autre, llmApiKey: "" }).llmApiKey).toBe("");
+    });
+
+    it("première adresse saisie (aucune avant) : une clé sans adresse n'est pas gardée", () => {
+      const sansAdresse = { ...actuels, llmTarget: "" };
+      expect(applySettingsUpdate(sansAdresse, { llmModelName: "m" }).llmApiKey).toBe("sk-secret");
+      expect(
+        applySettingsUpdate(sansAdresse, { llmTarget: "https://a.exemple.fr" }).llmApiKey,
+      ).toBe("");
+    });
+
+    it("ne modifie pas les réglages reçus", () => {
+      applySettingsUpdate(actuels, { llmTarget: "https://b.exemple.fr" });
+      expect(actuels.llmApiKey).toBe("sk-secret");
+    });
   });
 
   it("settingsFileContent ajoute la version", () => {

@@ -13,10 +13,6 @@ on:
 permissions:
   contents: read
 
-env:
-  # Version de Playwright du contrôle du correcteur du bureau (cache du Chromium).
-  PLAYWRIGHT_VERSION: "1.63.0"
-
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -46,41 +42,46 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Correcteur de l'application de bureau (Worker et archive des règles,
-      # dist/bureau/lt/), tel qu'il est livré, vérifié dans Chromium sous la
-      # CSP stricte du bureau contre tests/fixtures/correcteur/reference.json.
-      # Le script attend Playwright et son Chromium déjà installés (il ne
-      # télécharge rien) ; Playwright n'est pas une dépendance du projet :
-      # installé à part (NODE_PATH), avec le seul Chromium headless shell, mis
-      # en cache par version.
+      # Interface de l'application de bureau (dist/bureau/). Le correcteur du
+      # bureau n'est plus un Worker de la page : il est lié au backend Rust
+      # (src-tauri/src/correcteur.rs), testé par build-desktop.yml.
       - name: Build du bureau
         run: npm run build:bureau
 
-      - name: Cache Chromium (Playwright)
-        id: cache-chromium
+      # Moteur grammatical (grammaria-rc, Rust) : binaire du serveur et données
+      # (moteur/). scripts/moteur/construire.sh récupère lui-même la révision
+      # épinglée dans src-tauri/Cargo.toml (seule source de vérité) depuis le
+      # dépôt public, sans identifiant, et la compile (moins d'une minute sur
+      # 4 cœurs). Le dossier produit est mis en cache par révision et par
+      # version du script.
+      # Rust est préinstallé sur ubuntu-latest, mais pas garanti : version stable
+      # explicite (grammaria-rc exige 1.75 au moins).
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Révision du moteur
+        id: moteur
+        shell: bash
+        run: |
+          rev="$(sed -n 's/^grammaria_rc = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' src-tauri/Cargo.toml)"
+          test -n "$rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
+      - name: Cache du moteur
+        id: cache-moteur
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}-chromium-headless-shell
+          path: moteur
+          key: moteur-${{ runner.os }}-${{ steps.moteur.outputs.rev }}-${{ hashFiles('scripts/moteur/construire.sh') }}
 
-      - name: Installer Playwright et Chromium
-        env:
-          CACHE_HIT: ${{ steps.cache-chromium.outputs.cache-hit }}
-        run: |
-          set -euo pipefail
-          npm install --prefix "$RUNNER_TEMP/playwright" --no-save --no-package-lock \
-            --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
-          if [ "$CACHE_HIT" != "true" ]; then
-            "$RUNNER_TEMP/playwright/node_modules/.bin/playwright" install --only-shell chromium
-          fi
-
-      - name: Correcteur du bureau dans Chromium (CSP stricte)
-        run: |
-          export NODE_PATH="$RUNNER_TEMP/playwright/node_modules"
-          npm run test:correcteur-bureau
+      - name: Construire le moteur
+        if: steps.cache-moteur.outputs.cache-hit != 'true'
+        shell: bash
+        run: npm run build:moteur
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      # Journal, routes du serveur et correcteur (moteur Rust lancé par grammar.ts).
       - name: Run journal tests (bun:sqlite)
         run: npm run test:journal

@@ -9,14 +9,15 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 
 1. **La page est embarquée.** L'interface est construite dans `dist/bureau` (`npm run build:bureau`) et servie par Tauri lui-même, sous l'origine `tauri://localhost` (`http://tauri.localhost` sous Windows).
 2. **La logique métier est la même que sur le serveur web.** Au chargement, `src/desktop/amorce.ts` remplace `window.fetch` pour les seules routes `/api/*` et `/v1/*` de la page et les confie au gestionnaire d'API partagé avec le serveur, `api/handler.ts`. L'interface ne fait pas la différence avec la version web.
-3. **Le correcteur grammatical tourne dans la page**, dans un Web Worker (`src/desktop/lt.worker.ts`), avec les règles françaises de LanguageTool rangées dans une archive (`dist/bureau/lt/fr.pack`). Les règles se chargent en 4 à 5 secondes au lancement ; les contrôles suivants prennent autour de 0,2 seconde.
-4. **Rust ne fournit que ce que la page ne peut pas faire seule**, par des commandes (`src-tauri/src/`) :
+3. **Le correcteur grammatical est lié au backend Rust** (`src-tauri/src/correcteur.rs`) : c'est le moteur [grammaria-rc](https://github.com/WillIsback/grammaria-rc), dépendance `grammaria_rc` de `src-tauri/Cargo.toml`, épinglée par révision. Ses données (règles et dictionnaires de LanguageTool, règles propres et profil, 15 Mio) sont des ressources de l'application (`moteur/lt/`, `moteur/grammaria/`), produites par `npm run build:moteur`. La page les fait charger au lancement (commande `correcteur_prechauffer`, en 0,65 seconde environ) puis envoie chaque texte par `correcteur_controler` ; un contrôle prend quelques dizaines de millisecondes, hors du fil principal.
+4. **Rust fournit ce que la page ne peut pas faire seule**, par des commandes (`src-tauri/src/`) :
 
 | Module | Rôle |
 |---|---|
 | `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien |
 | `store.rs` | Réglages du modèle (`settings.json`), clé API, mots valides (`valid-words.json`) |
 | `llm.rs` | Relais du modèle en streaming : Rust ajoute l'adresse et la clé API, que la page ne connaît jamais |
+| `correcteur.rs` | Correcteur grammatical (moteur grammaria-rc lié à l'application) |
 | `update.rs` | Mise à jour de l'application |
 | `logs.rs` | Journal technique `grammaria.log` |
 
@@ -58,24 +59,30 @@ Les variables du serveur web (`LLM_TARGET`, `JOURNAL_PATH`, `GRAMMARIA_DESKTOP`�
 
 ## Construire en local
 
-Prérequis : Rust stable, Node.js (`^22.18`, `^24.11` ou `>=26`), et sous Linux `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`. Bun n'est pas nécessaire.
+Prérequis : Rust stable (1.75 au moins pour le moteur), `git`, `bash` (Git Bash sous Windows), Node.js (`^22.18`, `^24.11` ou `>=26`), et sous Linux `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`. Bun n'est pas nécessaire.
 
 ```bash
 npm ci
+```
+
+Les données du moteur grammatical, empaquetées comme ressources (moins d'une minute ; le moteur est récupéré à la révision épinglée) :
+
+```bash
+npm run build:moteur
 ```
 
 ```bash
 npx tauri build --bundles deb,appimage
 ```
 
-Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm run build:bureau` (interface, Worker du correcteur et archive des règles). Les paquets sont dans `src-tauri/target/release/bundle/`. Le paquet `.deb` pèse 8 Mo (62 Mo en 0.2.0) ; l'AppImage reste volumineuse, car elle embarque le moteur web de Linux.
+Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm run build:bureau` (interface). Les paquets sont dans `src-tauri/target/release/bundle/`. Le paquet `.deb` pèse 8,8 Mio (8,05 Mio en 0.3.0, 62 Mo en 0.2.0) ; l'AppImage reste volumineuse, car elle embarque le moteur web de Linux.
 
 ## Vérifier
 
 | Commande | Ce qu'elle vérifie |
 |---|---|
-| `cargo test` (dans `src-tauri/`) | Commandes Rust, capability, politique de sécurité, journal technique. À lancer après `npm run build:bureau` : la compilation exige la page embarquée (`dist/bureau`), que `npm run build` (version web) efface |
-| `npm run test:correcteur-bureau` | Le correcteur livré (`dist/bureau/lt/`), dans Chromium sous la politique de sécurité du bureau : détections identiques à la référence du serveur, aucune construction qui évalue du code. À lancer après `npm run build:bureau` |
+| `cargo test` (dans `src-tauri/`) | Commandes Rust, capability, politique de sécurité, journal technique, correcteur (sur les données de `moteur/data`, sauté si elles manquent). À lancer après `npm run build:bureau` : la compilation exige la page embarquée (`dist/bureau`), que `npm run build` (version web) efface |
+| `cargo fmt --check` (dans `src-tauri/`) | Mise en forme du code Rust (vérifiée par la CI) |
 | `npm run reference:correcteur` | Régénère la référence (`tests/fixtures/correcteur/reference.json`) avec le correcteur du serveur. Nécessite Bun |
 
 ### Autotest

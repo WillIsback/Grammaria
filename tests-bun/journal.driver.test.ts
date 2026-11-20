@@ -1,8 +1,14 @@
 import { describe, expect, it } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BunJournalDriver, ouvrirPiloteBun } from "../journal.driver.bun.ts";
-import { estConflit, ExpectChangesError, USER_VERSION_MAX } from "../journal.driver.ts";
+import {
+  estConflit,
+  ExpectChangesError,
+  PRAGMAS_A_ARGUMENT,
+  PRAGMAS_LISIBLES,
+  USER_VERSION_MAX,
+} from "../journal.driver.ts";
 import { SCHEMA_VERSION } from "../journal.ts";
 import { avecBase } from "./helpers.ts";
 
@@ -255,6 +261,34 @@ describe("Pilote bun:sqlite — mêmes refus que le pilote Rust du bureau", () =
     expect(
       String(await echec(pilote.readMany([{ sql: "SELECT 1" }, { sql: "SELECT * FROM absente" }]))),
     ).toContain("Instruction 1 : ");
+  });
+
+  it("ne lit que des pragmas que le pilote Rust lit aussi (listes de db.rs)", async () => {
+    const dbRs = readFileSync(join(import.meta.dir, "../src-tauri/src/db.rs"), "utf-8");
+    const listeRust = (nom: string): string[] => {
+      const bloc = dbRs.match(new RegExp(`const ${nom}: &\\[&str\\] = &\\[([^\\]]*)\\];`));
+      if (!bloc) throw new Error(`${nom} introuvable dans db.rs`);
+      return [...bloc[1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+    };
+    const lectureRust = listeRust("PRAGMAS_LECTURE");
+    const argumentRust = listeRust("PRAGMAS_A_ARGUMENT");
+    expect(lectureRust).toContain("user_version");
+    // Tout ce que le pilote Bun accepte, le pilote Rust l'accepte aussi.
+    expect(PRAGMAS_LISIBLES.filter((p) => !lectureRust.includes(p))).toEqual([]);
+    expect(PRAGMAS_A_ARGUMENT.filter((p) => !argumentRust.includes(p))).toEqual([]);
+    expect(PRAGMAS_LISIBLES).toContain("user_version");
+
+    const pilote = piloteAvecTables();
+    expect(await pilote.read("PRAGMA table_info(parents)")).toHaveLength(2);
+    for (const sql of [
+      "PRAGMA table_list",
+      "PRAGMA journal_mode(DELETE)",
+      "PRAGMA user_version(1)",
+    ]) {
+      expect(String(await echec(pilote.read(sql)))).toContain("seules les requêtes de lecture");
+    }
+    expect(await pilote.read("PRAGMA journal_mode")).toEqual([{ journal_mode: "memory" }]);
+    expect(await pilote.read("PRAGMA user_version")).toEqual([{ user_version: 0 }]);
   });
 
   it("borne PRAGMA user_version aux versions connues, comme le pilote Rust", async () => {

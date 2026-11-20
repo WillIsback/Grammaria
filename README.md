@@ -24,7 +24,7 @@ Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
 
 1. Vous collez un texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie aussitôt.
 2. Le modèle de langage ne fait que corriger. Les modifications sont **calculées** par comparaison entre votre texte et le texte corrigé, sans appel supplémentaire au modèle. La ponctuation est corrigée en silence : appliquée dans le texte, elle n'est ni listée ni comptée.
-3. Les règles françaises de [LanguageTool](https://languagetool.org), intégrées au serveur (aucun service à lancer), analysent votre texte en parallèle. Une de ses détections n'est retenue que si le modèle a réellement corrigé le passage, ce qui écarte les faux positifs.
+3. Les règles françaises de [LanguageTool](https://languagetool.org), exécutées par le moteur Rust [grammaria-rc](https://github.com/WillIsback/grammaria-rc) intégré à Grammaria (aucun service à lancer), analysent votre texte en parallèle. Une de ses détections n'est retenue que si le modèle a réellement corrigé le passage, ce qui écarte les faux positifs.
 4. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é, travail/travaille…) sont reconnues directement et accompagnées d'une **fiche**.
 5. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
 6. Une **note sur 20**, calculée sur la densité de fautes, suit votre progression texte par texte et sur sept jours.
@@ -40,11 +40,11 @@ Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vo
 
 ## Application de bureau
 
-Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 8 Mo) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 9 Mo environ) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
 ## Démarrage rapide (serveur)
 
-Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh) et Node.js `^22.18`, `^24.11` ou `>=26`.
+Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) 1.75 ou plus récent et `git` pour compiler le moteur grammatical. `npm run build:moteur` récupère lui-même le moteur ([grammaria-rc](https://github.com/WillIsback/grammaria-rc)) à la version prévue et le compile, en moins d'une minute.
 
 ```bash
 git clone https://github.com/WillIsback/Grammaria.git
@@ -68,6 +68,12 @@ npm install
 npm run build
 ```
 
+Construisez le moteur grammatical (binaire et données dans `moteur/`) :
+
+```bash
+npm run build:moteur
+```
+
 ```bash
 bun run server.ts
 ```
@@ -84,6 +90,7 @@ Le projet utilise [Vite+](https://viteplus.dev) : toute la configuration de l'ou
 | `npm run build`        | Vérification des types, puis build                              |
 | `npm run check`        | Format, lint et types                                           |
 | `npm run test:run`     | Tests                                                           |
+| `npm run build:moteur` | Compile le moteur grammatical Rust et ses données (`moteur/`)   |
 | `npm run test:journal` | Tests du journal et du correcteur grammatical, exécutés par Bun |
 
 Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/) et l'[architecture](https://grammaria.fr/docs/reference/architecture/).
@@ -92,7 +99,7 @@ Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/
 
 Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
-Le correcteur grammatical intégré s'appuie sur [`@valueerror/ltjs-core`](https://github.com/valueerrorx/languagetool-js) et `@valueerror/ltjs-lang-fr`, portage JavaScript de [LanguageTool](https://languagetool.org), eux-mêmes sous GPL-3.0-or-later : l'ensemble est donc publié sous cette licence.
+Le correcteur grammatical intégré est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), moteur Rust distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son propre code et ses règles sous MPL-2.0, les modules traduits de [LanguageTool](https://languagetool.org) et les règles et dictionnaires français de LanguageTool qu'il lit tels quels sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause (détail dans son fichier `THIRD_PARTY_LICENSES.md`). Ces licences sont compatibles avec la GPL-3.0-or-later de Grammaria. Depuis la version 0.4.0, il remplace le portage JavaScript de LanguageTool des versions précédentes ; la comparaison mesurée est dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
 
 La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
 

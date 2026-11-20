@@ -1,8 +1,8 @@
 /**
  * Dépendances du gestionnaire d'API (`api/deps.ts`) dans l'application de bureau : réglages,
  * mots valides et modèle passent par les commandes Rust (src-tauri/src/{store,llm}.rs), le
- * journal par son pilote Tauri (journal.driver.tauri.ts), le correcteur par le Worker de la
- * WebView (correcteur.ts). Le gestionnaire, lui, est le même que celui du serveur Bun.
+ * journal par son pilote Tauri (journal.driver.tauri.ts), le correcteur par le moteur Rust de
+ * l'application (correcteur.ts, commandes de src-tauri/src/correcteur.rs). Le gestionnaire, lui, est le même que celui du serveur Bun.
  */
 import type {
   CorrecteurDeps,
