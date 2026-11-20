@@ -1,4 +1,6 @@
-// Telemetry MUST be imported first — instruments OpenAI SDK before it loads
+// Télémétrie importée en premier : elle installe le fournisseur de traces
+// OpenTelemetry (export OTLP) avant toute autre chose. Elle n'instrumente pas
+// le SDK OpenAI : les traces sont créées à la main par `api/handler.ts`.
 import "./telemetry.ts";
 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -122,7 +124,7 @@ async function* fragments(stream: AsyncIterable<LlmChunk>): AsyncIterable<Fragme
   }
 }
 
-/** Serveur du modèle via le SDK OpenAI (instrumenté par OTEL) et relais HTTP brut. */
+/** Serveur du modèle via le SDK OpenAI et relais HTTP brut (les traces OTEL sont posées par `api/handler.ts`). */
 const modele: ModeleDeps = {
   listerModeles: () => listerModelesAmont(config.llmTarget, config.llmApiKey),
 
@@ -193,8 +195,8 @@ Bun.serve({
 
     // Large inputs can spend >10s in prefill before the first token. Bun.serve
     // closes idle connections after 10s by default, which aborted the request
-    // with an HTTP 500 and then crashed the process via the SSE keepalive
-    // (issue #17). Disable the idle timeout for this streaming route only.
+    // with an HTTP 500 and then crashed the process via the SSE keepalive.
+    // Disable the idle timeout for this streaming route only.
     if (path === "/v1/chat/completions" && req.method === "POST") server.timeout(req, 0);
 
     // === API (/api/*, /v1/*) : api/handler.ts ===
