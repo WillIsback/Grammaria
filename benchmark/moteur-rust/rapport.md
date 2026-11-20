@@ -41,9 +41,10 @@ plus lents.
 - Les paquets `@valueerror/ltjs-core` et `@valueerror/ltjs-lang-fr` ne sont plus des
   dépendances. `npm run build:moteur` compile le moteur et ses données dans `moteur/`.
 
-Vérifié ici : format, lint et types ; 638 tests unitaires ; 144 tests Bun ; tests Rust du
-correcteur et 87 tests Rust du backend ; **build réel de l'application de bureau et son autotest complet** sous WebKitGTK
-(25 critères tenus, détections identiques à celles du serveur sur 20 textes sur 20).
+Vérifié ici : format, lint et types ; 638 tests unitaires ; 144 tests Bun ; 87 tests Rust du
+backend, dont ceux du correcteur ; **build réel de l'application de bureau et son autotest
+complet** sous WebKitGTK (25 critères tenus, détections identiques à celles du serveur sur
+20 textes sur 20).
 
 Non vérifié : l'image Docker (pas de démon Docker ici), le build Windows, les workflows GitHub
 modifiés (jamais exécutés), la documentation du site (`docs/`, non mise à jour).
