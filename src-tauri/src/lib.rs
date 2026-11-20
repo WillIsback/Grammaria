@@ -380,9 +380,6 @@ mod tests {
             .map(|cible| cible.as_str().expect("chaîne"))
             .collect();
         ressources.sort_unstable();
-        assert_eq!(
-            ressources,
-            ["moteur/grammaria/", "moteur/lt/"]
-        );
+        assert_eq!(ressources, ["moteur/grammaria/", "moteur/lt/"]);
     }
 }

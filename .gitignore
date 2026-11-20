@@ -47,8 +47,9 @@ docs/superpowers/
 evals/
 
 # Moteur grammatical (grammaria-rc) : binaire et données produits par
-# scripts/moteur/construire.sh
+# scripts/moteur/construire.sh, et son dossier de travail (sources récupérées, compilation)
 /moteur/
+/.moteur-build/
 
 # Données dupliquées (source de vérité : public/data/)
 data/

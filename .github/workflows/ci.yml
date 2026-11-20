@@ -48,16 +48,17 @@ jobs:
       - name: Build du bureau
         run: npm run build:bureau
 
-      # Moteur grammatical (grammaria-rc, Rust) à la révision épinglée dans
-      # src-tauri/Cargo.toml : binaire du serveur et données (moteur/). La
-      # compilation du moteur prend quelques minutes : le dossier produit
-      # est mis en cache par révision. Le dépôt du moteur doit être lisible par
-      # le job (dépôt public, ou jeton à ajouter au clone s'il est privé).
+      # Moteur grammatical (grammaria-rc, Rust) : binaire du serveur et données
+      # (moteur/). scripts/moteur/construire.sh récupère lui-même la révision
+      # épinglée dans src-tauri/Cargo.toml (seule source de vérité) depuis le
+      # dépôt public, sans identifiant, et la compile (moins d'une minute sur
+      # 4 cœurs). Le dossier produit est mis en cache par révision et par
+      # version du script.
       - name: Révision du moteur
         id: moteur
         shell: bash
         run: |
-          rev="$(sed -n 's/^grammaria_rc = .*rev = "\([0-9a-f]*\)".*/\1/p' src-tauri/Cargo.toml)"
+          rev="$(sed -n 's/^grammaria_rc = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' src-tauri/Cargo.toml)"
           test -n "$rev"
           echo "rev=$rev" >> "$GITHUB_OUTPUT"
 
@@ -66,18 +67,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: moteur
-          key: moteur-${{ runner.os }}-${{ steps.moteur.outputs.rev }}
+          key: moteur-${{ runner.os }}-${{ steps.moteur.outputs.rev }}-${{ hashFiles('scripts/moteur/construire.sh') }}
 
       - name: Construire le moteur
         if: steps.cache-moteur.outputs.cache-hit != 'true'
         shell: bash
-        env:
-          REV: ${{ steps.moteur.outputs.rev }}
-        run: |
-          set -euo pipefail
-          git clone https://github.com/WillIsback/grammaria-rc "$RUNNER_TEMP/grammaria-rc"
-          git -C "$RUNNER_TEMP/grammaria-rc" checkout --detach "$REV"
-          GRAMMARIA_RC_SRC="$RUNNER_TEMP/grammaria-rc" npm run build:moteur
+        run: npm run build:moteur
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
