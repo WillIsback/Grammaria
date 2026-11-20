@@ -10,15 +10,16 @@ et répondait plus lentement. Le moteur a depuis été refait.
 
 ## En bref
 
-Le moteur Rust fait maintenant **au moins aussi bien que ltjs sur tous les points mesurés**, et
-nettement mieux sur la plupart.
+Le moteur Rust fait maintenant **aussi bien ou mieux que ltjs sur tous les points mesurés, sauf
+la taille du paquet** (+0,7 Mio) et une faute marquée sur 1 000 dans les exemples de
+LanguageTool.
 
 | | v0.3.0 (ltjs) | Expérimental (Rust) | |
 | --- | ---: | ---: | --- |
 | Fautes du corpus vues par le moteur | 75 sur 92 (82 %) | 83 sur 92 (90 %) | gain |
 | Modifications classées dans l'application | 84 (91 %) | 89 (97 %) | gain |
 | Fautes vues seulement par l'un des deux | 0 | 8 | gain |
-| Fautes marquées des exemples de LanguageTool détectées | 89 % | 89 % | égal |
+| Fautes marquées des exemples de LanguageTool détectées | 893 sur 1 000 | 892 sur 1 000 | égal à une près |
 | Phrases correctes de ces exemples laissées sans détection | 67 % | 70 % | gain |
 | Détections sur les textes sans faute du corpus | 0 | 0 | égal |
 | Orthographe (`FR_SPELLING_RULE`, « mots pièges ») | oui | oui | égal |
