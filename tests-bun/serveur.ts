@@ -11,6 +11,10 @@ export interface ServeurDeTest {
   base: string;
   port: number;
   dir: string;
+  /** Processus du serveur (pour vérifier ses enfants, lui envoyer un signal). */
+  pid: number;
+  /** Fin du processus du serveur : son code de sortie. */
+  fin: Promise<number>;
   arreter(): void;
 }
 
@@ -52,7 +56,7 @@ export async function lancerServeur(options: OptionsServeur = {}): Promise<Serve
   for (let i = 0; i < 150; i++) {
     try {
       await fetch(`${base}/api/journal`);
-      return { base, port, dir, arreter };
+      return { base, port, dir, pid: processus.pid, fin: processus.exited, arreter };
     } catch {
       await Bun.sleep(100);
     }

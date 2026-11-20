@@ -48,6 +48,16 @@ const journal = await ouvrirJournal();
 const grammar = new GrammarChecker();
 grammar.warmUp();
 
+// Arrêt du serveur (docker stop, Ctrl+C) : sortie propre, et le moteur grammatical
+// s'arrête avec lui (grammar.ts tue à la sortie tout moteur encore en vie). Sans
+// gestionnaire, Bun lancé en PID 1 dans le conteneur ignorerait SIGTERM.
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    grammar.close();
+    process.exit(0);
+  });
+}
+
 let llmClient: OpenAI;
 
 /** (Re)crée le client du LLM ; rappelé quand les réglages changent (mode bureau). */
