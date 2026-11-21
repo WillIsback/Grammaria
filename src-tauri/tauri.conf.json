@@ -55,7 +55,7 @@
     "publisher": "Grammaria",
     "category": "Productivity",
     "shortDescription": "Correcteur de français qui suit vos fautes récurrentes",
-    "longDescription": "Grammaria corrige vos textes avec le modèle de langage de votre choix, classe les fautes avec les règles françaises de LanguageTool et suit votre progression.",
+    "longDescription": "Grammaria corrige vos textes avec le modèle de langage de votre choix, classe les fautes avec son moteur de grammaire grammaria-rc et suit votre progression.",
     "copyright": "GPL-3.0-or-later",
     "license": "GPL-3.0-or-later",
     "licenseFile": "../LICENSE",

@@ -1,0 +1,30 @@
+---
+title: "Versions"
+description: "Ce que chaque version de Grammaria a apporté."
+---
+
+Les versions sont publiées sur la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt. La dernière version publiée est la **0.4.0**.
+
+## Version 0.4.0 — un moteur de grammaire maison
+
+- Le correcteur grammatical devient [grammaria-rc](/docs/decouvrir/moteur/), un moteur maison écrit en Rust. Il reprend les règles de LanguageTool et en ajoute environ 1 300.
+- Dans l'application de bureau, le correcteur est prêt environ 1,5 seconde après le lancement, au lieu de 6 secondes environ, et la mémoire utilisée passe d'environ 1,1 Go à environ 0,63 Go.
+- La mémoire du serveur Docker passe de 1 087 Mo à 290 Mo.
+- De nouvelles règles peuvent apparaître dans votre suivi : ce sont des fautes qui n'étaient pas classées avant, pas des fautes nouvelles. Voir [Règles propres à Grammaria](/docs/utiliser/corrections/#règles-propres-à-grammaria).
+
+## Version 0.3.0 — fautes récurrentes, progression et badges
+
+- **Fautes récurrentes** : une astuce, puis un choix entre deux formes sur le bouton **Copier**, quand une faute revient. Voir [Corriger un texte](/docs/utiliser/corriger/).
+- **Écran Progression** : score de maîtrise, note et fautes pour 100 mots semaine après semaine, règles par état, mots pièges. Voir [Progression](/docs/utiliser/progression/).
+- **Badges** : dix-huit badges constatent les étapes franchies, sans série à ne pas casser. Voir [Badges](/docs/utiliser/badges/).
+- **Application de bureau sans serveur** : la page et le correcteur sont embarqués, aucun serveur local n'est lancé. Le paquet `.deb` passe de 62 Mo à 8 Mo environ.
+- **Mise à jour depuis l'application**, sur votre accord, avec vérification de la signature. Voir [Mises à jour](/docs/demarrer/application-bureau/#mises-à-jour).
+- **Journal technique** (`grammaria.log`) pour aider le support.
+
+## Version 0.2.0 — première version publiée
+
+- Correction instantanée, affichée à mesure que le modèle écrit.
+- Détail des corrections calculé par comparaison, et croisé avec un correcteur grammatical intégré.
+- Treize fiches de règles.
+- Journal des fautes et note sur 20.
+- Première application de bureau pour Windows et Linux.
