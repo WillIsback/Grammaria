@@ -37,7 +37,8 @@ describe("workflow build-desktop (bureau sans Bun)", () => {
     expect(linux).toContain("node scripts/desktop/faux-modele.mjs");
     expect(linux).toContain(`127.0.0.1:${port}`);
     expect(linux).toContain(`${variable}="$dir/autotest.json"`);
-    expect(linux).toContain("xvfb-run -a dbus-run-session -- src-tauri/target/release/grammaria");
+    expect(linux).toContain("xvfb-run -a dbus-run-session -- sh -c");
+    expect(linux).toContain("exec src-tauri/target/release/grammaria");
     const filetLinux = Number(/timeout --kill-after=\d+ (\d+)/.exec(linux)?.[1]);
     expect(filetLinux).toBeGreaterThan(delai);
 
@@ -53,6 +54,20 @@ describe("workflow build-desktop (bureau sans Bun)", () => {
       expect(e).toMatch(/timeout-minutes: \d+/);
       expect(e).toContain("steps.build.outcome == 'success'");
     }
+  });
+
+  // Issue #37 : la clé API va dans le trousseau du système. Linux : un vrai service de
+  // secrets (gnome-keyring, trousseau « login » déverrouillé sans fenêtre) dans la session
+  // D-Bus de l'application ; le vérificateur exige « trousseau » sur les deux systèmes.
+  it("teste le vrai trousseau : gnome-keyring sous Linux, trousseau exigé partout", () => {
+    const dependances = etape(build, "Dépendances système (Linux)");
+    expect(dependances).toMatch(/apt-get install -y[^\n]*(\\\n[^\n]*)*gnome-keyring/);
+    const linux = etape(build, "Autotest — application réelle (Linux");
+    expect(linux).toMatch(
+      /printf [^|]+\| gnome-keyring-daemon --unlock --components=secrets > \/dev\/null && exec/,
+    );
+    const verification = etape(build, "Autotest — vérification et résumé");
+    expect(verification).toContain("--stockage trousseau");
   });
 
   it("juge l'autotest avec le vérificateur, publie les résultats et un résumé", () => {
