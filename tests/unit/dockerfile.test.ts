@@ -41,3 +41,24 @@ describe("Dockerfile runtime stage", () => {
     expect(isCopied(file), `${file} is missing from the runtime image`).toBe(true);
   });
 });
+
+// Issue #40 : le conteneur ne tourne pas en root (moindre privilège).
+describe("Dockerfile — utilisateur non privilégié", () => {
+  const dockerfile = readFileSync(join(root, "Dockerfile"), "utf-8");
+
+  it("l'étape finale bascule sur un utilisateur non root", () => {
+    const users = [...dockerfile.matchAll(/^USER\s+(\S+)/gm)].map((m) => m[1]);
+    expect(users.length).toBeGreaterThan(0);
+    expect(users.at(-1)).toBe("bun");
+    expect(users).not.toContain("root");
+  });
+
+  it("USER vient après l'installation et le chown de /app", () => {
+    expect(dockerfile.indexOf("chown -R bun:bun /app")).toBeGreaterThan(
+      dockerfile.indexOf("bun install"),
+    );
+    expect(dockerfile.indexOf("\nUSER bun")).toBeGreaterThan(
+      dockerfile.indexOf("chown -R bun:bun /app"),
+    );
+  });
+});

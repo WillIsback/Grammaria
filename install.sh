@@ -66,6 +66,10 @@ services:
     restart: unless-stopped
 COMPOSE
 
+# Le conteneur tourne sous l'utilisateur « bun » (uid 1000) : le dossier des
+# données doit lui être accessible en écriture. Créé ici par l'utilisateur courant.
+mkdir -p data
+
 echo ""
 echo -e "${GREEN}Démarrage de Grammaria...${NC}"
 docker compose pull
