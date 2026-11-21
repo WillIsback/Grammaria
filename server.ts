@@ -11,7 +11,7 @@ import type { FragmentModele, ModeleDeps } from "./api/deps.ts";
 import { config } from "./config.ts";
 import { GrammarChecker } from "./grammar.ts";
 import { SettingsStore } from "./settings.ts";
-import { cheminStatique } from "./statique.ts";
+import { avecEnTetesSecurite, cheminStatique } from "./statique.ts";
 import { Journal } from "./journal.ts";
 import { ouvrirPiloteBun } from "./journal.driver.bun.ts";
 import { listerModelesAmont } from "./src/utils/modeles.ts";
@@ -217,7 +217,7 @@ Bun.serve({
       filePath = join(DIST_DIR, "index.html");
     }
 
-    return new Response(Bun.file(filePath));
+    return avecEnTetesSecurite(new Response(Bun.file(filePath)));
   },
 });
 

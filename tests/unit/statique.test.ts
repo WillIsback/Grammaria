@@ -1,6 +1,6 @@
 import { join, resolve, sep } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
-import { cheminStatique } from "../../statique";
+import { avecEnTetesSecurite, cheminStatique, CSP_WEB } from "../../statique";
 
 // Fichiers de l'interface servis par server.ts : jamais rien hors du dossier.
 const DIST = resolve("/srv/grammaria/dist");
@@ -39,5 +39,29 @@ describe("cheminStatique", () => {
       const fichier = cheminStatique(DIST, pathname(chemin));
       expect(fichier?.startsWith(DIST + sep)).toBe(true);
     }
+  });
+});
+
+// Issue #42 : en-têtes de durcissement de l'interface web.
+describe("en-têtes de sécurité", () => {
+  it("la CSP est stricte et limitée à l'origine", () => {
+    expect(CSP_WEB).toContain("default-src 'self'");
+    expect(CSP_WEB).toContain("script-src 'self'");
+    expect(CSP_WEB).toContain("connect-src 'self'");
+    expect(CSP_WEB).toContain("frame-ancestors 'none'");
+    expect(CSP_WEB).toContain("object-src 'none'");
+    // Aucune exécution arbitraire de script : pas de unsafe-eval ni de joker.
+    expect(CSP_WEB).not.toContain("unsafe-eval");
+    expect(CSP_WEB).not.toContain("*");
+    // Le seul assouplissement toléré porte sur les styles.
+    expect(CSP_WEB).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
+
+  it("applique la CSP et les en-têtes de durcissement à une réponse", () => {
+    const r = avecEnTetesSecurite(new Response("x"));
+    expect(r.headers.get("Content-Security-Policy")).toBe(CSP_WEB);
+    expect(r.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(r.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(r.headers.get("Referrer-Policy")).toBe("no-referrer");
   });
 });
