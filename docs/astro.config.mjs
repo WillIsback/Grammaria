@@ -31,6 +31,7 @@ export default defineConfig({
             { label: "Comment ça marche", link: "/docs/decouvrir/fonctionnement/" },
             { label: "Le moteur de grammaire", link: "/docs/decouvrir/moteur/" },
             { label: "Versions", link: "/docs/decouvrir/versions/" },
+            { label: "Sécurité", link: "/docs/decouvrir/securite/" },
             { label: "Remerciements", link: "/docs/decouvrir/remerciements/" },
           ],
         },
