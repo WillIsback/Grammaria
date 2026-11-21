@@ -66,7 +66,22 @@ La version 0.3 reprend votre journal des fautes, vos réglages du modèle, votre
 | Windows | `%APPDATA%\fr.willisback.grammaria\` |
 | Linux | `~/.local/share/fr.willisback.grammaria/` |
 
-Le dossier contient le journal des fautes (`grammaria.db`), les réglages (`settings.json`) et les mots ajoutés au dictionnaire (`valid-words.json`). La clé API y est enregistrée en clair, dans un fichier lisible par votre seul compte.
+Le dossier contient le journal des fautes (`grammaria.db`), les réglages (`settings.json`) et les mots ajoutés au dictionnaire (`valid-words.json`).
+
+### La clé API
+
+La clé API du modèle n'est pas dans ce dossier : elle est rangée dans le trousseau de votre système, sous le nom `fr.willisback.grammaria` (compte `cle-api-modele`).
+
+| Système | Trousseau |
+|---|---|
+| Windows | Gestionnaire d'identification (identifiant générique `cle-api-modele.fr.willisback.grammaria`), pour cet ordinateur seulement |
+| Linux | Service de secrets de votre bureau : GNOME Keyring (application **Mots de passe et clés**), KWallet… |
+
+Certains Linux n'ont pas de trousseau : bureau minimal, session sans service de secrets. La clé reste alors dans `settings.json`, un fichier lisible par votre seul compte, et **Paramètres → IA** l'indique sous le champ de la clé. Elle passe dans le trousseau au démarrage suivant, s'il est devenu disponible.
+
+Une clé enregistrée en clair par une version précédente est déplacée dans le trousseau au premier démarrage : elle est d'abord relue dans le trousseau, puis retirée du fichier.
+
+Pour supprimer la clé, cliquez sur **Supprimer la clé enregistrée** dans **Paramètres → IA** : l'entrée du trousseau est supprimée (et la clé retirée du fichier, sans trousseau). Désinstaller l'application ne supprime pas cette entrée : supprimez la clé avant de désinstaller, ou retirez l'entrée `fr.willisback.grammaria` depuis l'outil de votre système (Gestionnaire d'identification, **Mots de passe et clés**, KWalletManager).
 
 ### Journal technique
 
