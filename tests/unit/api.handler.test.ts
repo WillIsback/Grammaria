@@ -436,6 +436,53 @@ describe("creerGestionnaire — conversation (/v1/chat/completions)", () => {
     erreur.mockRestore();
   });
 
+  it("le journal du serveur ne recopie jamais la requête citée par une erreur amont (#32)", async () => {
+    const prive = "Mon texte très privé";
+    const recopie = `Error code: 400 - {'error': {'message': 'context length exceeded'}} kwargs={'messages': [{'role': 'user', 'content': '${prive}'}]}`;
+    const journaux: string[] = [];
+    const espions = (["error", "warn", "log"] as const).map((niveau) =>
+      vi.spyOn(console, niveau).mockImplementation((...args: unknown[]) => {
+        journaux.push(args.map(String).join(" "));
+      }),
+    );
+    try {
+      // En cours de flux, puis avant le premier fragment, puis au correcteur.
+      const { modele } = modeleFactice();
+      modele.ouvrirFlux = async () =>
+        (async function* () {
+          yield { content: "Bon" };
+          throw new Error(recopie);
+        })();
+      const enFlux = creer({ modele });
+      const events = await evenements(
+        (await enFlux.traiter(post("/v1/chat/completions", conversation)))!,
+      );
+      // L'interface garde le détail complet, pour l'utilisateur qui l'a écrit.
+      expect(JSON.stringify(events)).toContain(prive);
+
+      modele.ouvrirFlux = async () => {
+        throw new Error(recopie);
+      };
+      const avant = await creer({ modele }).traiter(post("/v1/chat/completions", conversation));
+      expect(avant?.status).toBe(502);
+
+      const correcteur = creer({
+        correcteur: {
+          check: async () => {
+            throw new Error(`analyse impossible : "text": "${prive}"`);
+          },
+        },
+      });
+      const check = await correcteur.traiter(post("/api/check", { text: prive }));
+      expect(check?.status).toBe(503);
+    } finally {
+      for (const espion of espions) espion.mockRestore();
+    }
+    expect(journaux.some((l) => l.includes("context length exceeded"))).toBe(true);
+    expect(journaux.some((l) => l.includes("analyse impossible"))).toBe(true);
+    expect(journaux.filter((l) => l.includes(prive))).toEqual([]);
+  });
+
   it.each([
     [
       "modèle injoignable (bureau)",
