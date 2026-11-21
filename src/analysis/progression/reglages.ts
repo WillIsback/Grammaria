@@ -73,3 +73,38 @@ export const PROGRESSION = {
     { minimum: 0, libelle: "Les bases à consolider" },
   ],
 } as const;
+
+/**
+ * Réglages de la mesure « avant / depuis la première astuce » (issue #33,
+ * `mesure.ts`) et de l'export anonyme de la bêta (issue #34, `export.ts`).
+ * Ils sont recopiés dans chaque export : deux exports ne se comparent que
+ * s'ils ont été calculés avec les mêmes valeurs.
+ */
+export const MESURE = {
+  /**
+   * Unité des taux : fautes pour 1 000 mots. Pour une seule règle, « pour
+   * 100 mots » donne des nombres minuscules (une faute tous les deux ou trois
+   * textes de 150 mots ≈ 0,3 pour 100 mots, mais 3 pour 1 000 mots).
+   */
+  motsParTaux: 1000,
+
+  /**
+   * Volume minimal de la période « avant » (de la première faute de la règle
+   * à la première astuce). Cette période est courte par construction :
+   * l'astuce arrive dès que la faute revient 3 fois en 7 jours. Exiger
+   * 1 000 mots écarterait la plupart des règles d'un utilisateur qui écrit un
+   * texte de 150 mots par jour ; 3 textes et 400 mots couvrent au moins
+   * plusieurs jours d'écriture.
+   */
+  avantMinimumTextes: 3,
+  avantMinimumMots: 400,
+  /**
+   * Volume minimal de la période « depuis » : au moins 5 textes et
+   * 1 000 mots (une semaine d'écriture quotidienne). Au taux typique d'une
+   * faute signalée (3 à 6 pour 1 000 mots), on attendrait encore 3 à 6 fautes
+   * sur 1 000 mots si rien ne changeait : en dessous, un « zéro faute » ne
+   * dirait rien.
+   */
+  depuisMinimumTextes: 5,
+  depuisMinimumMots: 1000,
+} as const;
