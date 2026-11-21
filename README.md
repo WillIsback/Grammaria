@@ -70,21 +70,17 @@ Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/
 
 Grammaria et son moteur doivent beaucoup à des projets libres :
 
-- **[LanguageTool](https://languagetool.org)** (© Daniel Naber et contributeurs, LGPL-2.1-or-later) : le moteur lit tels quels ses fichiers de règles et dictionnaires français (5 343 règles de grammaire, 1 674 de style), et sa chaîne d'analyse (découpage, étiquetage, désambiguïsation, filtres) a été portée de Java vers Rust.
-- **[Grammalecte](https://grammalecte.net) et Dicollecte** (© Olivier R.) : le dictionnaire français dérive des données Dicollecte/Grammalecte ; les phrases de test de Grammalecte ont servi de banc d'essai pour écrire les 1 320 règles propres au moteur, écrites d'après le comportement attendu et non copiées du code de Grammalecte.
-- **[Morfologik](https://github.com/morfologik/morfologik-stemming)** (© Dawid Weiss et Marcin Miłkowski, BSD-3-Clause) : lecteur de dictionnaire et correcteur orthographique portés en Rust.
+- **[LanguageTool](https://languagetool.org)** (Daniel Naber et contributeurs) : le moteur lit tels quels ses fichiers de règles et dictionnaires français (5 343 règles de grammaire, 1 674 de style), et sa chaîne d'analyse (découpage, étiquetage, désambiguïsation, filtres) a été portée de Java vers Rust.
+- **[Grammalecte](https://grammalecte.net) et Dicollecte** (Olivier R.) : le dictionnaire français dérive des données Dicollecte/Grammalecte ; les phrases de test de Grammalecte ont servi de banc d'essai pour écrire les 1 320 règles propres au moteur, écrites d'après le comportement attendu et non copiées du code de Grammalecte.
+- **[Morfologik](https://github.com/morfologik/morfologik-stemming)** (Dawid Weiss et Marcin Miłkowski) : lecteur de dictionnaire et correcteur orthographique portés en Rust.
 - **Numbertext** : programmes d'écriture des nombres en lettres, fournis avec les données de LanguageTool.
 - **`@valueerror/ltjs`** : le portage JavaScript de LanguageTool qui équipait Grammaria jusqu'à la v0.3.0 ; il a servi de référence de comparaison, aucun code n'en provient.
 - **[ai_corrector](https://github.com/WillIsback/ai_corrector)**, dont Grammaria est issu, et la police **[Inter](https://github.com/rsms/inter)**.
 
 La liste complète : [Remerciements](https://grammaria.fr/docs/decouvrir/remerciements/).
 
-## Licences
+## Licence
 
-Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
+Grammaria est un logiciel libre, distribué sous licence [GPL-3.0-or-later](LICENSE). Son moteur, [grammaria-rc](https://github.com/WillIsback/grammaria-rc), est sous LGPL-2.1-or-later.
 
-Le moteur [grammaria-rc](https://github.com/WillIsback/grammaria-rc) est distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son propre code et ses règles sous MPL-2.0, les modules portés de LanguageTool et les données de LanguageTool sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause (détail dans son fichier `THIRD_PARTY_LICENSES.md`). Ces licences sont compatibles avec la GPL-3.0-or-later de Grammaria. La comparaison mesurée lors de son intégration est dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
-
-La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
-
-Grammaria est issu d'[ai_corrector](https://github.com/WillIsback/ai_corrector), publié sous licence MIT. Sa notice d'origine est conservée dans [LICENSE-MIT](LICENSE-MIT).
+Les mentions des projets tiers sont dans les [remerciements](https://grammaria.fr/docs/decouvrir/remerciements/), dans [`THIRD_PARTY_LICENSES.md`](https://github.com/WillIsback/grammaria-rc/blob/main/THIRD_PARTY_LICENSES.md) pour le moteur, dans [OFL.txt](src/assets/fonts/OFL.txt) pour la police Inter et dans [LICENSE-MIT](LICENSE-MIT) pour ai_corrector.

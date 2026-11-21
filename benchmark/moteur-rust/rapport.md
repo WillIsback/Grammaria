@@ -281,7 +281,6 @@ le moteur et ses données compris). La v0.3.0 était mesurée à environ 0,9 Go 
 
 ## Licences
 
-Le nouveau moteur contient des modules qui sont des traductions en Rust du code Java de
-LanguageTool (LGPL 2.1 ou ultérieure) et de Morfologik (BSD) ; voir `THIRD_PARTY_LICENSES.md`
-dans `grammaria-rc`. Grammaria est sous GPL 3.0 ou ultérieure, avec laquelle ces licences sont
-compatibles.
+Le moteur `grammaria-rc` est sous LGPL 2.1 ou ultérieure, la licence de LanguageTool dont il
+porte le code ; les mentions des projets tiers sont dans son fichier `THIRD_PARTY_LICENSES.md`.
+Grammaria est sous GPL 3.0 ou ultérieure, avec laquelle cette licence est compatible.

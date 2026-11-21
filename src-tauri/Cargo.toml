@@ -40,7 +40,7 @@ url = "2"
 # aussi « grammaria » : il est renommé ici. La révision ci-dessous est la seule source de
 # vérité : scripts/moteur/construire.sh la lit pour construire les données (moteur/data), le
 # moteur du serveur et celui de l'image Docker (test : tests/unit/moteurRevision.test.ts).
-grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "9d1a6e950335fcad4cb0d2f07ca988ade16ebc43" }
+grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "7d93483067e9ef1389fa4277c546d13bb7bb7bde" }
 
 [dev-dependencies]
 tempfile = "3"
