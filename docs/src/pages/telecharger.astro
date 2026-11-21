@@ -1,0 +1,184 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+
+// Page de téléchargement pour des lecteurs non techniques : un bouton par système, qui
+// lance directement le bon fichier. Les fichiers d'une version portent son numéro
+// (Grammaria_0.4.1_x64-setup.exe) : le script ci-dessous lit la dernière version publiée
+// sur GitHub et y accroche chaque bouton. Sans script ou sans réseau, les boutons mènent
+// à la page de la dernière version, et le tableau du bas dit quel fichier y prendre.
+const RELEASES = "https://github.com/WillIsback/Grammaria/releases/latest";
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Télécharger Grammaria",
+    description: "Installer Grammaria sur Windows ou Linux en un clic.",
+    template: "splash",
+  }}
+>
+  <p class="intro">
+    Choisissez votre ordinateur. Le téléchargement démarre tout de suite.
+    <span id="version" class="version"></span>
+  </p>
+
+  <ul class="choix">
+    <li class="carte" data-systeme="windows">
+      <h2>Windows</h2>
+      <p>Windows 10 ou 11.</p>
+      <a class="bouton" data-fichier="_x64-setup.exe" href={RELEASES}>Télécharger pour Windows</a>
+      <p class="aide">
+        Ouvrez le fichier téléchargé et suivez les étapes. Aucun droit d'administrateur n'est demandé.
+      </p>
+    </li>
+    <li class="carte" data-systeme="linux">
+      <h2>Linux — Ubuntu, Debian, Mint</h2>
+      <p>Le choix habituel sous Linux.</p>
+      <a class="bouton" data-fichier="_amd64.deb" href={RELEASES}>Télécharger le paquet .deb</a>
+      <p class="aide">Ouvrez le fichier téléchargé : votre logithèque propose de l'installer.</p>
+    </li>
+    <li class="carte" data-systeme="linux">
+      <h2>Linux — autres distributions</h2>
+      <p>Fedora, Arch, openSUSE…</p>
+      <a class="bouton" data-fichier="_amd64.AppImage" href={RELEASES}>Télécharger l'AppImage</a>
+      <p class="aide">
+        Clic droit sur le fichier, Propriétés, cochez « exécutable », puis lancez-le. Rien à installer.
+      </p>
+    </li>
+  </ul>
+
+  <p class="suite">
+    Une fois Grammaria installé, suivez le <a href="/docs/demarrer/application-bureau/#premier-lancement">premier lancement</a>.
+    Les mises à jour se proposent ensuite d'elles-mêmes dans l'application.
+  </p>
+
+  <h2 class="titre-secondaire">Si un bouton ouvre une liste de fichiers</h2>
+  <p>Prenez dans la liste le fichier dont le nom se termine ainsi :</p>
+  <table>
+    <thead><tr><th>Votre ordinateur</th><th>Fichier à prendre</th></tr></thead>
+    <tbody>
+      <tr><td>Windows</td><td><code>x64-setup.exe</code></td></tr>
+      <tr><td>Ubuntu, Debian, Mint</td><td><code>amd64.deb</code></td></tr>
+      <tr><td>Autre Linux</td><td><code>amd64.AppImage</code></td></tr>
+    </tbody>
+  </table>
+  <p>
+    Les autres fichiers ne vous concernent pas : <code>.msi</code> sert aux services informatiques,
+    <code>.sig</code>, <code>latest.json</code> et <code>SHA256SUMS</code> servent aux vérifications
+    et aux mises à jour, <code>install.sh</code> à l'installation sur un serveur.
+  </p>
+  <p>Mac n'est pas encore pris en charge.</p>
+
+  <script is:inline>
+    (function () {
+      // Met en avant la carte du système du visiteur.
+      var agent = navigator.userAgent || "";
+      var systeme = /Windows/i.test(agent) ? "windows" : /Linux|X11/i.test(agent) && !/Android/i.test(agent) ? "linux" : "";
+      var cartes = document.querySelectorAll(".carte");
+      var premiere = true;
+      cartes.forEach(function (carte) {
+        if (carte.getAttribute("data-systeme") === systeme && premiere) {
+          carte.classList.add("conseillee");
+          premiere = false;
+        }
+      });
+
+      // Accroche chaque bouton au fichier de la dernière version publiée.
+      fetch("https://api.github.com/repos/WillIsback/Grammaria/releases/latest", {
+        headers: { Accept: "application/vnd.github+json" },
+      })
+        .then(function (reponse) {
+          return reponse.ok ? reponse.json() : null;
+        })
+        .then(function (version) {
+          if (!version || !Array.isArray(version.assets)) return;
+          document.querySelectorAll("a[data-fichier]").forEach(function (bouton) {
+            var fin = bouton.getAttribute("data-fichier");
+            var fichier = version.assets.find(function (a) {
+              return typeof a.name === "string" && a.name.slice(-fin.length) === fin;
+            });
+            var adresse = fichier && fichier.browser_download_url;
+            if (typeof adresse === "string" && adresse.indexOf("https://github.com/WillIsback/Grammaria/releases/download/") === 0) {
+              bouton.href = adresse;
+            }
+          });
+          var numero = String(version.tag_name || "").replace(/^v/, "");
+          if (/^[0-9]+\.[0-9]+\.[0-9]+$/.test(numero)) {
+            document.getElementById("version").textContent = "Version actuelle : " + numero + ".";
+          }
+        })
+        .catch(function () {});
+    })();
+  </script>
+</StarlightPage>
+
+<style>
+  .intro {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+  .version {
+    color: var(--sl-color-gray-3);
+    font-size: 0.9rem;
+    margin-left: 0.4rem;
+  }
+  .choix {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+  .carte {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    padding: 1.1rem 1.2rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .carte.conseillee {
+    border: 2px solid #6366f1;
+  }
+  .carte.conseillee h2::after {
+    content: " — votre ordinateur";
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6366f1;
+  }
+  .carte h2 {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .carte p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--sl-color-gray-2);
+  }
+  .bouton {
+    display: block;
+    text-align: center;
+    margin: 0.4rem 0;
+    padding: 0.8rem 1rem;
+    border-radius: 0.6rem;
+    background: #4f46e5;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+  }
+  .bouton:hover,
+  .bouton:focus-visible {
+    background: #4338ca;
+    color: #ffffff;
+  }
+  .carte .aide {
+    font-size: 0.82rem;
+    color: var(--sl-color-gray-3);
+  }
+  .titre-secondaire {
+    font-size: 1.1rem;
+    margin-top: 2.5rem;
+  }
+</style>
