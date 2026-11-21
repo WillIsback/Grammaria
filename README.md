@@ -83,4 +83,4 @@ La liste complète : [Remerciements](https://grammaria.fr/docs/decouvrir/remerci
 
 Grammaria est un logiciel libre, distribué sous licence [GPL-3.0-or-later](LICENSE). Son moteur, [grammaria-rc](https://github.com/WillIsback/grammaria-rc), est sous LGPL-2.1-or-later.
 
-Les mentions des projets tiers sont dans les [remerciements](https://grammaria.fr/docs/decouvrir/remerciements/), dans [`THIRD_PARTY_LICENSES.md`](https://github.com/WillIsback/grammaria-rc/blob/main/THIRD_PARTY_LICENSES.md) pour le moteur, dans [OFL.txt](src/assets/fonts/OFL.txt) pour la police Inter et dans [LICENSE-MIT](LICENSE-MIT) pour ai_corrector.
+Les mentions des projets tiers sont dans les [remerciements](https://grammaria.fr/docs/decouvrir/remerciements/), dans [`THIRD_PARTY_LICENSES.md`](https://github.com/WillIsback/grammaria-rc/blob/main/THIRD_PARTY_LICENSES.md) pour le moteur et dans [OFL.txt](src/assets/fonts/OFL.txt) pour la police Inter.
