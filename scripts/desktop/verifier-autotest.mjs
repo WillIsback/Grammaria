@@ -5,8 +5,11 @@
  * GRAMMARIA_AUTOTEST_OUT=<fichier>). Node seul, sans dépendance.
  *
  * Usage : node scripts/desktop/verifier-autotest.mjs <autotest.json> [--webview webkit|webview2]
+ *           [--stockage trousseau|fichier]
  *   --webview : moteur attendu (défaut : webview2 sous Windows, webkit ailleurs), vérifié sur
  *               `navigator.userAgent` (« Edg/ » pour WebView2).
+ *   --stockage : stockage de la clé API exigé (défaut : trousseau sous Windows, l'un ou l'autre
+ *               ailleurs).
  *
  * Critères (code de sortie 1 si l'un n'est pas tenu, 2 si le fichier est absent ou illisible) :
  *  - page terminée, aucun critère de la page en échec, aucune erreur d'étape ni de page ;
@@ -14,29 +17,63 @@
  *    du fichier du dépôt) ; premier contrôle < 30 s, contrôles suivants (160 mots) < 3 s ;
  *  - journal : schéma 3, aucun mot des textes corrigés dans les octets du fichier de la base
  *    (ni dans le WAL), lot atomique écrit, lots refusés sans rien écrire, conflit reconnu ;
- *  - réglages : clé API absente des réponses à la page, reçue par le modèle ;
+ *  - réglages : clé API absente des réponses à la page, reçue par le modèle ; stockage de la
+ *    clé cohérent avec les fichiers du dossier de données (« trousseau » : clé dans aucun
+ *    fichier et entrée de l'autotest supprimée à la fin ; « fichier » : settings.json en 0600) ;
  *  - flux : 3000 fragments dans l'ordre, annulations vues par le modèle, relance sans
  *    chat_template_kwargs, interruption d'une correction ;
  *  - aucune violation de la CSP ; moteur de la WebView attendu.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+/** Clé de l'autotest (CLE_MODELE de src-tauri/src/autotest.rs, attendue par faux-modele.mjs). */
+const CLE_AUTOTEST = "sk-autotest-cle";
+const USAGE =
+  "Usage : node scripts/desktop/verifier-autotest.mjs <autotest.json> [--webview webkit|webview2] [--stockage trousseau|fichier]";
 const args = process.argv.slice(2);
 const option = (nom) => {
   const i = args.indexOf(nom);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const chemin = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--webview");
+const chemin = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 if (!chemin) {
-  console.error(
-    "Usage : node scripts/desktop/verifier-autotest.mjs <autotest.json> [--webview webkit|webview2]",
-  );
+  console.error(USAGE);
   process.exit(2);
 }
 const webview = option("--webview") ?? (process.platform === "win32" ? "webview2" : "webkit");
+// Windows a toujours le Gestionnaire d'identification : le trousseau y est exigé.
+const stockageAttendu =
+  option("--stockage") ?? (process.platform === "win32" ? "trousseau" : undefined);
+if (stockageAttendu !== undefined && !["trousseau", "fichier"].includes(stockageAttendu)) {
+  console.error(USAGE);
+  process.exit(2);
+}
+
+/** Fichiers de `dossier` (récursivement) dont les octets contiennent `motif`. */
+function fichiersContenant(dossier, motif) {
+  const trouves = [];
+  let entrees = [];
+  try {
+    entrees = readdirSync(dossier, { withFileTypes: true });
+  } catch {
+    return trouves;
+  }
+  for (const entree of entrees) {
+    const cheminEntree = join(dossier, entree.name);
+    if (entree.isDirectory()) trouves.push(...fichiersContenant(cheminEntree, motif));
+    else if (entree.isFile()) {
+      try {
+        if (readFileSync(cheminEntree).includes(motif)) trouves.push(cheminEntree);
+      } catch {
+        // Fichier disparu ou verrouillé : rien à y chercher.
+      }
+    }
+  }
+  return trouves;
+}
 
 let r;
 try {
@@ -113,6 +150,41 @@ ok(
   "clé API absente de la vue des réglages",
 );
 ok(r.reglages?.cleRecueParLeModele === true, "clé API reçue par le modèle");
+
+// Stockage de la clé, vérifié sur les fichiers que l'application a laissés dans son dossier
+// de données (`<autotest.json>.donnees/`, voir src-tauri/src/autotest.rs).
+const stockage = r.reglages?.stockageCle;
+const dossierDonnees = `${chemin}.donnees`;
+ok(
+  stockageAttendu === undefined
+    ? ["trousseau", "fichier"].includes(stockage)
+    : stockage === stockageAttendu,
+  `stockage de la clé API : ${stockage} (attendu : ${stockageAttendu ?? "trousseau ou fichier"})`,
+);
+if (stockage === "trousseau") {
+  const avecCle = fichiersContenant(dossierDonnees, Buffer.from(CLE_AUTOTEST));
+  ok(
+    avecCle.length === 0,
+    "trousseau : la clé n'est dans aucun fichier du dossier de données",
+    avecCle,
+  );
+  ok(r.trousseauVide === true, "trousseau : entrée de l'autotest supprimée à la fin");
+} else if (stockage === "fichier") {
+  const reglages = join(dossierDonnees, "settings.json");
+  ok(
+    fichiersContenant(dossierDonnees, Buffer.from(CLE_AUTOTEST)).includes(reglages),
+    "fichier : la clé est dans settings.json",
+  );
+  if (process.platform !== "win32") {
+    let mode = null;
+    try {
+      mode = statSync(reglages).mode & 0o777;
+    } catch {
+      // Absent : échec ci-dessous.
+    }
+    ok(mode === 0o600, `fichier : settings.json en 0600 (${mode?.toString(8) ?? "absent"})`);
+  }
+}
 
 // Modèle.
 const m = r.modele ?? {};

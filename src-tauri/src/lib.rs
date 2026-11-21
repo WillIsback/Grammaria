@@ -26,6 +26,7 @@ mod export;
 mod llm;
 mod logs;
 mod store;
+mod trousseau;
 mod update;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -111,7 +112,18 @@ pub fn run() {
                 None => app.path().download_dir().ok(),
             }));
             app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
-            let store = store::Store::new(&data_dir);
+            // Clé API dans le trousseau du système. Autotest : une entrée à
+            // part, vidée avant et après (jamais celle de l'utilisateur).
+            let compte = match &autotest {
+                Some(_) => autotest::nettoyer_trousseau_au_depart(),
+                None => trousseau::COMPTE,
+            };
+            let store = store::Store::new(&data_dir, Box::new(trousseau::Systeme::new(compte)));
+            // Une clé encore en clair dans `settings.json` (version
+            // précédente, ou trousseau indisponible jusqu'ici) passe dans le
+            // trousseau. À part : le trousseau peut tarder à répondre.
+            let migration = store.clone();
+            std::thread::spawn(move || migration.migrer_vers_le_trousseau());
             // Un fichier de réglages abîmé est ignoré (valeurs par défaut) et
             // remplacé au prochain enregistrement : le support doit le savoir.
             for fichier in store.fichiers_illisibles() {

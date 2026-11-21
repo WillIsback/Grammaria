@@ -19,7 +19,8 @@
  *     corrigés dans le fichier de la base (commande `autotest_textes_journal`), lot SQLite atomique et lots
  *     refusés par le pilote Tauri (rien d'écrit), export de la bêta (valide, sans texte, écrit
  *     par Rust sous son nom fixe), effacement ;
- *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ;
+ *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ; stockage
+ *     de la clé (trousseau du système, ou fichier sans trousseau) ;
  *  5. modèle (faux serveur local, scripts/desktop/faux-modele.mjs) : ordre des fragments,
  *     annulation pendant le flux et avant le premier fragment, refus de chat_template_kwargs
  *     puis relance, interruption d'une correction par src/utils/llm.ts ;
@@ -394,17 +395,26 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
     const texte = await reponse.text();
     const lecture = await (await fetch("/api/settings")).text();
     const etat = await etatModele();
+    const vue = JSON.parse(texte) as { hasApiKey?: boolean; apiKeyStorage?: string };
     r.reglages = {
       statut: reponse.status,
-      vue: JSON.parse(texte),
+      vue,
       cleRecueParLeModele: etat.cleConforme,
+      // Vérifié par scripts/desktop/verifier-autotest.mjs sur les fichiers du dossier de
+      // données : « trousseau », la clé n'est dans aucun ; « fichier », réglages en 0600.
+      stockageCle: vue.apiKeyStorage,
     };
-    critere("réglages enregistrés", reponse.status === 200 && JSON.parse(texte).hasApiKey === true);
+    critere("réglages enregistrés", reponse.status === 200 && vue.hasApiKey === true);
     critere(
       "clé API jamais renvoyée à la page",
       !texte.includes(config.cle) && !lecture.includes(config.cle),
     );
     critere("clé API transmise au modèle par l'application", etat.cleConforme === true);
+    critere(
+      `stockage de la clé API : ${vue.apiKeyStorage}`,
+      vue.apiKeyStorage === "trousseau" || vue.apiKeyStorage === "fichier",
+      vue.apiKeyStorage,
+    );
   });
 
   // ───────────────────────── 5. Modèle ─────────────────────────
