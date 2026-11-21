@@ -195,6 +195,9 @@ export function dependancesBureau({
     // d'une requête par l'interface annule la requête au modèle.
     options: {
       bureau: true,
+      // La version de l'application installée, telle que Tauri la connaît.
+      versionApplication: async () =>
+        (await api.invoke<{ currentVersion: string }>("update_status")).currentVersion,
       originesCors: [],
       llmTopK: -1,
       suivreAbandonRequete: true,

@@ -9,7 +9,6 @@ import type {
 } from "../../api/deps";
 import { creerGestionnaire } from "../../api/handler";
 import type { ServerSettings, SettingsUpdate } from "../../api/reglages";
-import paquet from "../../package.json";
 
 /**
  * Le gestionnaire d'API avec des dépendances factices : un journal
@@ -257,15 +256,24 @@ describe("creerGestionnaire — journal asynchrone", () => {
   });
 
   it("GET /api/progress/export : version de l'application et plateforme, rien d'autre à fournir", async () => {
-    const bureau = creer();
+    const bureau = creer({
+      options: {
+        bureau: true,
+        originesCors: [],
+        llmTopK: -1,
+        versionApplication: async () => "0.5.0",
+      },
+    });
     expect(await (await bureau.traiter(requete("/api/progress/export")))!.json()).toEqual({
       format: "grammaria-beta",
-      application: paquet.version,
+      application: "0.5.0",
       plateforme: "bureau",
     });
+    // Sans version fournie (développement, tests) : « 0.0.0 », jamais celle de package.json.
     const serveur = creer({ options: { bureau: false, originesCors: [], llmTopK: -1 } });
     const corps = await (await serveur.traiter(requete("/api/progress/export")))!.json();
     expect(corps.plateforme).toBe("serveur");
+    expect(corps.application).toBe("0.0.0");
     const post = await serveur.traiter(requete("/api/progress/export", { method: "POST" }));
     expect(post!.status).toBe(405);
   });

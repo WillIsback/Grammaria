@@ -1,5 +1,4 @@
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
-import { version } from "../package.json";
 import { analyze } from "../src/analysis/analyze.ts";
 import { compterEtats } from "../src/analysis/regles/cycle.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
@@ -289,7 +288,8 @@ export function creerGestionnaire(
       // validés avant de sortir. Rien n'est envoyé : l'interface en fait un fichier.
       if (path === "/api/progress/export" && req.method === "GET") {
         const plateforme = options.bureau ? "bureau" : "serveur";
-        return json(await journal.exportBeta({ application: version, plateforme }), headers);
+        const application = (await options.versionApplication?.()) ?? "0.0.0";
+        return json(await journal.exportBeta({ application, plateforme }), headers);
       }
 
       if (path === "/api/journal" && req.method === "GET") {
