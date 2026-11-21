@@ -171,6 +171,24 @@ jobs:
           # Lancement manuel : le tag est créé ici, sur le commit construit.
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
+          # En tête des notes : quel fichier prendre, pour qui arrive ici sans
+          # connaître les noms de paquets. La liste des changements suit.
+          body: |
+            ## Installer Grammaria
+
+            Le plus simple : **[grammaria.fr/telecharger](https://grammaria.fr/telecharger/)**, un bouton par système.
+
+            Sinon, prenez ci-dessous, dans « Assets », le fichier dont le nom se termine ainsi :
+
+            | Votre ordinateur | Fichier à prendre |
+            |---|---|
+            | Windows | `x64-setup.exe` |
+            | Linux : Ubuntu, Debian, Mint | `amd64.deb` |
+            | Autre Linux | `amd64.AppImage` |
+
+            Les autres fichiers servent aux services informatiques (`.msi`), aux vérifications et aux mises à jour (`.sig`, `latest.json`, `SHA256SUMS`) et à l'installation sur un serveur (`install.sh`).
+
+            Déjà installé ? L'application propose la mise à jour d'elle-même.
           generate_release_notes: true
           prerelease: ${{ env.PRERELEASE == 'true' }}
           make_latest: ${{ env.PRERELEASE == 'true' && 'false' || 'true' }}

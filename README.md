@@ -2,11 +2,11 @@
 
 **Le correcteur de français qui corrige tout de suite, et vous aide à ne plus refaire les mêmes fautes.**
 
-[![Installer pour Windows](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/WillIsback/Grammaria/releases/latest)
-[![Installer pour Linux](https://img.shields.io/badge/Linux-Installer-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/WillIsback/Grammaria/releases/latest)
+[![Installer pour Windows](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://grammaria.fr/telecharger/)
+[![Installer pour Linux](https://img.shields.io/badge/Linux-Installer-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://grammaria.fr/telecharger/)
 [![Documentation](https://img.shields.io/badge/Documentation-grammaria.fr-2E7D32?style=for-the-badge&logo=readthedocs&logoColor=white)](https://grammaria.fr/docs/)
 
-Les deux premiers boutons mènent à la dernière version : prenez le fichier `.exe` sous Windows, `.deb` ou `.AppImage` sous Linux.
+Les deux premiers boutons mènent à la [page de téléchargement](https://grammaria.fr/telecharger/) : un bouton par système, le bon fichier se télécharge directement.
 
 ## Pour qui
 
@@ -31,7 +31,7 @@ Le détail : [Comment ça marche](https://grammaria.fr/docs/decouvrir/fonctionne
 
 ### Application de bureau (Windows, Linux)
 
-Téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases) (environ 9 Mo pour le `.deb`, 7 Mo pour l'installeur Windows), lancez Grammaria et indiquez l'adresse de votre modèle dans **Paramètres → IA**. Rien d'autre à installer. Guide : [Application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
+Téléchargez Grammaria sur la [page de téléchargement](https://grammaria.fr/telecharger/) (environ 9 Mo pour le `.deb`, 7 Mo pour l'installeur Windows), lancez Grammaria et indiquez l'adresse de votre modèle dans **Paramètres → IA**. Rien d'autre à installer. Guide : [Application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
 ### Serveur Docker
 
