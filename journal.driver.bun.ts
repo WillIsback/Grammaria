@@ -33,6 +33,8 @@ export class BunJournalDriver implements JournalDriver {
     // Posés par le pilote à l'ouverture, jamais par le journal.
     this.db.exec("PRAGMA journal_mode = WAL");
     this.db.exec("PRAGMA foreign_keys = ON");
+    // Une ligne supprimée est écrasée par des zéros, pas seulement libérée.
+    this.db.exec("PRAGMA secure_delete = ON");
   }
 
   /** Exécute une requête de lecture ; refuse tout ce qui n'est pas une lecture. */
@@ -94,6 +96,11 @@ export class BunJournalDriver implements JournalDriver {
         return resultats;
       })
       .immediate();
+  }
+
+  async compacter(): Promise<void> {
+    this.db.exec("VACUUM");
+    this.db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
   }
 
   close(): void {

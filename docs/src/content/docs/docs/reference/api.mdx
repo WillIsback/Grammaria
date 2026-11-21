@@ -68,7 +68,7 @@ Calcule le diff, le croise avec les détections, enregistre le résultat dans le
 }
 ```
 
-`matches` est le tableau renvoyé par `POST /api/check`. Chaque faute indique sa `source` : `fiche`, `lt` (moteur de grammaire ; le nom vient de LanguageTool, dont le moteur reprend les règles) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
+`matches` est le tableau renvoyé par `POST /api/check`. Chaque faute indique sa `source` : `fiche`, `lt` (moteur de grammaire ; le nom vient de LanguageTool, dont le moteur reprend les règles) ou `accord` (déduit du diff), son `label` (nom fixe de la règle : titre de la fiche ou description de la règle du moteur) et son `message` (message du moteur, qui peut citer le texte). `original` et `corrected` sont limités à 20 000 caractères. Le journal n'enregistre ni le texte, ni la phrase, ni le mot, ni la correction, ni le message : seulement la règle, sa catégorie, la date et les compteurs.
 
 Réponse :
 
@@ -212,7 +212,7 @@ Réponse : `{"recorded": true, "nouveauxBadges": []}`. Chaque choix ne reçoit q
 
 ### `GET /api/journal?days=7`
 
-Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illisible, 1 pour une valeur inférieure à 1) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles (`rules`) et mots (`words`) les plus fréquents.
+Bilan de la période (entier de 1 à 365 jours ; 7 si `days` est absent ou illisible, 1 pour une valeur inférieure à 1) : `period` (textes, mots, fautes, note), `unclassified`, et les vingt règles les plus fréquentes (`rules` : `ruleKey`, `label`, `categoryName`, `count`). `label` est le nom fixe de la règle : titre de sa fiche, description de la règle du moteur, ou à défaut sa catégorie ; jamais un extrait de vos textes.
 
 ### `GET /api/progress`
 
@@ -258,8 +258,7 @@ Réponse (extrait, deux semaines sur douze) :
   },
   "frequentRules": [
     { "ruleKey": "PAIRE:a/à", "label": "a / à", "categoryName": "Confusion de mots", "count": 17, "state": "travaillee" }
-  ],
-  "trapWords": [{ "word": "apareil", "replacement": "appareil", "count": 14 }]
+  ]
 }
 ```
 
@@ -276,7 +275,6 @@ Réponse (extrait, deux semaines sur douze) :
 | `series` | une entrée par semaine, de la plus ancienne à la plus récente |
 | `rules.active`, `rules.acquired` | règles signalées ou travaillées (les plus récemment fautives d'abord), et règles acquises (les plus récemment acquises d'abord) |
 | `frequentRules` | les huit règles les plus fréquentes sur les semaines affichées, hors `FR_SPELLING_RULE` ; `state` vaut `null` pour une règle hors cycle |
-| `trapWords` | les dix mots le plus souvent mal orthographiés (`FR_SPELLING_RULE`) sur les semaines affichées, en minuscules, avec la correction la plus fréquente |
 
 Score : `arrondi(100 × (0,6 × qualité + 0,4 × part des règles acquises))`, qualité et part étant comprises entre 0 et 1 avant arrondi (qualité = note récente / 20). Sans règle entrée dans le cycle : `arrondi(100 × qualité)`. Explication en langage simple dans [Progression](/docs/utiliser/progression/).
 

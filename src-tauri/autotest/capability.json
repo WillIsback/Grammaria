@@ -1,7 +1,11 @@
 {
   "identifier": "autotest",
-  "description": "Ajoutée à l'exécution, seulement quand GRAMMARIA_AUTOTEST_OUT est défini (src/autotest.rs) : la page d'autotest rend ses résultats. Volontairement hors du dossier capabilities/.",
+  "description": "Ajoutée à l'exécution, seulement quand GRAMMARIA_AUTOTEST_OUT est défini (src/autotest.rs) : la page d'autotest rend ses résultats et vérifie qu'aucun de ses textes n'est resté dans le fichier du journal. Volontairement hors du dossier capabilities/.",
   "windows": ["main"],
   "local": true,
-  "permissions": ["allow-autotest-config", "allow-autotest-terminer"]
+  "permissions": [
+    "allow-autotest-config",
+    "allow-autotest-terminer",
+    "allow-autotest-textes-journal"
+  ]
 }

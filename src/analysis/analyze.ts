@@ -11,13 +11,16 @@ interface Fault {
   categoryId: string;
   categoryName: string;
   issueType: string;
+  /**
+   * Message du correcteur grammatical, affiché pendant la correction. Il peut citer les
+   * mots du texte : il n'est JAMAIS journalisé.
+   */
   message: string;
-  /** Forme fautive telle qu'écrite (en minuscules). */
-  word: string;
-  /** Ce que le correcteur a écrit à la place. */
-  replacement: string;
-  /** Phrase d'origine contenant la faute. */
-  sentence: string;
+  /**
+   * Nom fixe de la règle (titre de la fiche, description de la règle du moteur) : le seul
+   * libellé journalisé, il ne dépend jamais du texte analysé.
+   */
+  label: string;
   /** Vrai si la faute entre dans la note (orthographe, grammaire). */
   counted: boolean;
 }
@@ -80,16 +83,31 @@ export function isPunctuationOnly(before: string, after: string): boolean {
   return before !== after && strip(before) === strip(after);
 }
 
-const MAX_SENTENCE_LENGTH = 300;
+/**
+ * Règles du moteur rapportées sous un identifiant par entrée de dictionnaire : l'identifiant
+ * et la description contiennent alors le mot écrit (`FR_SIMPLE_REPLACE_SIMPLE_JAI`,
+ * « Mot incorrect : jai » ; `FR_COMPOUNDS_PILE_POIL`). Elles sont ramenées à leur règle
+ * d'origine, sous un libellé fixe : ni la clé ni le libellé ne gardent un mot du texte.
+ */
+export const REGLES_PAR_MOT: Readonly<Record<string, string>> = {
+  FR_SIMPLE_REPLACE_SIMPLE: "Mot incorrect",
+  FR_COMPOUNDS: "Mots avec trait d’union",
+};
 
-export function sentenceAt(text: string, offset: number): string {
-  const isBoundary = (ch: string) => ch === "." || ch === "!" || ch === "?" || ch === "\n";
-  let start = Math.min(offset, text.length);
-  while (start > 0 && !isBoundary(text[start - 1])) start--;
-  let end = Math.min(offset, text.length);
-  while (end < text.length && !isBoundary(text[end])) end++;
-  if (end < text.length && text[end] !== "\n") end++;
-  return text.slice(start, end).trim().slice(0, MAX_SENTENCE_LENGTH);
+/** Règle d'origine d'un identifiant de `REGLES_PAR_MOT` ; null pour une autre règle. */
+export function regleParMot(id: string): string | null {
+  for (const cle of Object.keys(REGLES_PAR_MOT)) {
+    if (id === cle || id.startsWith(`${cle}_`)) return cle;
+  }
+  return null;
+}
+
+/** Clé et libellé fixes d'une règle du moteur (voir `REGLES_PAR_MOT`). */
+export function regleDuMoteur(rule: LTMatch["rule"]): { ruleKey: string; label: string } {
+  const parMot = regleParMot(rule.id);
+  if (parMot) return { ruleKey: parMot, label: REGLES_PAR_MOT[parMot] };
+  // La description est un attribut fixe de la règle, contrairement au message.
+  return { ruleKey: rule.id, label: rule.description || rule.category?.name || rule.id };
 }
 
 /**
@@ -112,51 +130,42 @@ export function analyze(original: string, corrected: string, matches: LTMatch[])
       for (const m of overlapping) used.add(m);
       continue;
     }
-    const base = {
-      replacement: hunk.after.trim(),
-      sentence: sentenceAt(original, hunk.start),
-    };
-
     const ficheKey = detecterConfusion(hunk.before, hunk.after);
     let faults: Fault[];
     if (ficheKey) {
       faults = [
         {
-          ...base,
           ruleKey: ficheKey,
           source: "fiche",
           categoryId: "CONFUSION",
           categoryName: "Confusion de mots",
           issueType: "grammar",
           message: FICHES[ficheKey].titre,
-          word: hunk.before.trim().toLowerCase(),
+          label: FICHES[ficheKey].titre,
           counted: true,
         },
       ];
     } else {
       faults = overlapping.map((m) => ({
-        ...base,
-        ruleKey: m.rule.id,
+        ...regleDuMoteur(m.rule),
         source: "lt" as const,
         categoryId: m.rule.category?.id ?? "",
         categoryName: m.rule.category?.name ?? "",
         issueType: m.rule.issueType ?? "",
         message: m.shortMessage || m.message,
-        word: original.slice(m.offset, m.offset + m.length).toLowerCase(),
         counted: isCounted(m),
       }));
     }
     if (!ficheKey && faults.length === 0 && detecterAccord(hunk.before, hunk.after)) {
       faults = [
         {
-          ...base,
           ruleKey: ACCORD_RULE_KEY,
           source: "accord",
           categoryId: "ACCORD",
           categoryName: "Accord",
           issueType: "grammar",
           message: ACCORD_MESSAGE,
-          word: hunk.before.trim().toLowerCase(),
+          label: ACCORD_MESSAGE,
           counted: true,
         },
       ];

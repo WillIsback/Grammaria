@@ -217,9 +217,13 @@ describe("pont — correcteur et journal (SQLite par les commandes simulées)", 
     expect(compter("rule_states")).toBe(0);
   });
 
-  it("schéma créé par le journal : version 2, pragmas lus par db_read", async () => {
+  it("schéma créé par le journal : version 3, pragmas lus par db_read", async () => {
     const { tauri } = await bureau();
-    expect(tauri.db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 2 });
+    expect(tauri.db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 3 });
+    // Base neuve : migrée puis compactée par la commande dédiée, sans SQL transmis.
+    const compactages = tauri.appels.filter((a) => a.commande === "db_compacter");
+    expect(compactages).toHaveLength(1);
+    expect(compactages[0].args).toBeUndefined();
     const lectures = tauri.appels.filter((a) => a.commande === "db_read");
     expect(lectures.some((a) => /PRAGMA user_version/i.test(String(a.args?.sql)))).toBe(true);
   });

@@ -1,13 +1,15 @@
 //! Accès SQLite du journal des fautes.
 //!
 //! La logique du journal reste en TypeScript (source unique, partagée avec le
-//! serveur web) : Rust n'expose que trois commandes génériques sur le fichier
+//! serveur web) : Rust n'expose que quatre commandes sur le fichier
 //! `grammaria.db` du dossier de données, celui qu'écrivait la version 0.2, repris
 //! tel quel.
 //!
 //! - `db_read` : UNE requête en lecture seule, lignes en objets JSON ;
 //! - `db_read_many` : plusieurs lectures dans un même instantané ;
-//! - `db_batch` : un lot d'écritures dans UNE transaction, tout ou rien.
+//! - `db_batch` : un lot d'écritures dans UNE transaction, tout ou rien ;
+//! - `db_compacter` : `VACUUM` puis vidage du WAL, sans argument, après la
+//!   migration qui efface les textes de l'utilisateur (schéma 3).
 //!
 //! # Garde-fous
 //!
@@ -20,11 +22,13 @@
 //!   `DETACH`, `load_extension()`, le contrôle des transactions (`BEGIN`,
 //!   `COMMIT`, `SAVEPOINT`… : c'est Rust qui garantit l'atomicité), les tables
 //!   virtuelles, les déclencheurs, les vues, `DROP` et `ALTER TABLE` (le
-//!   journal ne crée que des tables et des index, sans jamais en supprimer)
-//!   et tout pragma hors d'une courte liste (seul `user_version` peut être
-//!   modifié, pour les migrations du schéma, et seulement entre 0 et
+//!   journal ne crée que des tables et des index ; seules exceptions, au
+//!   caractère près, les instructions de `MIGRATION_SANS_TEXTE`) et tout
+//!   pragma hors d'une courte liste (seul `user_version` peut être modifié,
+//!   pour les migrations du schéma, et seulement entre 0 et
 //!   `USER_VERSION_MAX`) ;
-//! - `VACUUM` (dont `VACUUM INTO 'fichier'`) est refusé ;
+//! - `VACUUM` (dont `VACUUM INTO 'fichier'`) est refusé dans les lots : seule
+//!   la commande `db_compacter` l'exécute, avec un SQL fixe ;
 //! - le mode défensif de SQLite protège le schéma interne (`sqlite_master`,
 //!   `writable_schema`…), `trusted_schema` est coupé et aucune base ne peut
 //!   être attachée (`SQLITE_LIMIT_ATTACHED` = 0) ;
@@ -85,7 +89,21 @@ const OCTETS_MAX: usize = 64 * 1024 * 1024;
 /// Version du schéma la plus haute que la page peut écrire dans
 /// `PRAGMA user_version`. À tenir égale à `SCHEMA_VERSION` de `journal.ts`
 /// (un test le vérifie).
-pub const USER_VERSION_MAX: i64 = 2;
+pub const USER_VERSION_MAX: i64 = 3;
+
+/// Seules instructions `DROP` et `ALTER` admises dans un lot, comparées au
+/// caractère près : la migration v3 du journal, qui retire de la table des
+/// fautes les colonnes de texte de l'utilisateur (et l'index de l'une
+/// d'elles). Exécutées hors des règles strictes de la page, puisque connues
+/// d'avance. Même liste que `MIGRATION_SANS_TEXTE` de `journal.driver.ts`
+/// (un test le vérifie).
+const MIGRATION_SANS_TEXTE: &[&str] = &[
+    "DROP INDEX IF EXISTS idx_faults_word",
+    "ALTER TABLE faults DROP COLUMN message",
+    "ALTER TABLE faults DROP COLUMN word",
+    "ALTER TABLE faults DROP COLUMN replacement",
+    "ALTER TABLE faults DROP COLUMN sentence",
+];
 
 /// Instructions de la machine virtuelle de SQLite entre deux vérifications
 /// de l'échéance (quelques microsecondes).
@@ -179,6 +197,11 @@ impl Db {
         }))
     }
 
+    /// Fichier de la base.
+    pub fn chemin(&self) -> &Path {
+        &self.0.path
+    }
+
     /// Exécute `work` avec la connexion, ouverte au besoin. Un verrou
     /// empoisonné (panique pendant un appel précédent) ne bloque pas le
     /// journal : la connexion reste cohérente, SQLite ayant annulé la
@@ -231,15 +254,14 @@ fn open(path: &Path, limites: Limites) -> rusqlite::Result<Guarded> {
     conn.busy_timeout(BUSY_TIMEOUT)?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
+    // Une ligne supprimée est écrasée par des zéros, pas seulement libérée.
+    conn.pragma_update(None, "secure_delete", "ON")?;
     conn.pragma_update(None, "trusted_schema", "OFF")?;
     conn.set_db_config(DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)?;
     conn.set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)?;
     conn.set_prepared_statement_cache_capacity(64);
     let page = Arc::new(AtomicBool::new(false));
-    let flag = page.clone();
-    conn.authorizer(Some(move |context: AuthContext<'_>| {
-        authorize(flag.load(Ordering::Relaxed), context)
-    }));
+    installer_autorisateur(&conn, &page);
     let echeance: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
     let suivie = echeance.clone();
     conn.progress_handler(
@@ -252,6 +274,13 @@ fn open(path: &Path, limites: Limites) -> rusqlite::Result<Guarded> {
         echeance,
         limites,
     })
+}
+
+fn installer_autorisateur(conn: &Connection, page: &Arc<AtomicBool>) {
+    let flag = page.clone();
+    conn.authorizer(Some(move |context: AuthContext<'_>| {
+        authorize(flag.load(Ordering::Relaxed), context)
+    }));
 }
 
 /// Pragmas que la page peut lire (sans valeur) ou appeler avec un nom de
@@ -322,7 +351,8 @@ fn authorize(page: bool, context: AuthContext<'_>) -> Authorization {
         // Jamais envoyés par le journal (`journal*.ts` : CREATE TABLE et CREATE
         // INDEX IF NOT EXISTS seulement) : un déclencheur ou une vue ferait
         // exécuter du SQL caché aux écritures et lectures suivantes, un DROP ou
-        // un ALTER détruirait le journal.
+        // un ALTER détruirait le journal (`MIGRATION_SANS_TEXTE`, connue
+        // d'avance, est exécutée hors de ces règles).
         AuthAction::CreateTrigger { .. }
         | AuthAction::CreateTempTrigger { .. }
         | AuthAction::CreateView { .. }
@@ -588,7 +618,8 @@ fn batch(guarded: &mut Guarded, statements: &[Statement]) -> Result<Vec<Statemen
         let bound = bind_all(&statement.params, Some(&rowids)).map_err(fail)?;
         let before = tx.total_changes();
         {
-            let _page = PageScope::enter(&page);
+            let _page = (!MIGRATION_SANS_TEXTE.contains(&statement.sql.as_str()))
+                .then(|| PageScope::enter(&page));
             let mut prepared = tx
                 .prepare_cached(&statement.sql)
                 .map_err(|error| fail(sql_error(error)))?;
@@ -628,6 +659,56 @@ fn batch(guarded: &mut Guarded, statements: &[Statement]) -> Result<Vec<Statemen
     Ok(results)
 }
 
+/// Réécrit le fichier (`VACUUM`) et vide le WAL : les données supprimées ne
+/// restent ni dans les pages libres, ni dans le WAL. SQL fixe, hors de toute
+/// transaction : la page ne transmet rien.
+fn compacter(guarded: &mut Guarded) -> Result<(), String> {
+    let conn = &guarded.conn;
+    // `VACUUM` attache lui-même une base temporaire (« vacuum_db »), ce que
+    // l'autorisateur et `SQLITE_LIMIT_ATTACHED` interdisent à tout autre SQL :
+    // les deux sont levés le temps de cette seule instruction, écrite ici.
+    conn.authorizer(None::<fn(AuthContext<'_>) -> Authorization>);
+    conn.set_limit(Limit::SQLITE_LIMIT_ATTACHED, 1)
+        .map_err(sql_error)?;
+    let vacuum = conn.execute_batch("VACUUM");
+    let remise = conn.set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0);
+    installer_autorisateur(conn, &guarded.page);
+    vacuum.map_err(sql_error)?;
+    remise.map_err(sql_error)?;
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")
+        .map_err(sql_error)
+}
+
+/// Parmi `textes`, ceux dont les octets figurent dans le fichier de la base
+/// `path` ou dans ses fichiers annexes (`-wal`, `-shm`, `-journal`), en UTF-8
+/// ou en UTF-16 (petit et grand boutiste) : de quoi vérifier qu'aucun texte
+/// de l'utilisateur n'y est resté, même dans une page libre.
+pub fn textes_dans_les_fichiers(path: &Path, textes: &[String]) -> Vec<String> {
+    let contenus: Vec<Vec<u8>> = ["", "-wal", "-shm", "-journal"]
+        .iter()
+        .filter_map(|suffixe| {
+            let mut nom = path.as_os_str().to_owned();
+            nom.push(suffixe);
+            std::fs::read(PathBuf::from(nom)).ok()
+        })
+        .collect();
+    let contient = |aiguille: &[u8]| {
+        !aiguille.is_empty()
+            && contenus
+                .iter()
+                .any(|octets| octets.windows(aiguille.len()).any(|w| w == aiguille))
+    };
+    textes
+        .iter()
+        .filter(|texte| {
+            let le: Vec<u8> = texte.encode_utf16().flat_map(u16::to_le_bytes).collect();
+            let be: Vec<u8> = texte.encode_utf16().flat_map(u16::to_be_bytes).collect();
+            contient(texte.as_bytes()) || contient(&le) || contient(&be)
+        })
+        .cloned()
+        .collect()
+}
+
 /// Une requête en lecture seule ; refusée si elle écrit.
 #[tauri::command]
 pub async fn db_read(
@@ -659,13 +740,23 @@ pub async fn db_batch(
         .inspect_err(|error| logs::echec_commande("db_batch", error))
 }
 
+/// Compacte la base après la migration qui efface les textes (`compacter`).
+#[tauri::command]
+pub async fn db_compacter(db: State<'_, Db>) -> Result<(), String> {
+    db.run(compacter)
+        .await
+        .inspect_err(|error| logs::echec_commande("db_compacter", error))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Schéma créé par le serveur actuel : copie de `journal.ts`,
-    /// `journal.rules.ts` et `journal.badges.ts` (version 2).
+    /// Schéma créé par le serveur de la version 2 (`journal.ts`,
+    /// `journal.rules.ts` et `journal.badges.ts` avant la version 3, qui
+    /// retire les colonnes de texte) : le journal qu'un utilisateur ouvre en
+    /// mettant Grammaria à jour.
     const SCHEMA_SERVEUR: &str = "
       PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
@@ -1019,6 +1110,150 @@ mod tests {
         assert_eq!(
             USER_VERSION_MAX, version,
             "mettre USER_VERSION_MAX (db.rs) à jour avec SCHEMA_VERSION (journal.ts)"
+        );
+    }
+
+    #[test]
+    fn la_migration_sans_texte_est_celle_du_pilote_typescript() {
+        let pilote = include_str!("../../journal.driver.ts");
+        let debut = pilote
+            .find("export const MIGRATION_SANS_TEXTE")
+            .expect("MIGRATION_SANS_TEXTE déclarée dans journal.driver.ts");
+        let bloc = &pilote[debut..];
+        let bloc = &bloc[bloc.find('[').unwrap() + 1..bloc.find("];").unwrap()];
+        let instructions: Vec<&str> = bloc.split('"').skip(1).step_by(2).collect();
+        assert_eq!(instructions, MIGRATION_SANS_TEXTE);
+    }
+
+    /// Mots improbables : on les cherche ensuite dans les octets du fichier.
+    const SENTINELLES: [&str; 4] = [
+        "Zorglubienne",
+        "quixotérismal",
+        "Brabanthrope",
+        "Vélocipédisme-ζ",
+    ];
+
+    #[test]
+    fn la_migration_v3_efface_les_textes_jusque_dans_les_octets_du_fichier() {
+        let banc = banc();
+        // Journal de la version 2 : des textes de l'utilisateur dans chaque
+        // colonne de texte, sur plusieurs lignes (et donc plusieurs pages).
+        let [phrase, mot, correction, message] = SENTINELLES;
+        let mut lot = vec![];
+        for i in 0..200 {
+            lot.push(json!({
+                "sql": "INSERT INTO faults (text_id, created_at, rule_key, source, category_id,
+                          category_name, issue_type, message, word, replacement, sentence, counted)
+                        VALUES (1, ?, 'ACCORD_R_PERS_VERBE', 'lt', 'GRAMMAR', 'Grammaire',
+                          'grammar', ?, ?, ?, ?, 1)",
+                "params": [
+                    MAINTENANT + i,
+                    format!("{message} {i}"),
+                    format!("{mot}{i}"),
+                    correction,
+                    format!("Hier, {phrase} a écrit {i} lignes."),
+                ],
+            }));
+        }
+        banc.batch(Value::Array(lot)).unwrap();
+        let tous: Vec<String> = SENTINELLES.iter().map(|s| s.to_string()).collect();
+        assert_eq!(textes_dans_les_fichiers(&banc.path, &tous), tous);
+
+        // Ce qu'envoie le journal (`journal.ts`) : les retraits, la version,
+        // puis le compactage.
+        let mut migration: Vec<Value> = MIGRATION_SANS_TEXTE
+            .iter()
+            .map(|sql| json!({ "sql": sql }))
+            .collect();
+        migration.push(json!({ "sql": "PRAGMA user_version = 3" }));
+        banc.batch(Value::Array(migration)).unwrap();
+        banc.db.with(compacter).unwrap();
+
+        // L'historique chiffré est intact…
+        assert_eq!(banc.count("faults"), 201);
+        assert_eq!(banc.count("texts"), 1);
+        let colonnes: Vec<String> = banc
+            .read("PRAGMA table_info(faults)", vec![])
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(
+            colonnes,
+            [
+                "id",
+                "text_id",
+                "user_id",
+                "created_at",
+                "rule_key",
+                "source",
+                "category_id",
+                "category_name",
+                "issue_type",
+                "counted"
+            ]
+        );
+        // … et aucun texte ne reste, ni dans la base, ni dans le WAL.
+        assert_eq!(
+            textes_dans_les_fichiers(&banc.path, &tous),
+            Vec::<String>::new()
+        );
+        let autres = ["mangés", "Ils ont mangés."].map(String::from);
+        assert_eq!(
+            textes_dans_les_fichiers(&banc.path, &autres),
+            Vec::<String>::new()
+        );
+        assert_eq!(banc.journal_mode(), "wal");
+        // Les garde-fous sont revenus après le compactage.
+        let error = banc
+            .batch(json!([{ "sql": "ATTACH DATABASE 'autre.db' AS autre" }]))
+            .unwrap_err();
+        assert!(error.contains("non autorisée"), "{error}");
+        let error = banc
+            .batch(json!([{ "sql": "DROP INDEX idx_faults_rule" }]))
+            .unwrap_err();
+        assert!(error.contains("non autorisée"), "{error}");
+    }
+
+    #[test]
+    fn la_liste_de_la_migration_v3_est_fermee() {
+        let banc = banc();
+        // Rien d'autre ne passe, même proche d'une instruction de la liste.
+        for sql in [
+            "ALTER TABLE faults DROP COLUMN rule_key",
+            "ALTER TABLE faults DROP COLUMN counted",
+            "DROP INDEX IF EXISTS idx_faults_rule",
+            "ALTER TABLE  faults DROP COLUMN message",
+            "alter table faults drop column message",
+            "ALTER TABLE faults DROP COLUMN message;",
+        ] {
+            let error = banc.batch(json!([{ "sql": sql }])).unwrap_err();
+            assert!(error.contains("non autorisée"), "{sql} : {error}");
+        }
+        assert_eq!(
+            banc.read("PRAGMA table_info(faults)", vec![])
+                .unwrap()
+                .len(),
+            14
+        );
+    }
+
+    #[test]
+    fn la_recherche_des_textes_lit_aussi_l_utf_16() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(JOURNAL_FILE);
+        let utf16: Vec<u8> = "Zorglubienne"
+            .encode_utf16()
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        std::fs::write(&path, b"rien").unwrap();
+        let mut wal = path.as_os_str().to_owned();
+        wal.push("-wal");
+        std::fs::write(PathBuf::from(wal), utf16).unwrap();
+        let cherches = ["Zorglubienne".to_string(), "absent".to_string()];
+        assert_eq!(
+            textes_dans_les_fichiers(&path, &cherches),
+            ["Zorglubienne".to_string()]
         );
     }
 

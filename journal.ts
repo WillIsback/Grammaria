@@ -9,9 +9,13 @@ import {
   SCHEMA_BADGES,
 } from "./journal.badges.ts";
 import type { AnswerResult } from "./api/deps.ts";
-import type { JournalDriver, Statement } from "./journal.driver.ts";
+import { type JournalDriver, MIGRATION_SANS_TEXTE, type Statement } from "./journal.driver.ts";
 import {
   type FollowOptions,
+  fusionnerEtatsParMot,
+  libelleRegle,
+  motifParMot,
+  requeteEtatsParMot,
   lireInstantaneSuivi,
   type PlanSuivi,
   planifierRejeu,
@@ -24,10 +28,11 @@ import {
   RuleStore,
   type RuleView,
   SCHEMA_REGLES,
+  SELECT_LIBELLE,
   type Suivi,
   vueRegles,
 } from "./journal.rules.ts";
-import type { Analysis } from "./src/analysis/analyze.ts";
+import { type Analysis, REGLES_PAR_MOT } from "./src/analysis/analyze.ts";
 import type { BadgeAnnonce } from "./src/analysis/badges/vue.ts";
 import {
   calculerProgression,
@@ -46,9 +51,10 @@ export type { RuleHistoryEntry, RuleHistoryType, RuleView, Suivi } from "./journ
 
 /**
  * Version du schéma, conservée dans `PRAGMA user_version` : 0 pour une base
- * v0.2.0, 1 avec le cycle de vie des règles, 2 avec les badges.
+ * v0.2.0, 1 avec le cycle de vie des règles, 2 avec les badges, 3 sans aucun
+ * texte de l'utilisateur (ni phrase, ni mot, ni correction, ni message).
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Journal créé par une version plus récente de Grammaria (`user_version` au-delà
@@ -69,13 +75,8 @@ export class JournalFuturError extends Error {
 export interface RuleCount {
   ruleKey: string;
   categoryName: string;
-  message: string;
-  count: number;
-}
-
-export interface WordCount {
-  word: string;
-  replacement: string;
+  /** Nom fixe de la règle (titre de la fiche, description du moteur, catégorie ou clé). */
+  label: string;
   count: number;
 }
 
@@ -84,10 +85,16 @@ export interface JournalSummary {
   period: WeekSummary;
   unclassified: number;
   rules: RuleCount[];
-  words: WordCount[];
 }
 
-/** Tables et index du journal, une instruction par entrée. Idempotent. */
+/**
+ * Tables et index du journal, une instruction par entrée. Idempotent.
+ *
+ * Aucun texte de l'utilisateur n'y entre : une faute, c'est une règle, sa
+ * source, sa catégorie, son type, une date et « comptée ou non ». Le libellé
+ * d'une règle (`rule_labels`) est une donnée fixe de la règle, jamais son
+ * message, qui peut citer les mots du texte.
+ */
 const SCHEMA_JOURNAL: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS texts (
     id INTEGER PRIMARY KEY,
@@ -108,22 +115,22 @@ const SCHEMA_JOURNAL: readonly string[] = [
     category_id TEXT NOT NULL,
     category_name TEXT NOT NULL,
     issue_type TEXT NOT NULL,
-    message TEXT NOT NULL,
-    word TEXT NOT NULL,
-    replacement TEXT NOT NULL,
-    sentence TEXT NOT NULL,
     counted INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS rule_labels (
+    rule_key TEXT NOT NULL PRIMARY KEY,
+    label TEXT NOT NULL
   )`,
   "CREATE INDEX IF NOT EXISTS idx_texts_created ON texts(created_at)",
   "CREATE INDEX IF NOT EXISTS idx_faults_rule ON faults(rule_key, created_at)",
-  "CREATE INDEX IF NOT EXISTS idx_faults_word ON faults(word, created_at)",
 ];
 
 const SQL_TEXTE = `INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score)
   VALUES (?, ?, ?, ?, ?)`;
 const SQL_FAUTE = `INSERT INTO faults (text_id, created_at, rule_key, source, category_id, category_name,
-    issue_type, message, word, replacement, sentence, counted)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    issue_type, counted)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+const SQL_LIBELLE = "INSERT OR REPLACE INTO rule_labels (rule_key, label) VALUES (?, ?)";
 
 /** Le texte et ses fautes : les deux premières lignes de chaque lot de `record`. */
 function instructionsTexte(analysis: Analysis, now: number): Statement[] {
@@ -139,6 +146,7 @@ function instructionsTexte(analysis: Analysis, now: number): Statement[] {
       ],
     },
   ];
+  const libelles = new Map<string, string>();
   for (const correction of analysis.corrections) {
     for (const f of correction.faults) {
       statements.push({
@@ -151,14 +159,14 @@ function instructionsTexte(analysis: Analysis, now: number): Statement[] {
           f.categoryId,
           f.categoryName,
           f.issueType,
-          f.message,
-          f.word,
-          f.replacement,
-          f.sentence,
           f.counted ? 1 : 0,
         ],
       });
+      libelles.set(f.ruleKey, f.label);
     }
+  }
+  for (const [ruleKey, label] of libelles) {
+    statements.push({ sql: SQL_LIBELLE, params: [ruleKey, label] });
   }
   return statements;
 }
@@ -168,7 +176,8 @@ const sansSuivi = (): Suivi => ({ intervention: null, reussites: [] });
 /**
  * Journal des fautes : une ligne par texte corrigé, une ligne par faute, et
  * l'état de chaque règle dans son cycle de vie (voir `journal.rules.ts`).
- * Le texte complet n'est jamais conservé, seulement la phrase contenant la faute.
+ * Aucun texte de l'utilisateur n'est conservé : ni le texte, ni la phrase,
+ * ni le mot fautif, ni la correction, ni le message de la règle.
  *
  * Toute la base passe par un `JournalDriver` : chaque écriture LIT un
  * instantané, CALCULE en pur, puis ÉCRIT un lot atomique, sans transaction
@@ -210,7 +219,8 @@ export class Journal {
    * lot. Idempotent. Sur une base v0.2.0, l'état des règles est reconstruit à
    * partir des fautes journalisées ; sur une base antérieure aux badges, les
    * badges déjà mérités sont attribués à leur date réelle, sans notification.
-   * Les tables `texts` et `faults` ne sont jamais modifiées.
+   * Sur une base antérieure à la version 3, les textes de l'utilisateur sont
+   * effacés (voir `effacerTextes`), le reste de l'historique est conservé.
    */
   private async migrate(): Promise<void> {
     // Version lue AVANT toute écriture : un journal d'une version future de
@@ -224,6 +234,8 @@ export class Journal {
     );
     if (version >= SCHEMA_VERSION) return;
 
+    // Avant le rejeu de l'état des règles (v0) : il lit les clés normalisées.
+    if (version < 3) await this.effacerTextes();
     const lignes = await this.driver.readMany([...REQUETES_REJEU, ...REQUETES_BADGES]);
     const statements: Statement[] = [];
     let evenements: PlanSuivi["evenements"] = [];
@@ -241,6 +253,39 @@ export class Journal {
       );
     }
     statements.push({ sql: `PRAGMA user_version = ${SCHEMA_VERSION}` });
+    await this.driver.batch(statements);
+    // Les octets des textes supprimés restent sinon dans les pages libres du
+    // fichier et dans le WAL : la base est réécrite, le WAL vidé.
+    if (version < 3) await this.driver.compacter();
+  }
+
+  /**
+   * Migration vers la version 3 : retire de la table des fautes les colonnes
+   * de texte (`message`, `word`, `replacement`, `sentence`) et ramène les clés
+   * de règle qui contenaient un mot du texte à leur règle d'origine (voir
+   * `REGLES_PAR_MOT`). Les lignes, les dates et les compteurs restent : toute
+   * la progression est conservée. Idempotent, en un lot.
+   */
+  private async effacerTextes(): Promise<void> {
+    const [colonnes, etats] = (await this.driver.readMany([
+      { sql: "PRAGMA table_info(faults)" },
+      requeteEtatsParMot(),
+    ])) as [{ name: string }[], RuleState[]];
+    const presentes = new Set(colonnes.map((c) => c.name));
+    // L'index de `word` d'abord : SQLite ne retire pas une colonne indexée.
+    const retraits = MIGRATION_SANS_TEXTE.filter(
+      (sql) => !sql.startsWith("ALTER") || presentes.has(sql.slice(sql.lastIndexOf(" ") + 1)),
+    );
+    const statements: Statement[] = retraits.map((sql) => ({ sql }));
+    for (const ruleKey of Object.keys(REGLES_PAR_MOT)) {
+      for (const table of ["faults", "rule_events"]) {
+        statements.push({
+          sql: `UPDATE ${table} SET rule_key = ? WHERE rule_key LIKE ? ESCAPE '\\'`,
+          params: [ruleKey, motifParMot(ruleKey)],
+        });
+      }
+    }
+    statements.push(...fusionnerEtatsParMot(etats));
     await this.driver.batch(statements);
   }
 
@@ -352,7 +397,7 @@ export class Journal {
 
   async summary(days: number, now: number = Date.now()): Promise<JournalSummary> {
     const since = now - days * JOUR_MS;
-    const [[periode], [unclassified], rules, words] = (await this.driver.readMany([
+    const [[periode], [unclassified], lignes] = (await this.driver.readMany([
       { sql: SQL_PERIODE, params: [since] },
       {
         sql: "SELECT COALESCE(SUM(unclassified_count), 0) AS n FROM texts WHERE created_at > ?",
@@ -360,25 +405,19 @@ export class Journal {
       },
       {
         sql: `SELECT rule_key AS ruleKey, MAX(category_name) AS categoryName,
-                     MAX(message) AS message, COUNT(*) AS count
+                     ${SELECT_LIBELLE} AS label, COUNT(*) AS count
               FROM faults WHERE created_at > ? AND counted = 1
               GROUP BY rule_key ORDER BY count DESC, rule_key LIMIT 20`,
-        params: [since],
-      },
-      {
-        sql: `SELECT word, MAX(replacement) AS replacement, COUNT(*) AS count
-              FROM faults WHERE created_at > ? AND counted = 1 AND word != ''
-              GROUP BY word ORDER BY count DESC, word LIMIT 20`,
         params: [since],
       },
     ])) as [
       { texts: number; words: number; faults: number }[],
       { n: number }[],
-      RuleCount[],
-      WordCount[],
+      (Omit<RuleCount, "label"> & { label: string | null })[],
     ];
     const period = { ...periode, score: noteSur20(periode.faults, periode.words) };
-    return { days, period, unclassified: unclassified.n, rules, words };
+    const rules = lignes.map((r) => ({ ...r, label: libelleRegle(r.ruleKey, r) }));
+    return { days, period, unclassified: unclassified.n, rules };
   }
 
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
@@ -387,7 +426,7 @@ export class Journal {
       REQUETE_TEXTES,
       // Seules les fautes comptées des semaines affichées servent.
       {
-        sql: `SELECT created_at AS at, rule_key AS ruleKey, word, replacement, message,
+        sql: `SELECT created_at AS at, rule_key AS ruleKey, ${SELECT_LIBELLE} AS label,
                      category_name AS categoryName
               FROM faults WHERE counted = 1 AND created_at >= ? ORDER BY created_at`,
         params: [debutPremiereSemaine(now)],
@@ -407,6 +446,7 @@ export class Journal {
       await this.driver.batch([
         { sql: "DELETE FROM faults" },
         { sql: "DELETE FROM texts" },
+        { sql: "DELETE FROM rule_labels" },
         ...PURGE_REGLES,
         ...PURGE_BADGES,
       ]);

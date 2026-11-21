@@ -19,10 +19,11 @@ import {
   type Reussite,
 } from "./src/analysis/regles/intervention.ts";
 import { JOUR_MS, SEUILS } from "./src/analysis/regles/seuils.ts";
+import { REGLES_PAR_MOT, regleParMot } from "./src/analysis/analyze.ts";
 
 /** Une règle telle que l'expose `GET /api/rules`. */
 export interface RuleView extends RuleState {
-  /** Nom lisible : titre de la fiche, sinon message du correcteur grammatical. */
+  /** Nom lisible : titre de la fiche, sinon libellé fixe de la règle, catégorie ou clé. */
   label: string;
   categoryName: string;
   /** Fiche de règle (titre, astuce) quand la règle en possède une. */
@@ -55,7 +56,11 @@ export interface Suivi {
 }
 
 export interface FollowOptions {
-  /** Texte d'origine, pour proposer les deux formes sur la phrase de l'utilisateur. */
+  /**
+   * Texte d'origine, pour proposer les deux formes sur la phrase de l'utilisateur.
+   * Utilisé pendant la requête seulement : rien n'en est journalisé (l'événement
+   * « choix » ne garde que la règle et la date).
+   */
   original?: string;
   /** Tirage de l'ordre des deux formes ; injectable pour les tests. */
   random?: () => number;
@@ -94,6 +99,12 @@ const SQL_JOURNALISER = `INSERT INTO rule_events (rule_key, created_at, type, fr
 const EN_ATTENTE_D_USAGE = "state IN ('signalee', 'travaillee') AND last_fault_at <= ?";
 /** Types d'événements qui closent un choix à deux formes. */
 const TYPES_CHOIX = "('choix', 'reponse_juste', 'reponse_fausse')";
+/** Libellé fixe de la règle d'une faute lue (`rule_labels`) ; null s'il est inconnu. */
+export const SELECT_LIBELLE =
+  "(SELECT label FROM rule_labels WHERE rule_labels.rule_key = faults.rule_key)";
+/** Colonnes d'une `DerniereFaute`, lues dans `faults`. */
+const SELECT_DERNIERE = `rule_key AS ruleKey, ${SELECT_LIBELLE} AS label, category_name AS categoryName`;
+type DerniereFaute = { ruleKey: string } & LibelleConnu;
 
 /** Tables de la Phase 2, une instruction par entrée. Idempotent. */
 export const SCHEMA_REGLES: readonly string[] = [
@@ -142,15 +153,20 @@ function comparerBinaire(a: string, b: string): number {
   return x.length - y.length;
 }
 
+/** Libellé fixe d'une règle et catégorie de sa dernière faute (`rule_labels`, `faults`). */
+type LibelleConnu = { label: string | null; categoryName: string };
+
+/** Nom d'une règle : titre de sa fiche, sinon son libellé fixe, sa catégorie ou sa clé. */
+export function libelleRegle(ruleKey: string, connu: LibelleConnu | null | undefined): string {
+  return FICHES[ruleKey]?.titre ?? libelleSansFiche(ruleKey, connu);
+}
+
 /** Libellé d'une règle à partir de sa dernière faute journalisée. */
 function libelle(
   ruleKey: string,
-  derniere: { message: string; categoryName: string } | null | undefined,
+  derniere: LibelleConnu | null | undefined,
 ): { label: string; categoryName: string } {
-  return {
-    label: FICHES[ruleKey]?.titre ?? libelleSansFiche(ruleKey, derniere),
-    categoryName: derniere?.categoryName ?? "",
-  };
+  return { label: libelleRegle(ruleKey, derniere), categoryName: derniere?.categoryName ?? "" };
 }
 
 /** Un événement de l'historique en attente d'écriture. */
@@ -319,7 +335,7 @@ export interface InstantaneSuivi {
   /** Dates des textes depuis la plus ancienne dernière faute des règles en attente d'usage. */
   textes: { at: number }[];
   /** Dernière faute de chaque règle en attente d'usage, pour son libellé. */
-  dernieresFautes: { ruleKey: string; message: string; categoryName: string }[];
+  dernieresFautes: DerniereFaute[];
 }
 
 /**
@@ -353,7 +369,7 @@ export function requetesSuivi(analysis: Analysis, now: number): Query[] {
       params: [limite, now],
     },
     {
-      sql: `SELECT rule_key AS ruleKey, message, category_name AS categoryName FROM faults
+      sql: `SELECT ${SELECT_DERNIERE} FROM faults
             WHERE id IN (SELECT MAX(id) FROM faults
                          WHERE rule_key IN (SELECT rule_key FROM rule_states WHERE ${EN_ATTENTE_D_USAGE})
                          GROUP BY rule_key)`,
@@ -530,6 +546,76 @@ export function planifierRejeu(lignes: unknown[][]): {
   return { statements: etats.statements().statements, evenements: etats.evenements };
 }
 
+/** Motif `LIKE … ESCAPE '\'` des identifiants par mot d'une règle de `REGLES_PAR_MOT`. */
+export const motifParMot = (ruleKey: string) => `${ruleKey.replaceAll("_", "\\_")}\\_%`;
+
+/**
+ * États des règles de `REGLES_PAR_MOT` (identifiants par mot et règle
+ * d'origine), à fusionner par la migration v3 (`fusionnerEtatsParMot`).
+ */
+export function requeteEtatsParMot(): Query {
+  const cles = Object.keys(REGLES_PAR_MOT);
+  return {
+    sql: `SELECT ${SELECT_ETAT} FROM rule_states
+          WHERE ${cles.map(() => "rule_key = ? OR rule_key LIKE ? ESCAPE '\\'").join(" OR ")}`,
+    params: cles.flatMap((cle) => [cle, motifParMot(cle)]),
+  };
+}
+
+/**
+ * Fusionne les états de `requeteEtatsParMot` en un état par règle d'origine :
+ * compteurs additionnés, première et dernière dates conservées, état et dates
+ * d'état de la règle fautive le plus récemment. Calcul pur ; instructions du lot.
+ */
+export function fusionnerEtatsParMot(etats: readonly RuleState[]): Statement[] {
+  const groupes = new Map<string, RuleState[]>();
+  for (const etat of etats) {
+    const cle = regleParMot(etat.ruleKey);
+    if (!cle) continue;
+    groupes.set(cle, [...(groupes.get(cle) ?? []), etat]);
+  }
+  const statements: Statement[] = [];
+  for (const [ruleKey, groupe] of groupes) {
+    if (groupe.length === 1 && groupe[0].ruleKey === ruleKey) continue;
+    const recente = groupe.reduce((a, b) => (b.lastFaultAt > a.lastFaultAt ? b : a));
+    const sollicitee = groupe.reduce((a, b) =>
+      (b.lastSolicitedAt ?? -1) > (a.lastSolicitedAt ?? -1) ? b : a,
+    );
+    type Compteur =
+      | "occurrences"
+      | "tipsShown"
+      | "choicesShown"
+      | "choicesCorrect"
+      | "choicesWrong"
+      | "relapses";
+    const somme = (champ: Compteur) => groupe.reduce((n, e) => n + e[champ], 0);
+    const fusion: RuleState = {
+      ruleKey,
+      state: recente.state,
+      stateSince: recente.stateSince,
+      occurrences: somme("occurrences"),
+      firstFaultAt: Math.min(...groupe.map((e) => e.firstFaultAt)),
+      lastFaultAt: recente.lastFaultAt,
+      tipsShown: somme("tipsShown"),
+      choicesShown: somme("choicesShown"),
+      choicesCorrect: somme("choicesCorrect"),
+      choicesWrong: somme("choicesWrong"),
+      lastSolicitedAt: sollicitee.lastSolicitedAt,
+      solicitationsThatDay: sollicitee.solicitationsThatDay,
+      acquiredAt: recente.acquiredAt,
+      relapses: somme("relapses"),
+    };
+    statements.push(
+      {
+        sql: `DELETE FROM rule_states WHERE rule_key LIKE ? ESCAPE '\\'`,
+        params: [motifParMot(ruleKey)],
+      },
+      { sql: SQL_SAUVER, params: CHAMPS_ETAT.map((c) => fusion[c]) },
+    );
+  }
+  return statements;
+}
+
 /**
  * État des règles dans la base du journal : une ligne par règle
  * (`rule_states`) et l'historique daté des transitions et des sollicitations
@@ -618,13 +704,11 @@ export class RuleStore {
   }
 }
 
-type DerniereFaute = { ruleKey: string; message: string; categoryName: string };
-
 /** Lectures de la liste des règles : états et dernière faute de chaque règle. */
 export const REQUETES_LISTE: readonly Query[] = [
   { sql: `SELECT ${SELECT_ETAT} FROM rule_states ORDER BY last_fault_at DESC, rule_key` },
   {
-    sql: `SELECT rule_key AS ruleKey, message, category_name AS categoryName FROM faults
+    sql: `SELECT ${SELECT_DERNIERE} FROM faults
           WHERE id IN (SELECT MAX(id) FROM faults
                        WHERE rule_key IN (SELECT rule_key FROM rule_states) GROUP BY rule_key)`,
   },

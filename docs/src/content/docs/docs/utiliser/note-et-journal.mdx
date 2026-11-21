@@ -29,13 +29,13 @@ Sur un seul texte, la note est peu significative. C'est sa tendance qui indique 
 
 Pour chaque texte corrigé : la date, le nombre de mots, le nombre de fautes et la note.
 
-Pour chaque faute : la règle, la catégorie, le mot fautif, la correction et **la phrase** qui contient la faute.
+Pour chaque faute : la règle, sa catégorie, sa date, et si elle compte dans la note.
 
-Pour chaque règle : son état (observée, signalée, travaillée ou acquise), le nombre de fautes, les dates de la première et de la dernière faute, le nombre d'astuces et de choix affichés, vos réponses aux choix, et l'historique daté de ses changements d'état. Ces informations servent à décider de ce qui s'affiche près du bouton **Copier** (voir [Corriger un texte](/docs/utiliser/corriger/)). Elles ne contiennent aucun extrait de vos textes.
+Pour chaque règle : son nom (titre de la fiche ou description de la règle du moteur, toujours le même quel que soit le texte), son état (observée, signalée, travaillée ou acquise), le nombre de fautes, les dates de la première et de la dernière faute, le nombre d'astuces et de choix affichés, vos réponses aux choix, et l'historique daté de ses changements d'état. Ces informations servent à décider de ce qui s'affiche près du bouton **Copier** (voir [Corriger un texte](/docs/utiliser/corriger/)).
 
 Pour chaque [badge](/docs/utiliser/badges/) obtenu : son identifiant et sa date d'obtention.
 
-**Le texte entier n'est jamais enregistré.** Le journal est un fichier SQLite sur votre serveur (`JOURNAL_PATH`) ; rien n'est envoyé ailleurs.
+**Aucun de vos textes n'est enregistré** : ni le texte, ni la phrase fautive, ni le mot fautif, ni la correction, ni le message de la règle (qui peut citer vos mots). Le journal ne garde que le nom des règles et des compteurs. C'est un fichier SQLite sur votre serveur (`JOURNAL_PATH`), ou dans le dossier de données de l'application de bureau ; rien n'est envoyé ailleurs.
 
 ## Effacer le journal
 
@@ -43,11 +43,15 @@ Dans la barre latérale, section **Journal des fautes**, le bouton **Effacer le 
 
 ## Mise à jour depuis la version 0.2
 
-Rien à faire. Au premier démarrage, le journal existant est conservé tel quel et l'état des règles est reconstruit à partir des fautes déjà enregistrées : une règle sans faute depuis longtemps est directement « acquise », à sa date réelle, sans message de réussite. Les [badges](/docs/utiliser/badges/) que le journal justifie déjà sont attribués de la même façon, sans notification.
+Rien à faire. Au premier démarrage, le journal existant est conservé et l'état des règles est reconstruit à partir des fautes déjà enregistrées : une règle sans faute depuis longtemps est directement « acquise », à sa date réelle, sans message de réussite. Les [badges](/docs/utiliser/badges/) que le journal justifie déjà sont attribués de la même façon, sans notification.
+
+## Mise à jour depuis la version 0.4
+
+Les versions précédentes gardaient, pour chaque faute, la phrase, le mot fautif, la correction et le message de la règle. Au premier démarrage, ces textes sont effacés du journal, jusque dans le fichier lui-même (il est réécrit pour qu'aucune trace n'en reste sur le disque). Tout le reste est conservé : dates, compteurs, état des règles, badges. Une règle sans fiche qui n'a pas resservi depuis la mise à jour est affichée sous le nom de sa catégorie (« Grammaire »…), jusqu'à sa prochaine faute.
 
 ## Consulter le bilan
 
-Le bilan s'affiche dans l'écran **Progression**, ouvert par le bouton en forme de graphique en haut à droite, à côté de **Paramètres** : score de maîtrise, note semaine après semaine, fautes pour 100 mots, règles par état, règles les plus fréquentes, mots pièges et [badges](/docs/utiliser/badges/). Le mode d'emploi est dans [Progression](/docs/utiliser/progression/).
+Le bilan s'affiche dans l'écran **Progression**, ouvert par le bouton en forme de graphique en haut à droite, à côté de **Paramètres** : score de maîtrise, note semaine après semaine, fautes pour 100 mots, règles par état, règles les plus fréquentes et [badges](/docs/utiliser/badges/). Le mode d'emploi est dans [Progression](/docs/utiliser/progression/).
 
 Les mêmes informations sont accessibles par l'API, en une seule requête :
 

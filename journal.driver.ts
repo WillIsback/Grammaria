@@ -53,6 +53,13 @@ export interface JournalDriver {
    * annulé à la première erreur ou au premier `expectChanges` non respecté.
    */
   batch(statements: readonly Statement[]): Promise<BatchResult[]>;
+  /**
+   * Réécrit le fichier de la base (`VACUUM`) puis vide le WAL
+   * (`wal_checkpoint(TRUNCATE)`) : les données supprimées ne restent ni dans
+   * les pages libres ni dans le WAL. Hors de toute transaction, sans argument :
+   * aucune instruction SQL n'est transmise.
+   */
+  compacter(): Promise<void>;
   /** Ferme la base (facultatif : le pilote du bureau la garde ouverte). */
   close?(): void | Promise<void>;
 }
@@ -113,7 +120,23 @@ export function resoudreParametre(
  * `journal.ts` et à `USER_VERSION_MAX` du pilote Rust (`src-tauri/src/db.rs`) ;
  * un test de chaque côté vérifie l'égalité.
  */
-export const USER_VERSION_MAX = 2;
+export const USER_VERSION_MAX = 3;
+
+/**
+ * Seules instructions `DROP` et `ALTER` qu'un lot accepte, comparées au
+ * caractère près : la migration v3 du journal, qui retire de la table des
+ * fautes les colonnes de texte (et l'index de l'une d'elles). Aucune autre
+ * suppression n'est possible. Le pilote Rust garde la même liste
+ * (`MIGRATION_SANS_TEXTE` de `src-tauri/src/db.rs`) : un test le vérifie en
+ * lisant ce fichier.
+ */
+export const MIGRATION_SANS_TEXTE: readonly string[] = [
+  "DROP INDEX IF EXISTS idx_faults_word",
+  "ALTER TABLE faults DROP COLUMN message",
+  "ALTER TABLE faults DROP COLUMN word",
+  "ALTER TABLE faults DROP COLUMN replacement",
+  "ALTER TABLE faults DROP COLUMN sentence",
+];
 
 /**
  * Pragmas lisibles par `read` et `readMany`. Le journal ne lit que
@@ -202,6 +225,7 @@ export function verifierLecture(sql: string): void {
 
 /** Refuse ce qu'un pilote n'accepte pas dans un lot (`batch`). */
 export function verifierEcriture(sql: string): void {
+  if (MIGRATION_SANS_TEXTE.includes(sql)) return;
   const s = uneSeuleInstruction(sql);
   if (INTERDITES.test(s)) {
     throw new Error("le lot est la transaction : BEGIN, SAVEPOINT, ATTACH… sont refusés");
@@ -218,7 +242,8 @@ export function verifierEcriture(sql: string): void {
   if (/^CREATE\s+VIRTUAL\b/.test(s)) throw new Error("tables virtuelles refusées");
   // Jamais envoyés par le journal (CREATE TABLE et CREATE INDEX IF NOT EXISTS
   // seulement) : un déclencheur ou une vue ferait exécuter du SQL caché aux
-  // écritures et lectures suivantes, un DROP ou un ALTER détruirait le journal.
+  // écritures et lectures suivantes, un DROP ou un ALTER détruirait le journal
+  // (sauf ceux de `MIGRATION_SANS_TEXTE`, acceptés plus haut).
   if (/^CREATE\s+(TEMP\s+|TEMPORARY\s+)?(TRIGGER|VIEW)\b/.test(s)) {
     throw new Error("déclencheurs et vues refusés");
   }

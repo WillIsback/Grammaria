@@ -12,7 +12,8 @@
  *  - page terminée, aucun critère de la page en échec, aucune erreur d'étape ni de page ;
  *  - détections IDENTIQUES à tests/fixtures/correcteur/reference.json (recomparées ici, à partir
  *    du fichier du dépôt) ; premier contrôle < 30 s, contrôles suivants (160 mots) < 3 s ;
- *  - journal : lot atomique écrit, lots refusés sans rien écrire, conflit reconnu ;
+ *  - journal : schéma 3, aucun mot des textes corrigés dans les octets du fichier de la base
+ *    (ni dans le WAL), lot atomique écrit, lots refusés sans rien écrire, conflit reconnu ;
  *  - réglages : clé API absente des réponses à la page, reçue par le modèle ;
  *  - flux : 3000 fragments dans l'ordre, annulations vues par le modèle, relance sans
  *    chat_template_kwargs, interruption d'une correction ;
@@ -89,6 +90,12 @@ ok(
 );
 
 // Journal.
+ok(r.journal?.userVersion === 3, "schéma du journal en version 3", r.journal?.userVersion);
+ok(
+  Array.isArray(r.journal?.textesTrouves) && r.journal.textesTrouves.length === 0,
+  "aucun texte de l'utilisateur dans le fichier du journal",
+  r.journal?.textesTrouves,
+);
 const refus = r.journal?.refus ?? {};
 ok(
   Object.keys(refus).length >= 4 && Object.values(refus).every((m) => m !== "ACCEPTÉ"),

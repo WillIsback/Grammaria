@@ -12,6 +12,7 @@
     "allow-db-read",
     "allow-db-read-many",
     "allow-db-batch",
+    "allow-db-compacter",
     "allow-settings-get",
     "allow-settings-set",
     "allow-valid-words-get",

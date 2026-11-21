@@ -5,7 +5,7 @@
 //! critères tenus) ou 1.
 //!
 //! Sans la variable, rien de tout cela n'est accessible :
-//! - l'état `Autotest` n'est pas créé : les deux commandes répondent « inactif » ;
+//! - l'état `Autotest` n'est pas créé : les commandes `autotest_*` répondent « inactif » ;
 //! - aucune capability ne les autorise : la capability `autotest` n'existe pas
 //!   dans `capabilities/` (seule `default` est active, voir tauri.conf.json) et
 //!   n'est ajoutée qu'à l'exécution, en mode autotest ;
@@ -159,6 +159,23 @@ pub fn autotest_terminer(app: AppHandle, resultat: Value, reussi: bool) -> Resul
     Ok(())
 }
 
+/// Parmi `sentinelles` (mots improbables écrits par la page d'autotest dans
+/// les textes qu'elle fait corriger), celles qui figurent dans les octets du
+/// fichier du journal ou de ses fichiers annexes ; refusée hors de ce mode.
+/// Lecture seule : rien n'est écrit, aucun contenu n'est renvoyé.
+#[tauri::command]
+pub fn autotest_textes_journal(
+    app: AppHandle,
+    sentinelles: Vec<String>,
+) -> Result<Vec<String>, String> {
+    app.try_state::<Autotest>().ok_or("Autotest inactif.")?;
+    let db = app.state::<crate::db::Db>();
+    Ok(crate::db::textes_dans_les_fichiers(
+        db.chemin(),
+        &sentinelles,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,17 +242,21 @@ mod tests {
         assert_eq!(lu["reussi"], true);
     }
 
-    /// La capability d'autotest : seulement les deux commandes d'autotest,
+    /// La capability d'autotest : seulement les commandes d'autotest,
     /// fenêtre `main`, page locale.
     #[test]
-    fn la_capability_d_autotest_n_autorise_que_ses_deux_commandes() {
+    fn la_capability_d_autotest_n_autorise_que_ses_commandes() {
         let capability: Value = serde_json::from_str(CAPABILITY).unwrap();
         assert_eq!(capability["identifier"], "autotest");
         assert_eq!(capability["windows"], json!(["main"]));
         assert!(capability.get("remote").is_none());
         assert_eq!(
             capability["permissions"],
-            json!(["allow-autotest-config", "allow-autotest-terminer"])
+            json!([
+                "allow-autotest-config",
+                "allow-autotest-terminer",
+                "allow-autotest-textes-journal"
+            ])
         );
     }
 }

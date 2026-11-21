@@ -4,7 +4,6 @@ import {
   debutSemaine,
   type LigneFaute,
   type LigneTexte,
-  motsPieges,
   palier,
   type RegleSuivie,
   reglesFrequentes,
@@ -23,12 +22,14 @@ const jour = (n: number) => new Date(2026, 10, 16 + n, 12).getTime();
 
 const texte = (at: number, words = 100, faults = 2): LigneTexte => ({ at, words, faults });
 
-const faute = (at: number, ruleKey: string, word = "", replacement = ""): LigneFaute => ({
+const faute = (
+  at: number,
+  ruleKey: string,
+  label: string | null = `Libellé ${ruleKey}`,
+): LigneFaute => ({
   at,
   ruleKey,
-  word,
-  replacement,
-  message: `Message ${ruleKey}`,
+  label,
   categoryName: "Grammaire",
 });
 
@@ -188,7 +189,7 @@ describe("progression — score de maîtrise", () => {
   });
 });
 
-describe("progression — règles et mots pièges", () => {
+describe("progression — règles", () => {
   it("compte les règles par état et liste actives et acquises dans l'ordre", () => {
     const rules = [
       regle("A", "signalee", { lastFaultAt: jour(-3) }),
@@ -209,9 +210,10 @@ describe("progression — règles et mots pièges", () => {
       faute(jour(0), "PAIRE:a/à"),
       faute(jour(-1), "PAIRE:a/à"),
       faute(jour(-2), "LT_RULE"),
-      faute(jour(-3), "FR_SPELLING_RULE", "biensur", "bien sûr"),
-      faute(jour(-4), "FR_SPELLING_RULE", "biensur", "bien sûr"),
-      faute(jour(-5), "FR_SPELLING_RULE", "biensur", "bien sûr"),
+      faute(jour(-3), "FR_SPELLING_RULE"),
+      faute(jour(-4), "FR_SPELLING_RULE"),
+      faute(jour(-5), "FR_SPELLING_RULE"),
+      faute(jour(-6), "SANS_LIBELLE", null),
     ];
     const frequentes = reglesFrequentes(faults, [regle("PAIRE:a/à", "signalee")]);
     expect(frequentes).toEqual([
@@ -224,7 +226,15 @@ describe("progression — règles et mots pièges", () => {
       },
       {
         ruleKey: "LT_RULE",
-        label: "Message LT_RULE",
+        label: "Libellé LT_RULE",
+        categoryName: "Grammaire",
+        count: 1,
+        state: null,
+      },
+      // Sans libellé fixe connu (fautes d'avant la version 3) : la catégorie.
+      {
+        ruleKey: "SANS_LIBELLE",
+        label: "Grammaire",
         categoryName: "Grammaire",
         count: 1,
         state: null,
@@ -232,32 +242,9 @@ describe("progression — règles et mots pièges", () => {
     ]);
   });
 
-  it("regroupe les mots pièges sans tenir compte de la casse, avec la correction la plus fréquente", () => {
-    const S = "FR_SPELLING_RULE";
-    const faults = [
-      faute(jour(-5), S, "Language", "langage"),
-      faute(jour(-4), S, "language", "langage"),
-      faute(jour(-3), S, "language", "langue"),
-      faute(jour(-2), S, "apareil", "appareil"),
-      faute(jour(-1), S, "", "vide"),
-      faute(jour(-1), "PAIRE:on/ont", "on", "ont"),
-    ];
-    expect(motsPieges(faults)).toEqual([
-      { word: "language", replacement: "langage", count: 3 },
-      { word: "apareil", replacement: "appareil", count: 1 },
-    ]);
-  });
-
-  it("à égalité, retient la correction la plus récente", () => {
-    const S = "FR_SPELLING_RULE";
-    const faults = [faute(jour(-2), S, "sa", "ça"), faute(jour(-1), S, "sa", "çà")];
-    expect(motsPieges(faults)[0].replacement).toBe("çà");
-  });
-
   it("ignore les fautes antérieures aux semaines affichées", () => {
-    const faults = [faute(jour(-100), "FR_SPELLING_RULE", "vieux", "vieu"), faute(jour(-1), "X")];
+    const faults = [faute(jour(-100), "VIEILLE"), faute(jour(-1), "X")];
     const p = calculerProgression({ texts: [texte(NOW)], faults, rules: [] }, NOW);
-    expect(p.trapWords).toEqual([]);
     expect(p.frequentRules.map((r) => r.ruleKey)).toEqual(["X"]);
   });
 });
@@ -272,6 +259,7 @@ describe("progression — journal vide", () => {
     expect(p.totals).toEqual({ texts: 0, words: 0, faults: 0, score: null, faultsPer100: null });
     expect(p.rules.counts).toEqual({ observee: 0, signalee: 0, travaillee: 0, acquise: 0 });
     expect(p.frequentRules).toEqual([]);
-    expect(p.trapWords).toEqual([]);
+    // Aucun mot n'est exposé : les « mots pièges » n'existent plus (#32).
+    expect(p).not.toHaveProperty("trapWords");
   });
 });

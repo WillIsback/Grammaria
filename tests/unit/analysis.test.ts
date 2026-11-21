@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { analyze, isCounted, isPunctuationOnly, sentenceAt } from "../../src/analysis/analyze";
+import { analyze, isCounted, isPunctuationOnly, regleDuMoteur } from "../../src/analysis/analyze";
 import { countWords, diffHunks } from "../../src/analysis/diff";
 import { detecterConfusion, FICHES } from "../../src/analysis/fiches";
 import { detecterAccord } from "../../src/analysis/accord";
@@ -144,10 +144,29 @@ describe("isCounted", () => {
   });
 });
 
-describe("sentenceAt", () => {
-  it("extrait la phrase qui contient la position", () => {
-    const text = "Bonjour. Ils on vu le film. Merci.";
-    expect(sentenceAt(text, text.indexOf("Ils on") + 4)).toBe("Ils on vu le film.");
+describe("regleDuMoteur", () => {
+  it("garde l'identifiant et la description fixes d'une règle", () => {
+    expect(
+      regleDuMoteur({ id: "NOUS_SOMMES", description: "nous somme->sommes", category: undefined }),
+    ).toEqual({ ruleKey: "NOUS_SOMMES", label: "nous somme->sommes" });
+    // Sans description : la catégorie, puis l'identifiant.
+    expect(regleDuMoteur({ id: "X", category: { id: "GRAMMAR", name: "Grammaire" } })).toEqual({
+      ruleKey: "X",
+      label: "Grammaire",
+    });
+    expect(regleDuMoteur({ id: "X" })).toEqual({ ruleKey: "X", label: "X" });
+  });
+
+  it("ramène une règle par mot à sa règle d'origine, sans le mot", () => {
+    expect(
+      regleDuMoteur({ id: "FR_SIMPLE_REPLACE_SIMPLE_JAI", description: "Mot incorrect : jai" }),
+    ).toEqual({ ruleKey: "FR_SIMPLE_REPLACE_SIMPLE", label: "Mot incorrect" });
+    expect(
+      regleDuMoteur({
+        id: "FR_COMPOUNDS_PILE_POIL",
+        description: "Mots avec trait d’union : pile poil",
+      }),
+    ).toEqual({ ruleKey: "FR_COMPOUNDS", label: "Mots avec trait d’union" });
   });
 });
 
@@ -162,11 +181,19 @@ describe("analyze", () => {
     expect(result.corrections[0].faults[0]).toMatchObject({
       ruleKey: "ACCORD_NOMBRE",
       source: "lt",
-      word: "dossier",
-      replacement: "dossiers",
-      sentence: original,
       counted: true,
     });
+    // Ni le mot, ni la correction, ni la phrase : rien du texte dans la faute (#32).
+    expect(Object.keys(result.corrections[0].faults[0]).sort()).toEqual([
+      "categoryId",
+      "categoryName",
+      "counted",
+      "issueType",
+      "label",
+      "message",
+      "ruleKey",
+      "source",
+    ]);
     expect(result.faultCount).toBe(1);
     expect(result.unclassifiedCount).toBe(0);
     expect(result.wordCount).toBe(6);

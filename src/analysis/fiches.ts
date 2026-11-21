@@ -12,14 +12,15 @@ export interface Fiche {
 }
 
 /**
- * Nom lisible d'une règle sans fiche : message du correcteur grammatical,
- * sinon sa catégorie, sinon la clé de la règle.
+ * Nom lisible d'une règle sans fiche : son libellé fixe (description de la règle
+ * du moteur), sinon sa catégorie, sinon la clé de la règle. Jamais le message du
+ * correcteur, qui peut citer les mots du texte.
  */
 export function libelleSansFiche(
   ruleKey: string,
-  faute?: { message: string; categoryName: string } | null,
+  faute?: { label?: string | null; categoryName?: string | null } | null,
 ): string {
-  return faute?.message || faute?.categoryName || ruleKey;
+  return faute?.label || faute?.categoryName || ruleKey;
 }
 
 export const FICHES: Record<string, Fiche> = {

@@ -62,6 +62,7 @@ pub fn run() {
             db::db_read,
             db::db_read_many,
             db::db_batch,
+            db::db_compacter,
             store::settings_get,
             store::settings_set,
             store::valid_words_get,
@@ -75,6 +76,7 @@ pub fn run() {
             // Inertes sans GRAMMARIA_AUTOTEST_OUT (voir autotest.rs).
             autotest::autotest_config,
             autotest::autotest_terminer,
+            autotest::autotest_textes_journal,
         ])
         .setup(|app| {
             app.manage(update::UpdateState::new(app));
@@ -285,7 +287,7 @@ mod tests {
             .collect();
         declared.sort_unstable();
         assert_eq!(declared, commandes_enregistrees());
-        assert_eq!(declared.len(), 19);
+        assert_eq!(declared.len(), 21);
     }
 
     fn json(text: &str) -> Value {
@@ -321,7 +323,7 @@ mod tests {
             .collect();
         attendues.sort_unstable();
         assert_eq!(permissions, attendues);
-        assert_eq!(permissions.len(), 17);
+        assert_eq!(permissions.len(), 18);
     }
 
     /// Une seule capability, déclarée explicitement : un fichier ajouté au

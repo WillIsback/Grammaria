@@ -20,7 +20,7 @@ Un correcteur automatique a un effet pervers : on colle son texte, on copie le r
 
 - **La correction reste instantanée.** Vous collez un texte, cliquez sur **Corriger** : le texte corrigé s'affiche à mesure que le modèle de langage l'écrit, et se copie aussitôt.
 - **Chaque faute est nommée.** Grammaria compare votre texte au texte corrigé ; son moteur de grammaire nomme chaque faute. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é…) ont une fiche « remplacez par X, car Y ».
-- **Les fautes qui reviennent sont repérées.** Un journal local garde la phrase fautive, jamais le texte entier. Quand une faute revient, une astuce puis un choix entre deux formes s'affichent près du bouton **Copier**, sans retarder la copie.
+- **Les fautes qui reviennent sont repérées.** Un journal local garde le nom des règles et des compteurs, jamais vos textes. Quand une faute revient, une astuce puis un choix entre deux formes s'affichent près du bouton **Copier**, sans retarder la copie.
 - **La progression se voit.** Une note sur 20, un écran **Progression** et des badges sobres montrent le chemin parcouru.
 
 Vos textes ne sont envoyés qu'au modèle de langage que vous avez choisi (Ollama, vLLM, ou toute API compatible OpenAI). L'analyse des fautes et le journal restent chez vous.
