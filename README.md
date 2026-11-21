@@ -2,9 +2,12 @@
 
 **Le correcteur de français qui corrige tout de suite, et vous aide à ne plus refaire les mêmes fautes.**
 
+Version bêta : la correction est éprouvée, l'effet sur la progression est en cours de test. Voir [Bêta : démarche et méthode de test](https://grammaria.fr/docs/decouvrir/beta/).
+
 [![Installer pour Windows](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://grammaria.fr/telecharger/)
 [![Installer pour Linux](https://img.shields.io/badge/Linux-Installer-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://grammaria.fr/telecharger/)
 [![Documentation](https://img.shields.io/badge/Documentation-grammaria.fr-2E7D32?style=for-the-badge&logo=readthedocs&logoColor=white)](https://grammaria.fr/docs/)
+[![Version bêta](https://img.shields.io/badge/Version-B%C3%AAta-B45309?style=for-the-badge)](https://grammaria.fr/docs/decouvrir/beta/)
 
 Les deux premiers boutons mènent à la [page de téléchargement](https://grammaria.fr/telecharger/) : un bouton par système, le bon fichier se télécharge directement.
 

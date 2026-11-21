@@ -3,7 +3,16 @@ title: "Versions"
 description: "Ce que chaque version de Grammaria a apporté."
 ---
 
-Les versions sont publiées sur la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt. La dernière version publiée est la **0.4.1**.
+Les versions sont publiées sur la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt. La dernière version publiée est la **0.5.0**, une version bêta.
+
+## Version 0.5.0 — bêta de test
+
+Cette version sert à vérifier si les astuces font vraiment progresser. La démarche, ce qui est mesuré et ce qui ne l'est pas : [Bêta : démarche et méthode de test](/docs/decouvrir/beta/).
+
+- **Le journal ne garde plus aucun texte** : ni phrase, ni mot, ni correction, ni message de règle. Seulement l'identifiant des règles, des dates et des compteurs. Les textes des versions précédentes sont effacés à la mise à jour, jusque dans le fichier. Voir [Note et journal des fautes](/docs/utiliser/note-et-journal/#ce-que-contient-le-journal).
+- **La liste « Mots pièges » est retirée** de l'écran Progression : elle reposait sur les mots de vos textes, que le journal ne garde plus.
+- **Nouvelle section « Ce que changent les astuces »** dans l'écran Progression : pour chaque faute qui a reçu une astuce, combien de fois elle revenait avant et depuis, comparé aux fautes de frappe. Voir [Progression](/docs/utiliser/progression/#ce-que-changent-les-astuces).
+- **Export anonyme des résultats** : un fichier de chiffres, sans texte ni date, montré en entier avant d'être enregistré, et jamais envoyé par Grammaria. Voir [Ce qui est partagé, exactement](/docs/decouvrir/beta/#ce-qui-est-partagé-exactement).
 
 ## Version 0.4.1 — correctifs
 
@@ -21,7 +30,7 @@ Les versions sont publiées sur la page [Releases](https://github.com/WillIsback
 ## Version 0.3.0 — fautes récurrentes, progression et badges
 
 - **Fautes récurrentes** : une astuce, puis un choix entre deux formes sur le bouton **Copier**, quand une faute revient. Voir [Corriger un texte](/docs/utiliser/corriger/).
-- **Écran Progression** : score de maîtrise, note et fautes pour 100 mots semaine après semaine, règles par état, mots pièges. Voir [Progression](/docs/utiliser/progression/).
+- **Écran Progression** : score de maîtrise, note et fautes pour 100 mots semaine après semaine, règles par état, mots pièges (retirés en 0.5.0). Voir [Progression](/docs/utiliser/progression/).
 - **Badges** : dix-huit badges constatent les étapes franchies, sans série à ne pas casser. Voir [Badges](/docs/utiliser/badges/).
 - **Application de bureau sans serveur** : la page et le correcteur sont embarqués, aucun serveur local n'est lancé. Le paquet `.deb` passe de 62 Mo à 8 Mo environ.
 - **Mise à jour depuis l'application**, sur votre accord, avec vérification de la signature. Voir [Mises à jour](/docs/demarrer/application-bureau/#mises-à-jour).
