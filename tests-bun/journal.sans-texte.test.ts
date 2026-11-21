@@ -610,6 +610,38 @@ describe("Export de la bêta : un export altéré est refusé (#34)", () => {
     expect(motsDans(JSON.stringify(agregat), SENTINELLES)).toEqual([]);
   });
 
+  it("un client falsifié ne peut pas faire persister de texte via les libellés (#41)", async () => {
+    await avecBase(async (path) => {
+      const journal = await Journal.ouvrir(ouvrirPiloteBun(path));
+      // `/api/analyze` reçoit les détections de la page : on y glisse les sentinelles
+      // dans l'identifiant, la description, la catégorie et le type d'une règle forgée.
+      const original = `Le ${MOT_FAUTIF} arrive ce soir.`;
+      const corrected = "Le dossier arrive ce soir.";
+      const matchForge: LTMatch = {
+        message: DANS_LE_MESSAGE,
+        shortMessage: DANS_LE_MESSAGE,
+        offset: original.indexOf(MOT_FAUTIF),
+        length: MOT_FAUTIF.length,
+        replacements: [{ value: "dossier" }],
+        rule: {
+          id: `REGLE_${DANS_LA_PHRASE}`,
+          description: `phrase secrète ${CORRECTION} à cacher`.repeat(5),
+          issueType: `type-${DANS_LE_CHOIX}`,
+          category: { id: `CAT_${DANS_LA_PHRASE}`, name: `catégorie ${DANS_LE_CHOIX}` },
+        },
+      };
+      const analysis = analyze(original, corrected, [matchForge]);
+      await journal.record(analysis, jour(0), { original });
+      await journal.close();
+
+      // Aucune sentinelle (ni le texte, ni l'identifiant/la catégorie/le type forgés)
+      // dans les octets du fichier de la base.
+      expect(motsDansLesOctets(path, [...SENTINELLES, "phrase", "secrète", "catégorie"])).toEqual(
+        [],
+      );
+    });
+  });
+
   it("le participant est créé au premier export, gardé, puis oublié avec le journal", async () => {
     const journal = await Journal.ouvrir(ouvrirPiloteBun(":memory:"));
     const options = { application: "0.5.0", plateforme: "serveur" as const };
