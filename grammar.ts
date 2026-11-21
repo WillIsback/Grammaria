@@ -17,7 +17,7 @@ import type { LTMatch } from "./src/types.ts";
  */
 
 /**
- * Délai maximal d'une analyse, chargement initial des données compris (moins d'une seconde
+ * Délai maximal d'une analyse, chargement initial des données compris (une demi-seconde
  * mesurée). Plus court que le délai de la page (30 s, src/services/languagetool.ts) : le
  * serveur répond une erreur avant que la page abandonne.
  */
