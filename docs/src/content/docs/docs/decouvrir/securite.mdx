@@ -1,0 +1,53 @@
+---
+title: "Sécurité"
+description: "Ce qui protège vos données, le résultat d'un audit interne, et comment signaler une vulnérabilité."
+---
+
+Grammaria est un logiciel libre, en version bêta, mené par une seule personne. La sécurité y est prise au sérieux, et la démarche est ouverte : cette page dit ce qui protège l'utilisateur, ce qu'un audit interne a trouvé, et comment nous signaler un problème.
+
+## Ce qui protège vos données
+
+- **Aucun de vos textes n'est enregistré.** Le journal ne garde que des identifiants de règles et des compteurs ; des tests automatiques le vérifient à chaque modification. Le détail : [Bêta — ce qui est enregistré](/docs/decouvrir/beta/#ce-qui-est-enregistré-sur-le-poste).
+- **Vos textes ne partent qu'au modèle de langage que vous avez choisi.** Grammaria n'a pas de serveur central, pas de compte, pas de télémétrie vers l'auteur.
+- **La clé de votre modèle est rangée dans le trousseau du système** (Gestionnaire d'identification sous Windows, trousseau du bureau sous Linux), jamais en clair dans un fichier quand un trousseau est disponible.
+- **Les mises à jour sont signées et vérifiées avant installation.** Un paquet modifié est refusé ; rien ne s'installe sans votre clic. Les sommes de contrôle de chaque version sont publiées.
+- **Le code est public** et chaque version correspond à une étiquette Git : on peut relire exactement ce qui est installé. Le moteur de grammaire est épinglé à une révision précise.
+- **Le serveur (image Docker) n'écoute que la machine qui l'héberge par défaut.** L'ouvrir à d'autres postes exige un proxy inverse qui authentifie : voir [Exposition réseau](/docs/exploiter/docker/#exposition-réseau).
+
+## Audit de sécurité
+
+En novembre 2026, le code a fait l'objet d'un **audit de sécurité interne** (revue offensive du code source des deux dépôts, en lecture seule, sans attaque d'aucun système en service).
+
+**Résultat : aucune faille critique.** Cinq points d'amélioration de sévérité élevée ou moyenne ont été identifiés, puis **corrigés dans la version 0.5.1** :
+
+| Domaine | Correctif |
+|---|---|
+| Chaîne d'intégration continue | Actions épinglées à une empreinte de commit ; veille automatique des mises à jour |
+| Exposition réseau du serveur | Écoute limitée à la machine par défaut ; exposition documentée, derrière un proxy authentifiant |
+| Déploiement Docker | Conteneur exécuté sous un utilisateur non privilégié |
+| Protection des données | Validation renforcée des libellés côté serveur, pour garantir qu'aucun texte n'est enregistré |
+| Interface web | En-têtes de durcissement (politique de sécurité du contenu) |
+
+Les détails techniques et le raisonnement d'exploitation ne sont pas publiés, pour ne pas faciliter d'éventuels abus. Le rapport complet peut être communiqué à une organisation qui en fait la demande dans le cadre d'une évaluation.
+
+L'audit confirme par ailleurs plusieurs points solides : requêtes de base de données paramétrées, rendu sans HTML brut (pas d'injection de contenu), chaîne de mise à jour signée, clé au trousseau, effacement sécurisé du journal, moteur sans dépendance externe.
+
+## Signaler une vulnérabilité
+
+Si vous pensez avoir trouvé une faille, **signalez-la en privé**, sans la publier ni ouvrir une *issue* publique : utilisez le **signalement privé de GitHub** sur le dépôt, onglet **Security → Report a vulnerability** ([lien direct](https://github.com/WillIsback/Grammaria/security/advisories/new)).
+
+Précisez la version concernée, les étapes pour reproduire, et l'impact que vous estimez. À quoi vous attendre :
+
+- le projet est maintenu par une seule personne, sur son temps : la réponse est **au mieux**, sans délai garanti ;
+- il n'y a **pas de prime** (*bug bounty*) ;
+- périmètre : la **dernière version publiée** de Grammaria et de son moteur [grammaria-rc](https://github.com/WillIsback/grammaria-rc). Les services tiers (votre modèle de langage, votre hébergement) n'en font pas partie.
+
+Merci de laisser un délai raisonnable pour un correctif avant toute divulgation publique.
+
+## Ce que ce n'est pas
+
+- Un logiciel audité par un tiers certifié : l'audit est **interne**.
+- Un produit avec engagement de support ou de délai de correction.
+- Une version stable : c'est une **bêta**.
+
+Ces limites sont les mêmes que celles de la [démarche bêta](/docs/decouvrir/beta/#ce-que-le-projet-nest-pas).
