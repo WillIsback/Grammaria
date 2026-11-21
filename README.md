@@ -2,7 +2,11 @@
 
 **Le correcteur de français qui corrige tout de suite, et vous aide à ne plus refaire les mêmes fautes.**
 
-Documentation : [grammaria.fr/docs](https://grammaria.fr/docs/)
+[![Installer pour Windows](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/WillIsback/Grammaria/releases/latest)
+[![Installer pour Linux](https://img.shields.io/badge/Linux-Installer-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/WillIsback/Grammaria/releases/latest)
+[![Documentation](https://img.shields.io/badge/Documentation-grammaria.fr-2E7D32?style=for-the-badge&logo=readthedocs&logoColor=white)](https://grammaria.fr/docs/)
+
+Les deux premiers boutons mènent à la dernière version : prenez le fichier `.exe` sous Windows, `.deb` ou `.AppImage` sous Linux.
 
 ## Pour qui
 
