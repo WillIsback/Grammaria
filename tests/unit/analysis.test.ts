@@ -157,6 +157,21 @@ describe("regleDuMoteur", () => {
     expect(regleDuMoteur({ id: "X" })).toEqual({ ruleKey: "X", label: "X" });
   });
 
+  it("neutralise un identifiant forgé et borne le libellé (issue #41)", () => {
+    const phrase = "SECRET: rendez-vous 14h chez Alice ".repeat(10);
+    // Identifiant non conforme (porte du texte) : clé et libellé neutres.
+    expect(regleDuMoteur({ id: phrase, description: phrase })).toEqual({
+      ruleKey: "AUTRE",
+      label: "Autre",
+    });
+    // Identifiant conforme mais description géante : libellé borné à 120, nettoyé.
+    const r = regleDuMoteur({ id: "ACCORD_SUJET_VERBE", description: phrase });
+    expect(r.ruleKey).toBe("ACCORD_SUJET_VERBE");
+    expect(r.label.length).toBeLessThanOrEqual(120);
+    // Les caractères de contrôle sont retirés.
+    expect(regleDuMoteur({ id: "X", description: "a\u0000b\u0007c" }).label).toBe("abc");
+  });
+
   it("ramène une règle par mot à sa règle d'origine, sans le mot", () => {
     expect(
       regleDuMoteur({ id: "FR_SIMPLE_REPLACE_SIMPLE_JAI", description: "Mot incorrect : jai" }),
