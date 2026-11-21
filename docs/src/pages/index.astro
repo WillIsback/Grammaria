@@ -20,10 +20,16 @@ import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
   }}
 >
   <div class="hero-badges">
+    <a class="badge badge-beta" href="/docs/decouvrir/beta/">Version bêta</a>
     <span class="badge">Open source · GPL-3.0</span>
     <span class="badge">Bureau ou serveur</span>
     <span class="badge">Vos textes restent chez vous</span>
   </div>
+
+  <p class="beta-note">
+    La correction est éprouvée par l'usage ; l'effet sur la progression est en cours de test.
+    <a href="/docs/decouvrir/beta/">Bêta : démarche et méthode de test</a>
+  </p>
 
   <div class="section-header">
     <h2 class="section-title">Pour qui</h2>
@@ -150,6 +156,32 @@ import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
     background: #1e1b4b;
     color: #a5b4fc;
     border-color: #3730a3;
+  }
+  .badge-beta {
+    background: #fffbeb;
+    color: #92400e;
+    border-color: #fcd34d;
+    text-decoration: none;
+  }
+  .badge-beta:hover,
+  .badge-beta:focus-visible {
+    border-color: #d97706;
+    text-decoration: underline;
+  }
+  :global([data-theme="dark"]) .badge-beta {
+    background: #3a2a06;
+    color: #fcd34d;
+    border-color: #92400e;
+  }
+  .beta-note {
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--sl-color-gray-2);
+    margin: -0.75rem auto 1.5rem;
+    max-width: 40rem;
+  }
+  .beta-note a {
+    white-space: nowrap;
   }
 
   /* ── Feature strip ────────────────────────────────────────── */

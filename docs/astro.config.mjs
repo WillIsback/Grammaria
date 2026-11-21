@@ -23,6 +23,11 @@ export default defineConfig({
           label: "Découvrir",
           items: [
             { label: "Pour qui, pourquoi, comment", link: "/docs/" },
+            {
+              label: "Bêta : démarche et méthode de test",
+              link: "/docs/decouvrir/beta/",
+              badge: { text: "Nouveau", variant: "caution" },
+            },
             { label: "Comment ça marche", link: "/docs/decouvrir/fonctionnement/" },
             { label: "Le moteur de grammaire", link: "/docs/decouvrir/moteur/" },
             { label: "Versions", link: "/docs/decouvrir/versions/" },

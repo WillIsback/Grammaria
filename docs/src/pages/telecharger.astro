@@ -20,6 +20,10 @@ const RELEASES = "https://github.com/WillIsback/Grammaria/releases/latest";
     Choisissez votre ordinateur. Le téléchargement démarre tout de suite.
     <span id="version" class="version"></span>
   </p>
+  <p class="beta">
+    Version bêta : la correction est éprouvée, l'effet sur la progression est en cours de test.
+    <a href="/docs/decouvrir/beta/">En savoir plus</a>
+  </p>
 
   <ul class="choix">
     <li class="carte" data-systeme="windows">
@@ -120,6 +124,11 @@ const RELEASES = "https://github.com/WillIsback/Grammaria/releases/latest";
     color: var(--sl-color-gray-3);
     font-size: 0.9rem;
     margin-left: 0.4rem;
+  }
+  .beta {
+    font-size: 0.88rem;
+    color: var(--sl-color-gray-3);
+    margin: -1rem 0 1.5rem;
   }
   .choix {
     display: grid;
