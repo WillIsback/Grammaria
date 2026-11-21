@@ -37,6 +37,11 @@ RUN apk add --no-cache tzdata
 ARG VERSION=0.0.0
 ENV GRAMMARIA_VERSION=$VERSION
 
+# Le conteneur doit écouter toutes ses interfaces pour recevoir le port publié.
+# L'exposition réelle est maîtrisée par la publication du port (le
+# docker-compose.yml généré par install.sh publie sur 127.0.0.1 par défaut).
+ENV HOST=0.0.0.0
+
 # Copier les artefacts du build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
@@ -64,6 +69,13 @@ RUN mkdir -p public/data && \
 # Journal des fautes (SQLite) : monter un volume pour le conserver
 RUN mkdir -p data
 VOLUME /app/data
+
+# Moindre privilège : le serveur tourne sous l'utilisateur non privilégié « bun »
+# (présent dans l'image de base), pas en root. Tout /app lui appartient, donc un
+# volume nommé neuf hérite de ses droits. Pour un montage lié (./data d'install.sh),
+# le dossier hôte doit être accessible en écriture à l'uid 1000.
+RUN chown -R bun:bun /app
+USER bun
 
 EXPOSE 25000
 

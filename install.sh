@@ -55,13 +55,20 @@ services:
   grammaria:
     image: ${IMAGE}
     container_name: grammaria
+    # Publié sur la boucle locale uniquement : le serveur n'a pas
+    # d'authentification. Pour l'ouvrir à d'autres machines, remplacez par
+    # "25000:25000" ET placez devant un proxy inverse qui authentifie.
     ports:
-      - "25000:25000"
+      - "127.0.0.1:${PORT}:25000"
     env_file: .env
     volumes:
       - ./data:/app/data
     restart: unless-stopped
 COMPOSE
+
+# Le conteneur tourne sous l'utilisateur « bun » (uid 1000) : le dossier des
+# données doit lui être accessible en écriture. Créé ici par l'utilisateur courant.
+mkdir -p data
 
 echo ""
 echo -e "${GREEN}Démarrage de Grammaria...${NC}"

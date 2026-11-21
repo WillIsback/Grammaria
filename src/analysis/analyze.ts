@@ -102,12 +102,54 @@ export function regleParMot(id: string): string | null {
   return null;
 }
 
+/**
+ * Formes attendues des identifiants fixes d'une règle du moteur et d'une
+ * catégorie (issue #41). Le serveur ne réexécute pas son moteur pour
+ * `/api/analyze` : il reçoit les détections de la page. Un client falsifié
+ * pourrait y glisser du texte de l'utilisateur dans `rule.id`,
+ * `rule.description` ou `rule.category` — qui finissent dans le journal sur
+ * disque. Les identifiants d'une vraie règle du moteur sont des codes en
+ * capitales ; tout ce qui n'y ressemble pas est ramené à une valeur neutre, et
+ * les libellés sont nettoyés et bornés, pour qu'aucun texte libre non borné ne
+ * soit stocké. (Les deux familles de règles « par mot » sont déjà neutralisées
+ * en amont par `REGLES_PAR_MOT`.)
+ */
+const RE_ID_REGLE = /^[A-Z0-9_]{1,80}(\[[0-9]{1,6}\])?$/;
+const RE_ID_CATEGORIE = /^[A-Z0-9_]{0,64}$/;
+/** Un libellé de règle (description fixe du moteur) est court ; on le plafonne. */
+const LIBELLE_MAX = 120;
+const CATEGORIE_NOM_MAX = 80;
+// Caractères de contrôle C0 (hors tab/retours), DEL et C1.
+// oxlint-disable-next-line no-control-regex -- on les retire volontairement
+const CONTROLES = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g;
+
+/** Nettoie un libellé destiné au journal : contrôles retirés, espaces compactés, borné. */
+function libelleFixe(valeur: string | undefined, max: number): string {
+  return (valeur ?? "").replace(CONTROLES, "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
 /** Clé et libellé fixes d'une règle du moteur (voir `REGLES_PAR_MOT`). */
 export function regleDuMoteur(rule: LTMatch["rule"]): { ruleKey: string; label: string } {
   const parMot = regleParMot(rule.id);
   if (parMot) return { ruleKey: parMot, label: REGLES_PAR_MOT[parMot] };
-  // La description est un attribut fixe de la règle, contrairement au message.
-  return { ruleKey: rule.id, label: rule.description || rule.category?.name || rule.id };
+  // Identifiant non conforme à celui d'une règle du moteur : détection forgée,
+  // ramenée à une clé et un libellé neutres (aucun texte libre stocké).
+  if (!RE_ID_REGLE.test(rule.id)) return { ruleKey: "AUTRE", label: "Autre" };
+  // La description est un attribut fixe de la règle, contrairement au message ;
+  // elle est tout de même nettoyée et bornée avant d'entrer dans le journal.
+  return {
+    ruleKey: rule.id,
+    label: libelleFixe(rule.description || rule.category?.name || rule.id, LIBELLE_MAX),
+  };
+}
+
+/** Catégorie fixe d'une détection, validée avant stockage (issue #41). */
+function categorieFixe(rule: LTMatch["rule"]): { categoryId: string; categoryName: string } {
+  const id = rule.category?.id ?? "";
+  // Un identifiant de catégorie non conforme trahit une détection forgée : on
+  // n'en garde ni l'identifiant ni le nom (qui pourrait porter du texte libre).
+  if (!RE_ID_CATEGORIE.test(id)) return { categoryId: "", categoryName: "" };
+  return { categoryId: id, categoryName: libelleFixe(rule.category?.name, CATEGORIE_NOM_MAX) };
 }
 
 /**
@@ -149,9 +191,9 @@ export function analyze(original: string, corrected: string, matches: LTMatch[])
       faults = overlapping.map((m) => ({
         ...regleDuMoteur(m.rule),
         source: "lt" as const,
-        categoryId: m.rule.category?.id ?? "",
-        categoryName: m.rule.category?.name ?? "",
-        issueType: m.rule.issueType ?? "",
+        ...categorieFixe(m.rule),
+        // Type fixe (« grammar », « typographical »… ) ; validé avant stockage.
+        issueType: /^[a-z-]{0,40}$/.test(m.rule.issueType ?? "") ? (m.rule.issueType ?? "") : "",
         message: m.shortMessage || m.message,
         counted: isCounted(m),
       }));

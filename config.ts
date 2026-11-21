@@ -1,7 +1,14 @@
 export const config = {
   port: Number(process.env.PORT ?? 25000),
-  /** Interface d'écoute ; 127.0.0.1 pour un serveur local en mode bureau. */
-  host: process.env.HOST ?? "0.0.0.0",
+  /**
+   * Interface d'écoute. Par défaut 127.0.0.1 : le serveur n'est joignable que
+   * depuis la machine. L'image Docker pose HOST=0.0.0.0 (le conteneur doit
+   * écouter toutes ses interfaces pour recevoir le port publié), et l'exposition
+   * est alors maîtrisée par la publication du port (127.0.0.1:25000 par défaut
+   * dans le docker-compose.yml généré). Exposer sur le réseau exige un proxy
+   * inverse authentifiant : le serveur n'a pas d'authentification.
+   */
+  host: process.env.HOST ?? "127.0.0.1",
   /**
    * Mode bureau (GRAMMARIA_DESKTOP=1) : serveur local d'un seul utilisateur, lancé sans
    * Docker ; réglages du LLM modifiables depuis l'interface, requêtes d'autres hôtes ou

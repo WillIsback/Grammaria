@@ -3,7 +3,16 @@ title: "Versions"
 description: "Ce que chaque version de Grammaria a apporté."
 ---
 
-Les versions sont publiées sur la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt. La dernière version publiée est la **0.5.0**, une version bêta.
+Les versions sont publiées sur la page [Releases](https://github.com/WillIsback/Grammaria/releases) du dépôt. La dernière version publiée est la **0.5.1**, une version bêta.
+
+## Version 0.5.1 — durcissement de sécurité
+
+Correctifs issus d'un audit de sécurité interne, sans changement visible à l'usage :
+
+- Le serveur (image Docker) n'écoute plus que la machine qui l'héberge par défaut ; l'ouvrir à d'autres postes exige désormais un proxy inverse qui authentifie. Voir [Exposition réseau](/docs/exploiter/docker/#exposition-réseau).
+- Le conteneur Docker tourne sous un utilisateur non privilégié.
+- Le serveur ne garde plus que des libellés de règles validés et bornés, renforçant la promesse « [aucun texte enregistré](/docs/decouvrir/beta/) ».
+- En-têtes de durcissement sur l'interface web ; actions d'intégration continue épinglées.
 
 ## Version 0.5.0 — bêta de test
 
