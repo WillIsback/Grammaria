@@ -70,6 +70,13 @@ RUN mkdir -p public/data && \
 RUN mkdir -p data
 VOLUME /app/data
 
+# Moindre privilège : le serveur tourne sous l'utilisateur non privilégié « bun »
+# (présent dans l'image de base), pas en root. Tout /app lui appartient, donc un
+# volume nommé neuf hérite de ses droits. Pour un montage lié (./data d'install.sh),
+# le dossier hôte doit être accessible en écriture à l'uid 1000.
+RUN chown -R bun:bun /app
+USER bun
+
 EXPOSE 25000
 
 # `bun -e` et non `bun run -e` : avec Bun 1.4, `bun run -e` affiche l'aide et sort
