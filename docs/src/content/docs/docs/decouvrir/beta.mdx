@@ -47,7 +47,7 @@ Tout le reste se passe sur le poste (application de bureau) ou sur le serveur de
 | Le texte corrigé | Revient du modèle et s'affiche à l'écran | L'utilisateur |
 | L'analyse des fautes | Calculée sur le poste (ou le serveur Docker) | Personne d'autre |
 | Le journal des fautes (sans texte) | Un fichier sur le poste (ou le serveur Docker) | L'utilisateur |
-| La clé API du modèle, s'il en faut une | Un fichier sur le poste, lisible par le seul compte de l'utilisateur, en clair | L'utilisateur |
+| La clé API du modèle, s'il en faut une | Rangée dans le trousseau du système ; sur un Linux sans trousseau, dans un fichier lisible par le seul compte de l'utilisateur, et l'application le signale | L'utilisateur |
 | Le fichier d'export de la bêta | Enregistré sur le poste ; transmis à la main par le testeur, s'il le veut | La personne qui reçoit le fichier |
 
 Grammaria n'a **pas de serveur central**, pas de compte utilisateur et pas de télémétrie vers l'auteur.
@@ -291,7 +291,9 @@ Vous pouvez arrêter à tout moment, sans prévenir personne.
 
 3. **Désinstaller l'application**, comme tout autre logiciel de votre système.
 
-   Pour ne rien laisser, supprimez aussi le dossier de données s'il reste après la désinstallation : `%APPDATA%\fr.willisback.grammaria\` sous Windows, `~/.local/share/fr.willisback.grammaria/` sous Linux. Il contient le journal, les réglages et la clé API du modèle (voir [Où sont mes données ?](/docs/demarrer/application-bureau/#où-sont-mes-données)).
+   Avant de désinstaller, supprimez la clé API du modèle s'il y en a une : **Paramètres → IA**, **Supprimer la clé enregistrée**. Elle est rangée dans le trousseau du système, que la désinstallation ne vide pas (voir [La clé API](/docs/demarrer/application-bureau/#la-clé-api)).
+
+   Pour ne rien laisser, supprimez aussi le dossier de données s'il reste après la désinstallation : `%APPDATA%\fr.willisback.grammaria\` sous Windows, `~/.local/share/fr.willisback.grammaria/` sous Linux. Il contient le journal et les réglages, et la clé API sur un Linux sans trousseau (voir [Où sont mes données ?](/docs/demarrer/application-bureau/#où-sont-mes-données)).
 
 </Steps>
 

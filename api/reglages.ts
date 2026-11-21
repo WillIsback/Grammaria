@@ -1,4 +1,4 @@
-import type { ServerSettings } from "../src/services/settings.ts";
+import type { ApiKeyStorage, ServerSettings } from "../src/services/settings.ts";
 
 /**
  * Réglages du LLM : validation pure, sans lecture ni écriture de fichier.
@@ -17,7 +17,13 @@ export interface LlmSettings {
 
 export type SettingsUpdate = Partial<LlmSettings>;
 
-export type { ServerSettings };
+/**
+ * Application de bureau : `apiKeyStorage` (où est rangée la clé : trousseau du
+ * système ou, sans trousseau, fichier réservé au compte) vient de Rust
+ * (`settings_get`, src-tauri/src/store.rs). Le serveur web ne le renvoie pas :
+ * sa clé vient de l'environnement.
+ */
+export type { ApiKeyStorage, ServerSettings };
 
 const MAX_FIELD_LENGTH = 2_000;
 

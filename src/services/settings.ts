@@ -13,7 +13,17 @@ export interface ServerSettings {
    * enregistrement réussi.
    */
   settingsUnreadable?: boolean;
+  /**
+   * Application de bureau : où est rangée la clé API. `trousseau` : trousseau
+   * du système (Gestionnaire d'identification de Windows, service de secrets
+   * sous Linux) ; `fichier` : aucun trousseau disponible, la clé reste dans
+   * le fichier de réglages, lisible par le seul compte de l'utilisateur ;
+   * `aucune` : pas de clé. Absent sur le serveur web (clé dans l'environnement).
+   */
+  apiKeyStorage?: ApiKeyStorage;
 }
+
+export type ApiKeyStorage = "trousseau" | "fichier" | "aucune";
 
 export interface SettingsInput {
   llmTarget?: string;

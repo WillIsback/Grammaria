@@ -4,15 +4,25 @@
 //! `/api/valid-words` de `server.ts`) : les fichiers existants sont repris
 //! tels quels, et les messages d'erreur sont les mêmes.
 //!
-//! La clé API ne sort jamais de Rust : la page ne voit que `hasApiKey`. Elle
-//! n'est lue que par le relais du modèle (`llm.rs`), qui l'envoie au seul
-//! serveur enregistré avec elle. Quand l'adresse du modèle change de serveur
-//! (origine : schéma, hôte, port) sans qu'une nouvelle clé soit fournie, la
-//! clé enregistrée est effacée : elle ne doit jamais partir ailleurs.
+//! La clé API ne sort jamais de Rust : la page ne voit que `hasApiKey` et
+//! `apiKeyStorage`. Elle n'est lue que par le relais du modèle (`llm.rs`), qui
+//! l'envoie au seul serveur enregistré avec elle. Quand l'adresse du modèle
+//! change de serveur (origine : schéma, hôte, port) sans qu'une nouvelle clé
+//! soit fournie, la clé enregistrée est effacée : elle ne doit jamais partir
+//! ailleurs.
+//!
+//! La clé est rangée dans le trousseau du système (`trousseau.rs`) ; le fichier
+//! ne garde que l'indicateur `llmApiKeyInKeyring`. Sans trousseau (Linux sans
+//! service de secrets), elle reste dans `settings.json`, lisible par le seul
+//! compte (0600), et la page l'indique. Une clé en clair (version précédente,
+//! ou trousseau devenu disponible) est déplacée dans le trousseau au démarrage
+//! (`migrer_vers_le_trousseau`) : écrite, relue à l'identique, puis seulement
+//! retirée du fichier.
 //!
 //! Les fichiers sont relus à chaque appel (ils font quelques centaines
 //! d'octets) : un fichier modifié à la main est pris en compte sans relancer
-//! l'application.
+//! l'application. La clé lue dans le trousseau est gardée en mémoire le temps
+//! de l'exécution.
 
 use std::fs;
 use std::io::Write;
@@ -20,6 +30,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::logs;
+use crate::trousseau::Coffre;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -45,9 +56,12 @@ const MAX_WORD_LENGTH: usize = 100;
 #[derive(Clone, PartialEq, Eq)]
 pub struct LlmSettings {
     pub llm_target: String,
+    /// Clé gardée dans le fichier (aucun trousseau disponible) ; vide sinon.
     pub llm_api_key: String,
     pub llm_model_name: String,
     pub llm_disable_thinking: bool,
+    /// Une clé est rangée dans le trousseau du système (indicateur du fichier).
+    pub cle_dans_le_trousseau: bool,
 }
 
 /// Sans la clé, pour qu'un `{:?}` ne la fasse jamais apparaître.
@@ -58,7 +72,25 @@ impl std::fmt::Debug for LlmSettings {
             .field("has_api_key", &!self.llm_api_key.is_empty())
             .field("llm_model_name", &self.llm_model_name)
             .field("llm_disable_thinking", &self.llm_disable_thinking)
+            .field("cle_dans_le_trousseau", &self.cle_dans_le_trousseau)
             .finish()
+    }
+}
+
+impl LlmSettings {
+    fn has_api_key(&self) -> bool {
+        !self.llm_api_key.is_empty() || self.cle_dans_le_trousseau
+    }
+
+    /// Où est la clé ; `fichier` l'emporte (clé en clair, à déplacer).
+    fn api_key_storage(&self) -> &'static str {
+        if !self.llm_api_key.is_empty() {
+            "fichier"
+        } else if self.cle_dans_le_trousseau {
+            "trousseau"
+        } else {
+            "aucune"
+        }
     }
 }
 
@@ -71,6 +103,7 @@ impl Default for LlmSettings {
             llm_api_key: String::new(),
             llm_model_name: String::new(),
             llm_disable_thinking: true,
+            cle_dans_le_trousseau: false,
         }
     }
 }
@@ -91,6 +124,10 @@ pub struct PublicSettings {
     /// faux dès qu'un enregistrement réécrit le fichier.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub settings_unreadable: bool,
+    /// Où est rangée la clé : `trousseau`, `fichier` (aucun trousseau
+    /// disponible : fichier lisible par le seul compte) ou `aucune`. Propre au
+    /// bureau : le serveur web n'envoie pas ce champ.
+    pub api_key_storage: &'static str,
 }
 
 /// Contenu de `settings.json`, champs dans l'ordre écrit par `settings.ts`.
@@ -102,7 +139,13 @@ struct SettingsFile<'a> {
     llm_api_key: &'a str,
     llm_model_name: &'a str,
     llm_disable_thinking: bool,
+    /// Absent quand il est faux : sans clé, ou clé dans le fichier (repli).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    llm_api_key_in_keyring: bool,
 }
+
+/// Indicateur non secret du fichier : la clé est dans le trousseau.
+const KEYRING_FLAG: &str = "llmApiKeyInKeyring";
 
 /// Champs fournis par une mise à jour (absents : inchangés).
 #[derive(Default)]
@@ -111,15 +154,21 @@ struct SettingsUpdate {
     llm_api_key: Option<String>,
     llm_model_name: Option<String>,
     llm_disable_thinking: Option<bool>,
+    /// Lu dans le fichier seulement, jamais fourni par la page.
+    cle_dans_le_trousseau: Option<bool>,
 }
 
-/// Accès aux deux fichiers. Le verrou sérialise les lectures-écritures.
+/// Accès aux deux fichiers et au trousseau. Le verrou sérialise les
+/// lectures-écritures et garde la clé déjà lue dans le trousseau.
+#[derive(Clone)]
 pub struct Store(Arc<StoreInner>);
 
 struct StoreInner {
     settings_path: PathBuf,
     words_path: PathBuf,
-    lock: Mutex<()>,
+    coffre: Box<dyn Coffre>,
+    /// Clé du trousseau lue ou écrite pendant cette exécution.
+    cle_en_memoire: Mutex<Option<String>>,
 }
 
 /// Où envoyer les requêtes du modèle, et avec quelle clé.
@@ -138,27 +187,29 @@ impl std::fmt::Debug for Upstream {
 }
 
 impl Store {
-    /// Fichiers `settings.json` et `valid-words.json` de `data_dir`.
-    pub fn new(data_dir: &Path) -> Self {
+    /// Fichiers `settings.json` et `valid-words.json` de `data_dir` ; clé dans
+    /// `coffre` (le trousseau du système, ou un coffre en mémoire en test).
+    pub fn new(data_dir: &Path, coffre: Box<dyn Coffre>) -> Self {
         Store(Arc::new(StoreInner {
             settings_path: data_dir.join(SETTINGS_FILE),
             words_path: data_dir.join(VALID_WORDS_FILE),
-            lock: Mutex::new(()),
+            coffre,
+            cle_en_memoire: Mutex::new(None),
         }))
     }
 
-    fn locked<T>(&self, work: impl FnOnce(&StoreInner) -> T) -> T {
-        let _guard = self
+    fn locked<T>(&self, work: impl FnOnce(&StoreInner, &mut Option<String>) -> T) -> T {
+        let mut cle_en_memoire = self
             .0
-            .lock
+            .cle_en_memoire
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        work(&self.0)
+        work(&self.0, &mut cle_en_memoire)
     }
 
-    /// Réglages publics (sans la clé).
+    /// Réglages publics (sans la clé). Ne touche pas au trousseau.
     pub fn settings(&self) -> PublicSettings {
-        self.locked(|inner| {
+        self.locked(|inner, _| {
             let (exists, unreadable, settings) = read_settings_state(&inner.settings_path);
             PublicSettings {
                 settings_unreadable: unreadable,
@@ -168,25 +219,140 @@ impl Store {
     }
 
     /// Valide, applique et enregistre une mise à jour (`PUT /api/settings`).
+    /// Une nouvelle clé va dans le trousseau, où elle doit être relue à
+    /// l'identique ; sinon (aucun trousseau) dans le fichier, en 0600. Une clé
+    /// effacée (champ vidé, ou adresse d'un autre serveur) sort du trousseau.
     pub fn update_settings(&self, input: &Value) -> Result<PublicSettings, String> {
-        self.locked(|inner| {
+        self.locked(|inner, cle_en_memoire| {
             let update = parse_update(input, false)?;
+            let nouvelle_cle = update.llm_api_key.clone().filter(|cle| !cle.is_empty());
             let (_, current) = read_settings(&inner.settings_path);
-            let next = apply_update(&current, update);
+            let mut next = apply_update(&current, update);
+            if let Some(cle) = &nouvelle_cle {
+                match ranger(inner.coffre.as_ref(), cle) {
+                    Ok(()) => {
+                        next.llm_api_key.clear();
+                        next.cle_dans_le_trousseau = true;
+                    }
+                    Err(erreur) => logs::ecrire_masque(
+                        logs::Niveau::Avertissement,
+                        "réglages",
+                        &format!(
+                            "Trousseau indisponible ({erreur}) : repli sur le fichier de \
+                             réglages, lisible par le seul compte."
+                        ),
+                        &[cle],
+                    ),
+                }
+            }
             write_settings(&inner.settings_path, &next)
                 .map_err(|error| format!("Enregistrement des réglages impossible : {error}"))?;
+            // Le fichier ne renvoie plus à l'entrée du trousseau : elle est
+            // retirée (clé effacée, ou nouvelle clé gardée dans le fichier).
+            if current.cle_dans_le_trousseau && !next.cle_dans_le_trousseau {
+                effacer(inner.coffre.as_ref());
+            }
+            if nouvelle_cle.is_some() && next.cle_dans_le_trousseau {
+                logs::ecrire(
+                    logs::Niveau::Info,
+                    "réglages",
+                    "Clé API rangée dans le trousseau du système.",
+                );
+            }
+            // Clé en mémoire : la nouvelle si elle est au trousseau, aucune si
+            // le fichier n'y renvoie plus ; sinon (clé inchangée) celle déjà lue.
+            if nouvelle_cle.is_some() || !next.cle_dans_le_trousseau {
+                *cle_en_memoire = nouvelle_cle.filter(|_| next.cle_dans_le_trousseau);
+            }
             Ok(public_view(true, &next))
         })
     }
 
     /// Adresse et clé du modèle, pour le relais. `None` sans modèle configuré.
+    /// La clé du trousseau n'est lue qu'ici, puis gardée en mémoire.
     pub fn upstream(&self) -> Option<Upstream> {
-        self.locked(|inner| {
+        self.locked(|inner, cle_en_memoire| {
             let (exists, settings) = read_settings(&inner.settings_path);
-            (exists && !settings.llm_target.is_empty()).then_some(Upstream {
+            if !exists || settings.llm_target.is_empty() {
+                return None;
+            }
+            let api_key = if settings.llm_api_key.is_empty() && settings.cle_dans_le_trousseau {
+                cle_du_trousseau(inner.coffre.as_ref(), cle_en_memoire)
+            } else {
+                settings.llm_api_key
+            };
+            Some(Upstream {
                 target: settings.llm_target,
-                api_key: settings.llm_api_key,
+                api_key,
             })
+        })
+    }
+
+    /// Clé déjà connue (fichier, ou trousseau déjà lu), sans interroger le
+    /// trousseau : pour la masquer dans le journal technique.
+    pub fn cle_connue(&self) -> String {
+        self.locked(|inner, cle_en_memoire| {
+            let (_, settings) = read_settings(&inner.settings_path);
+            if settings.llm_api_key.is_empty() {
+                cle_en_memoire.clone().unwrap_or_default()
+            } else {
+                settings.llm_api_key
+            }
+        })
+    }
+
+    /// Au démarrage : impose 0600 au fichier de réglages (Unix), puis déplace
+    /// une clé en clair dans le trousseau. Elle n'est retirée du fichier
+    /// qu'une fois relue à l'identique dans le trousseau ; sinon rien ne
+    /// change, et la page affiche le repli. Un fichier illisible n'est pas
+    /// touché.
+    pub fn migrer_vers_le_trousseau(&self) {
+        self.locked(|inner, cle_en_memoire| {
+            let path = &inner.settings_path;
+            let Some(update) = path.exists().then(|| parse_settings_file(path)).flatten() else {
+                return;
+            };
+            imposer_droits_prives(path);
+            let settings = apply_fields(&LlmSettings::default(), update);
+            let cle = settings.llm_api_key.clone();
+            if cle.is_empty() {
+                return;
+            }
+            if let Err(erreur) = ranger(inner.coffre.as_ref(), &cle) {
+                logs::ecrire_masque(
+                    logs::Niveau::Info,
+                    "réglages",
+                    &format!(
+                        "Trousseau indisponible ({erreur}) : repli sur le fichier, la clé API \
+                         reste dans le fichier de réglages, lisible par le seul compte."
+                    ),
+                    &[&cle],
+                );
+                return;
+            }
+            let next = LlmSettings {
+                llm_api_key: String::new(),
+                cle_dans_le_trousseau: true,
+                ..settings
+            };
+            match write_settings(path, &next) {
+                Ok(()) => {
+                    *cle_en_memoire = Some(cle);
+                    logs::ecrire(
+                        logs::Niveau::Info,
+                        "réglages",
+                        "Clé API déplacée dans le trousseau du système.",
+                    );
+                }
+                Err(erreur) => logs::ecrire(
+                    logs::Niveau::Avertissement,
+                    "réglages",
+                    &format!(
+                        "Clé API copiée dans le trousseau, mais le fichier de réglages n'a pas \
+                         pu être réécrit ({erreur}) : elle y reste jusqu'au prochain démarrage."
+                    ),
+                ),
+            }
         })
     }
 
@@ -197,7 +363,7 @@ impl Store {
     /// `settings.json` illisible (`settings_unreadable`) pour que la page
     /// prévienne l'utilisateur.
     pub fn fichiers_illisibles(&self) -> Vec<&'static str> {
-        self.locked(|inner| {
+        self.locked(|inner, _| {
             let mut fichiers = Vec::new();
             if inner.settings_path.exists() && parse_settings_file(&inner.settings_path).is_none() {
                 fichiers.push(SETTINGS_FILE);
@@ -211,7 +377,7 @@ impl Store {
 
     /// Mots valides enregistrés (`GET /api/valid-words`).
     pub fn valid_words(&self) -> Vec<String> {
-        self.locked(|inner| read_words(&inner.words_path))
+        self.locked(|inner, _| read_words(&inner.words_path))
     }
 
     /// Ajoute un mot valide (`POST /api/valid-words`) et renvoie la liste.
@@ -223,7 +389,7 @@ impl Store {
         if word.is_empty() || utf16_len(word) > MAX_WORD_LENGTH || !word_pattern().is_match(word) {
             return Err("Invalid word".into());
         }
-        self.locked(|inner| {
+        self.locked(|inner, _| {
             let mut words = read_words(&inner.words_path);
             if !words.iter().any(|known| known == word) {
                 words.push(word.to_string());
@@ -241,9 +407,89 @@ fn public_view(exists: bool, settings: &LlmSettings) -> PublicSettings {
         llm_target: settings.llm_target.clone(),
         llm_model_name: settings.llm_model_name.clone(),
         llm_disable_thinking: settings.llm_disable_thinking,
-        has_api_key: !settings.llm_api_key.is_empty(),
+        has_api_key: settings.has_api_key(),
         settings_unreadable: false,
+        api_key_storage: settings.api_key_storage(),
     }
+}
+
+/// Écrit `cle` dans le trousseau et la relit : réussi seulement si elle y est
+/// à l'identique. Une entrée relue différente est retirée.
+fn ranger(coffre: &dyn Coffre, cle: &str) -> Result<(), String> {
+    coffre.ecrire(cle).map_err(|erreur| erreur.0)?;
+    match coffre.lire().map_err(|erreur| erreur.0)? {
+        Some(relue) if relue == cle => Ok(()),
+        _ => {
+            let _ = coffre.effacer();
+            Err("la clé relue dans le trousseau diffère de la clé écrite".into())
+        }
+    }
+}
+
+/// Retire l'entrée du trousseau. Un échec est noté : le fichier n'y renvoie
+/// plus, la clé ne sera plus lue ni envoyée.
+fn effacer(coffre: &dyn Coffre) {
+    match coffre.effacer() {
+        Ok(()) => logs::ecrire(
+            logs::Niveau::Info,
+            "réglages",
+            "Clé API retirée du trousseau du système.",
+        ),
+        Err(erreur) => logs::ecrire(
+            logs::Niveau::Avertissement,
+            "réglages",
+            &format!(
+                "La clé API n'a pas pu être retirée du trousseau ({erreur}) : elle n'est plus \
+                 utilisée ; l'entrée « fr.willisback.grammaria » peut être supprimée depuis \
+                 l'outil du système."
+            ),
+        ),
+    }
+}
+
+/// Clé du trousseau, gardée en mémoire après la première lecture. Absente ou
+/// illisible : chaîne vide (le modèle refusera la requête), et une ligne au
+/// journal technique.
+fn cle_du_trousseau(coffre: &dyn Coffre, cle_en_memoire: &mut Option<String>) -> String {
+    if let Some(cle) = cle_en_memoire {
+        return cle.clone();
+    }
+    let probleme = match coffre.lire() {
+        Ok(Some(cle)) => {
+            *cle_en_memoire = Some(cle.clone());
+            return cle;
+        }
+        Ok(None) => "Clé API introuvable dans le trousseau du système : elle est à saisir à \
+                     nouveau dans Paramètres → IA."
+            .to_string(),
+        Err(erreur) => {
+            format!("Trousseau indisponible ({erreur}) : la clé API n'a pas pu être lue.")
+        }
+    };
+    logs::commande_masquee(logs::Niveau::Avertissement, "trousseau", &probleme, &[]);
+    String::new()
+}
+
+/// Lisible par le seul propriétaire (0600), au cas où le fichier aurait été
+/// copié ou recréé avec des droits plus larges. Windows : les droits suivent
+/// le dossier de données de l'utilisateur.
+fn imposer_droits_prives(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let Ok(metadata) = fs::metadata(path) else {
+            return;
+        };
+        if metadata.permissions().mode() & 0o777 != 0o600 {
+            let message = match fs::set_permissions(path, fs::Permissions::from_mode(0o600)) {
+                Ok(()) => format!("{SETTINGS_FILE} : droits ramenés à 0600."),
+                Err(erreur) => format!("{SETTINGS_FILE} : droits non modifiables ({erreur})."),
+            };
+            logs::ecrire(logs::Niveau::Avertissement, "réglages", &message);
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = path;
 }
 
 /// Espace au sens de JavaScript (`String.prototype.trim`, `\s`) : WhiteSpace
@@ -387,6 +633,9 @@ fn parse_update(input: &Value, from_file: bool) -> Result<SettingsUpdate, String
     }
     update.llm_api_key = text("llmApiKey")?;
     update.llm_model_name = text("llmModelName")?;
+    if from_file {
+        update.cle_dans_le_trousseau = Some(raw.get(KEYRING_FLAG) == Some(&Value::Bool(true)));
+    }
     match raw.get("llmDisableThinking") {
         None => {}
         Some(Value::Bool(flag)) => update.llm_disable_thinking = Some(*flag),
@@ -464,14 +713,22 @@ fn apply_fields(current: &LlmSettings, update: SettingsUpdate) -> LlmSettings {
         llm_disable_thinking: update
             .llm_disable_thinking
             .unwrap_or(current.llm_disable_thinking),
+        cle_dans_le_trousseau: update
+            .cle_dans_le_trousseau
+            .unwrap_or(current.cle_dans_le_trousseau),
     }
 }
 
 /// Mise à jour venue de la page. Décision du PO : si l'adresse change de
 /// serveur et qu'aucune clé n'est fournie, la clé enregistrée est effacée.
+/// Une clé fournie est ici une clé du fichier : `update_settings` la range
+/// ensuite dans le trousseau, s'il est disponible.
 fn apply_update(current: &LlmSettings, update: SettingsUpdate) -> LlmSettings {
     let key_given = update.llm_api_key.is_some();
     let mut next = apply_fields(current, update);
+    if key_given || origin(&next.llm_target) != origin(&current.llm_target) {
+        next.cle_dans_le_trousseau = false;
+    }
     if !key_given && origin(&next.llm_target) != origin(&current.llm_target) {
         next.llm_api_key.clear();
     }
@@ -530,6 +787,7 @@ fn write_settings(path: &Path, settings: &LlmSettings) -> std::io::Result<()> {
         llm_api_key: &settings.llm_api_key,
         llm_model_name: &settings.llm_model_name,
         llm_disable_thinking: settings.llm_disable_thinking,
+        llm_api_key_in_keyring: settings.cle_dans_le_trousseau,
     });
     write_atomic(path, &content, true)
 }
@@ -564,7 +822,7 @@ fn write_words(path: &Path, words: &[String]) -> std::io::Result<()> {
     write_atomic(path, &pretty_json(&WordsFile { words }), false)
 }
 
-/// Réglages du modèle, sans la clé (seulement `hasApiKey`).
+/// Réglages du modèle, sans la clé (seulement `hasApiKey` et `apiKeyStorage`).
 #[tauri::command]
 pub async fn settings_get(store: State<'_, Store>) -> Result<PublicSettings, String> {
     Ok(store.settings())
@@ -601,20 +859,54 @@ pub async fn valid_words_add(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trousseau::memoire::Memoire;
     use serde_json::json;
 
     struct Banc {
         dir: tempfile::TempDir,
         store: Store,
+        coffre: Arc<Memoire>,
     }
 
-    fn banc() -> Banc {
+    fn banc_avec(coffre: Memoire) -> Banc {
         let dir = tempfile::tempdir().expect("dossier temporaire");
-        let store = Store::new(dir.path());
-        Banc { dir, store }
+        let coffre = Arc::new(coffre);
+        let store = Store::new(dir.path(), Box::new(coffre.clone()));
+        Banc { dir, store, coffre }
+    }
+
+    /// Sans trousseau (repli) : la clé est gardée dans le fichier. C'est le
+    /// cas des tests du format du fichier et des validations, plus bas.
+    fn banc() -> Banc {
+        banc_avec(Memoire::indisponible())
+    }
+
+    /// Avec un trousseau disponible.
+    fn banc_trousseau() -> Banc {
+        banc_avec(Memoire::default())
     }
 
     impl Banc {
+        fn octets(&self) -> Vec<u8> {
+            fs::read(self.settings_path()).unwrap()
+        }
+
+        fn contient(&self, secret: &str) -> bool {
+            self.octets()
+                .windows(secret.len())
+                .any(|fenetre| fenetre == secret.as_bytes())
+        }
+
+        #[cfg(unix)]
+        fn mode(&self) -> u32 {
+            use std::os::unix::fs::PermissionsExt;
+            fs::metadata(self.settings_path())
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777
+        }
+
         fn settings_path(&self) -> PathBuf {
             self.dir.path().join(SETTINGS_FILE)
         }
@@ -644,6 +936,7 @@ mod tests {
                 "llmModelName": "",
                 "llmDisableThinking": true,
                 "hasApiKey": false,
+                "apiKeyStorage": "aucune",
             })
         );
         assert!(banc.store.upstream().is_none());
@@ -792,9 +1085,11 @@ mod tests {
                 "llmModelName": "",
                 "llmDisableThinking": false,
                 "hasApiKey": true,
+                "apiKeyStorage": "fichier",
             })
         );
-        // Octet pour octet ce qu'écrit settings.ts (JSON.stringify(…, null, 2)).
+        // Repli sans trousseau : octet pour octet ce qu'écrit settings.ts
+        // (JSON.stringify(…, null, 2)).
         assert_eq!(
             fs::read_to_string(banc.settings_path()).unwrap(),
             "{\n  \"settingsVersion\": 2,\n  \"llmTarget\": \"https://api.exemple.fr\",\n  \"llmApiKey\": \"sk-secrete\",\n  \"llmModelName\": \"\",\n  \"llmDisableThinking\": false\n}\n"
@@ -1127,5 +1422,213 @@ mod tests {
         assert_eq!(banc.store.valid_words(), ["déjà", "là"]);
         fs::write(&path, "illisible").unwrap();
         assert!(banc.store.valid_words().is_empty());
+    }
+
+    // ─────────────────────────── Trousseau ───────────────────────────
+
+    const SENTINELLE: &str = "sk-sentinelle-trousseau-7f3a";
+
+    /// Fichier d'une version précédente : la clé y est en clair.
+    fn fichier_ancien(banc: &Banc) {
+        banc.write_settings(json!({
+            "settingsVersion": 2,
+            "llmTarget": "https://api.exemple.fr",
+            "llmApiKey": SENTINELLE,
+            "llmModelName": "modele",
+            "llmDisableThinking": false,
+        }));
+    }
+
+    #[test]
+    fn avec_trousseau_le_fichier_ne_contient_pas_la_cle() {
+        let banc = banc_trousseau();
+        let vue = banc
+            .store
+            .update_settings(
+                &json!({ "llmTarget": "https://api.exemple.fr", "llmApiKey": SENTINELLE }),
+            )
+            .unwrap();
+        assert!(vue.has_api_key);
+        assert_eq!(vue.api_key_storage, "trousseau");
+        assert_eq!(banc.coffre.contenu().as_deref(), Some(SENTINELLE));
+        assert!(!banc.contient(SENTINELLE));
+        assert_eq!(
+            fs::read_to_string(banc.settings_path()).unwrap(),
+            "{\n  \"settingsVersion\": 2,\n  \"llmTarget\": \"https://api.exemple.fr\",\n  \"llmApiKey\": \"\",\n  \"llmModelName\": \"\",\n  \"llmDisableThinking\": true,\n  \"llmApiKeyInKeyring\": true\n}\n"
+        );
+        assert_eq!(banc.store.settings().api_key_storage, "trousseau");
+        assert_eq!(banc.store.upstream().unwrap().api_key, SENTINELLE);
+        assert_eq!(banc.store.cle_connue(), SENTINELLE);
+
+        // Autre exécution (cache vide) : la clé est relue dans le trousseau.
+        let relance = Store::new(banc.dir.path(), Box::new(banc.coffre.clone()));
+        assert_eq!(relance.cle_connue(), "");
+        assert_eq!(relance.upstream().unwrap().api_key, SENTINELLE);
+        assert_eq!(relance.cle_connue(), SENTINELLE);
+
+        // Un autre réglage enregistré garde la clé dans le trousseau.
+        banc.store
+            .update_settings(&json!({ "llmModelName": "m" }))
+            .unwrap();
+        assert_eq!(banc.store.settings().api_key_storage, "trousseau");
+        assert_eq!(banc.coffre.contenu().as_deref(), Some(SENTINELLE));
+        assert!(!banc.contient(SENTINELLE));
+    }
+
+    #[test]
+    fn settings_get_ne_renvoie_jamais_la_cle() {
+        for banc in [banc(), banc_trousseau()] {
+            let vue = banc
+                .store
+                .update_settings(&json!({ "llmTarget": "http://x", "llmApiKey": SENTINELLE }))
+                .unwrap();
+            for texte in [
+                serde_json::to_string(&vue).unwrap(),
+                serde_json::to_string(&banc.store.settings()).unwrap(),
+                format!("{:?}", banc.store.upstream().unwrap()),
+                format!("{:?}", read_settings(&banc.settings_path()).1),
+            ] {
+                assert!(!texte.contains(SENTINELLE), "{texte}");
+                assert!(!texte.contains("llmApiKey"), "{texte}");
+            }
+        }
+    }
+
+    #[test]
+    fn une_cle_en_clair_est_deplacee_dans_le_trousseau() {
+        let banc = banc_trousseau();
+        fichier_ancien(&banc);
+        assert_eq!(banc.store.settings().api_key_storage, "fichier");
+        banc.store.migrer_vers_le_trousseau();
+
+        assert_eq!(banc.coffre.contenu().as_deref(), Some(SENTINELLE));
+        assert!(!banc.contient(SENTINELLE), "clé encore dans le fichier");
+        assert!(!banc.dir.path().join("settings.json.tmp").exists());
+        let fichier = banc.file();
+        assert_eq!(fichier["llmApiKeyInKeyring"], json!(true));
+        assert_eq!(fichier["llmApiKey"], json!(""));
+        // Le reste des réglages est repris tel quel.
+        assert_eq!(fichier["llmTarget"], json!("https://api.exemple.fr"));
+        assert_eq!(fichier["llmModelName"], json!("modele"));
+        assert_eq!(fichier["llmDisableThinking"], json!(false));
+        #[cfg(unix)]
+        assert_eq!(banc.mode(), 0o600);
+        let vue = banc.store.settings();
+        assert!(vue.has_api_key);
+        assert_eq!(vue.api_key_storage, "trousseau");
+        assert_eq!(banc.store.upstream().unwrap().api_key, SENTINELLE);
+
+        // Une seconde fois : rien à faire, rien ne change.
+        let avant = banc.octets();
+        banc.store.migrer_vers_le_trousseau();
+        assert_eq!(banc.octets(), avant);
+    }
+
+    #[test]
+    fn sans_trousseau_la_migration_ne_perd_rien() {
+        for coffre in [
+            Memoire::indisponible(),
+            Memoire {
+                relecture_fausse: true,
+                ..Memoire::default()
+            },
+        ] {
+            let banc = banc_avec(coffre);
+            fichier_ancien(&banc);
+            let avant = banc.octets();
+            banc.store.migrer_vers_le_trousseau();
+            assert_eq!(banc.octets(), avant, "fichier modifié");
+            // Relecture fausse : l'entrée douteuse est retirée du trousseau.
+            assert_eq!(banc.coffre.contenu(), None);
+            let vue = banc.store.settings();
+            assert!(vue.has_api_key);
+            assert_eq!(vue.api_key_storage, "fichier");
+            assert_eq!(banc.store.upstream().unwrap().api_key, SENTINELLE);
+        }
+    }
+
+    #[test]
+    fn sans_trousseau_la_cle_reste_dans_un_fichier_en_0600() {
+        let banc = banc();
+        let vue = banc
+            .store
+            .update_settings(&json!({ "llmTarget": "http://x", "llmApiKey": SENTINELLE }))
+            .unwrap();
+        assert_eq!(vue.api_key_storage, "fichier");
+        assert!(banc.contient(SENTINELLE));
+        assert!(banc.file().get("llmApiKeyInKeyring").is_none());
+        #[cfg(unix)]
+        assert_eq!(banc.mode(), 0o600);
+        assert_eq!(banc.store.upstream().unwrap().api_key, SENTINELLE);
+        assert_eq!(banc.store.cle_connue(), SENTINELLE);
+
+        // Un fichier élargi à la main (0644) est ramené à 0600 au démarrage.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(banc.settings_path(), fs::Permissions::from_mode(0o644)).unwrap();
+            banc.store.migrer_vers_le_trousseau();
+            assert_eq!(banc.mode(), 0o600);
+        }
+        assert!(banc.contient(SENTINELLE));
+    }
+
+    #[test]
+    fn effacer_la_cle_vide_le_trousseau() {
+        let banc = banc_trousseau();
+        banc.store
+            .update_settings(
+                &json!({ "llmTarget": "https://a.exemple.fr", "llmApiKey": SENTINELLE }),
+            )
+            .unwrap();
+        let vue = banc
+            .store
+            .update_settings(&json!({ "llmApiKey": "" }))
+            .unwrap();
+        assert!(!vue.has_api_key);
+        assert_eq!(vue.api_key_storage, "aucune");
+        assert_eq!(banc.coffre.contenu(), None);
+        assert!(banc.file().get("llmApiKeyInKeyring").is_none());
+        assert_eq!(banc.store.upstream().unwrap().api_key, "");
+        assert_eq!(banc.store.cle_connue(), "");
+
+        // Autre serveur sans nouvelle clé : l'entrée est retirée aussi.
+        banc.store
+            .update_settings(&json!({ "llmApiKey": SENTINELLE }))
+            .unwrap();
+        assert_eq!(banc.coffre.contenu().as_deref(), Some(SENTINELLE));
+        let vue = banc
+            .store
+            .update_settings(&json!({ "llmTarget": "https://b.exemple.fr" }))
+            .unwrap();
+        assert!(!vue.has_api_key);
+        assert_eq!(banc.coffre.contenu(), None);
+        assert_eq!(banc.store.upstream().unwrap().api_key, "");
+    }
+
+    #[test]
+    fn une_entree_disparue_du_trousseau_donne_une_cle_vide() {
+        let banc = banc_trousseau();
+        banc.store
+            .update_settings(&json!({ "llmTarget": "http://x", "llmApiKey": SENTINELLE }))
+            .unwrap();
+        banc.coffre.effacer().unwrap();
+        let relance = Store::new(banc.dir.path(), Box::new(banc.coffre.clone()));
+        assert_eq!(relance.upstream().unwrap().api_key, "");
+        // L'indicateur reste : l'utilisateur voit une clé enregistrée et la
+        // saisit à nouveau.
+        assert_eq!(relance.settings().api_key_storage, "trousseau");
+    }
+
+    /// La page ne peut pas poser l'indicateur elle-même.
+    #[test]
+    fn la_page_ne_peut_pas_poser_l_indicateur() {
+        let banc = banc();
+        let vue = banc
+            .store
+            .update_settings(&json!({ "llmTarget": "http://x", "llmApiKeyInKeyring": true }))
+            .unwrap();
+        assert!(!vue.has_api_key);
+        assert_eq!(vue.api_key_storage, "aucune");
     }
 }

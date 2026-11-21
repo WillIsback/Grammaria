@@ -500,10 +500,9 @@ pub async fn log_page(
     let Some(journal) = JOURNAL.get() else {
         return Ok(());
     };
-    let cle = store
-        .upstream()
-        .map(|upstream| upstream.api_key)
-        .unwrap_or_default();
+    // Clé du fichier ou déjà lue dans le trousseau : la page ne peut en
+    // connaître aucune autre, et le trousseau n'est pas interrogé ici.
+    let cle = store.cle_connue();
     journal.ecrire_page(niveau, &message, &[&cle], Instant::now());
     Ok(())
 }

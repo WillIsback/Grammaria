@@ -16,7 +16,9 @@
 //! En mode autotest, les données (journal, réglages, mots valides) vont dans un
 //! dossier neuf à côté du fichier de résultats, jamais dans celui de
 //! l'utilisateur, et un délai maximal ferme l'application (code 1) si la page
-//! ne rend pas ses résultats : une page blanche ne bloque pas la CI.
+//! ne rend pas ses résultats : une page blanche ne bloque pas la CI. La clé API
+//! va dans une entrée du trousseau propre à l'autotest (`COMPTE_AUTOTEST`),
+//! vidée au départ et à la fin.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,6 +28,8 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Manager};
+
+use crate::trousseau::{self, Coffre};
 
 /// Fichier de résultats : sa présence active l'autotest.
 pub const VARIABLE_SORTIE: &str = "GRAMMARIA_AUTOTEST_OUT";
@@ -111,7 +115,7 @@ impl Autotest {
             };
             std::thread::sleep(delai);
             let autotest = app.state::<Autotest>();
-            let resultat = json!({
+            let mut resultat = json!({
                 "version": 1,
                 "termine": false,
                 "reussi": false,
@@ -120,10 +124,29 @@ impl Autotest {
                     delai.as_secs()
                 )],
             });
+            vider_trousseau(&mut resultat);
             if let Ok(true) = autotest.ecrire(&resultat) {
                 app.exit(1);
             }
         });
+    }
+}
+
+/// Compte du trousseau de l'autotest, distinct de celui de l'utilisateur, vidé
+/// au départ (reste d'un autotest interrompu).
+pub fn nettoyer_trousseau_au_depart() -> &'static str {
+    let _ = trousseau::Systeme::new(trousseau::COMPTE_AUTOTEST).effacer();
+    trousseau::COMPTE_AUTOTEST
+}
+
+/// Vide l'entrée du trousseau de l'autotest à la fin et le note dans les
+/// résultats (`trousseauVide`) : rien ne doit rester dans le trousseau du
+/// système qui a fait tourner l'autotest.
+fn vider_trousseau(resultat: &mut Value) {
+    let coffre = trousseau::Systeme::new(trousseau::COMPTE_AUTOTEST);
+    let vide = coffre.effacer().is_ok() && matches!(coffre.lire(), Ok(None));
+    if let Value::Object(objet) = resultat {
+        objet.insert("trousseauVide".into(), Value::Bool(vide));
     }
 }
 
@@ -151,8 +174,9 @@ pub fn autotest_config(app: AppHandle) -> Result<Config, String> {
 
 /// Écrit les résultats et ferme l'application (0 : réussi, 1 : échec).
 #[tauri::command]
-pub fn autotest_terminer(app: AppHandle, resultat: Value, reussi: bool) -> Result<(), String> {
+pub fn autotest_terminer(app: AppHandle, mut resultat: Value, reussi: bool) -> Result<(), String> {
     let autotest = app.try_state::<Autotest>().ok_or("Autotest inactif.")?;
+    vider_trousseau(&mut resultat);
     if autotest.ecrire(&resultat)? {
         app.exit(if reussi { 0 } else { 1 });
     }

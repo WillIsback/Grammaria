@@ -35,6 +35,21 @@ tokio = { version = "1", features = ["macros", "sync"] }
 # Validation des réglages et des mots valides (déjà dans l'arbre de Tauri).
 regex = "1"
 url = "2"
+# Clé API du modèle dans le trousseau du système (trousseau.rs) : keyring-core
+# et un magasin par système, sans le paquet « keyring » qui en lierait d'autres.
+keyring-core = "1"
+
+# Windows : Gestionnaire d'identification (API Win32, aucune dépendance de plus
+# que windows-sys). Sans la recherche (`search`), inutile ici.
+[target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = { version = "1", default-features = false }
+
+# Linux : service de secrets freedesktop par D-Bus, en Rust pur (zbus, déjà lié
+# par les plugins opener et single-instance) : ni libsecret ni libdbus de plus,
+# à la compilation comme à l'exécution. `crypto-rust` : la clé circule chiffrée
+# sur le bus (session « dh-ietf1024-sha256-aes128-cbc-pkcs7 »), sans OpenSSL.
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
 
 # Correcteur grammatical : moteur Rust grammaria-rc, lié à l'application. Le paquet s'appelle
 # aussi « grammaria » : il est renommé ici. La révision ci-dessous est la seule source de
