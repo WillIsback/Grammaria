@@ -38,14 +38,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "message": "Variante typographique déconseillée de « sœur ».",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "message": "« que ils » s’élide en « qu'ils ».",
           "suggestions": ["qu'ils"]
         },
         {
@@ -136,7 +136,7 @@
           "regle": "A_ACCENT",
           "debut": 36,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -192,7 +192,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 265,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -304,7 +304,7 @@
           "regle": "SA_CA_SE",
           "debut": 0,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -332,14 +332,14 @@
           "regle": "CES_CEST",
           "debut": 125,
           "longueur": 3,
-          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire « c'est » au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 170,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "message": "La préposition « à » est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -374,7 +374,7 @@
           "regle": "SA_CA_SE",
           "debut": 253,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         }
       ]
@@ -569,14 +569,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "message": "Variante typographique déconseillée de « sœur ».",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "message": "« que ils » s’élide en « qu'ils ».",
           "suggestions": ["qu'ils"]
         },
         {
@@ -660,7 +660,7 @@
           "regle": "A_ACCENT",
           "debut": 987,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -716,7 +716,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 1216,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -814,7 +814,7 @@
           "regle": "SA_CA_SE",
           "debut": 1615,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -842,14 +842,14 @@
           "regle": "CES_CEST",
           "debut": 1740,
           "longueur": 3,
-          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire « c'est » au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 1785,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "message": "La préposition « à » est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -884,7 +884,7 @@
           "regle": "SA_CA_SE",
           "debut": 1868,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -1045,14 +1045,14 @@
           "regle": "OE",
           "debut": 2795,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "message": "Variante typographique déconseillée de « sœur ».",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 2847,
           "longueur": 7,
-          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "message": "« que ils » s’élide en « qu'ils ».",
           "suggestions": ["qu'ils"]
         },
         {
@@ -1136,7 +1136,7 @@
           "regle": "A_ACCENT",
           "debut": 3551,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -1192,7 +1192,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 3780,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -1290,7 +1290,7 @@
           "regle": "SA_CA_SE",
           "debut": 4179,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -1318,14 +1318,14 @@
           "regle": "CES_CEST",
           "debut": 4304,
           "longueur": 3,
-          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire « c'est » au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 4349,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "message": "La préposition « à » est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -1360,7 +1360,7 @@
           "regle": "SA_CA_SE",
           "debut": 4432,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -1527,7 +1527,7 @@
           "regle": "A_ACCENT",
           "debut": 81,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -1569,7 +1569,7 @@
           "regle": "SA_CA_SE",
           "debut": 143,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         }
       ]
@@ -1590,7 +1590,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 40,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -1765,7 +1765,7 @@
           "regle": "OE",
           "debut": 36,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
+          "message": "Variante typographique déconseillée de « œufs ».",
           "suggestions": ["œufs"]
         },
         {
@@ -1869,14 +1869,14 @@
           "regle": "OE",
           "debut": 231,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>sœur</suggestion>.",
+          "message": "Variante typographique déconseillée de « sœur ».",
           "suggestions": ["sœur"]
         },
         {
           "regle": "ELISION",
           "debut": 283,
           "longueur": 7,
-          "message": "« que ils » s’élide en <suggestion>qu'ils</suggestion>.",
+          "message": "« que ils » s’élide en « qu'ils ».",
           "suggestions": ["qu'ils"]
         },
         {
@@ -1960,7 +1960,7 @@
           "regle": "A_ACCENT",
           "debut": 987,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -2016,7 +2016,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 1216,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -2114,7 +2114,7 @@
           "regle": "SA_CA_SE",
           "debut": 1615,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["Ça", "Cela"]
         },
         {
@@ -2142,14 +2142,14 @@
           "regle": "CES_CEST",
           "debut": 1740,
           "longueur": 3,
-          "message": "Voulez-vous écrire <suggestion>c'est</suggestion> au lieu de « Ces » ?",
+          "message": "Voulez-vous écrire « c'est » au lieu de « Ces » ?",
           "suggestions": ["C'est"]
         },
         {
           "regle": "A_ACCENT",
           "debut": 1785,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est attendue après \"venu\".",
+          "message": "La préposition « à » est attendue après \"venu\".",
           "suggestions": ["à"]
         },
         {
@@ -2184,7 +2184,7 @@
           "regle": "SA_CA_SE",
           "debut": 1868,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -2317,7 +2317,7 @@
           "regle": "A_ACCENT",
           "debut": 2645,
           "longueur": 1,
-          "message": "Ce groupe nominal est formé avec la préposition <suggestion>à</suggestion>.",
+          "message": "Ce groupe nominal est formé avec la préposition « à ».",
           "suggestions": ["à"]
         },
         {
@@ -2352,7 +2352,7 @@
           "regle": "SA_CA_SE",
           "debut": 2886,
           "longueur": 2,
-          "message": "Le pronom démonstratif <suggestion>ça</suggestion> est attendu devant un verbe.",
+          "message": "Le pronom démonstratif « ça » est attendu devant un verbe.",
           "suggestions": ["ça", "cela"]
         },
         {
@@ -2366,7 +2366,7 @@
           "regle": "A_A_ACCENT2",
           "debut": 2950,
           "longueur": 1,
-          "message": "La préposition <suggestion>à</suggestion> est généralement attendue après un verbe conjugué.",
+          "message": "La préposition « à » est généralement attendue après un verbe conjugué.",
           "suggestions": ["à"]
         },
         {
@@ -2520,7 +2520,7 @@
           "regle": "OE",
           "debut": 3656,
           "longueur": 5,
-          "message": "Variante typographique déconseillée de <suggestion>œufs</suggestion>.",
+          "message": "Variante typographique déconseillée de « œufs ».",
           "suggestions": ["œufs"]
         },
         {
