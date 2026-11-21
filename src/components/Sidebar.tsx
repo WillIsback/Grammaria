@@ -204,7 +204,8 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
         <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
           <h2 className={sectionTitle}>Journal des fautes</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Seule la phrase contenant une faute est conservée, jamais le texte entier.
+            Aucun de vos textes n'est enregistré : le journal ne garde que le nom des règles et des
+            compteurs.
           </p>
           <button
             type="button"

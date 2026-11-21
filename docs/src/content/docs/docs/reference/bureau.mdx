@@ -14,7 +14,7 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 
 | Module | Rôle |
 |---|---|
-| `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien |
+| `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien, compactage après la migration qui efface les textes |
 | `store.rs` | Réglages du modèle (`settings.json`), clé API, mots valides (`valid-words.json`) |
 | `llm.rs` | Relais du modèle en streaming : Rust ajoute l'adresse et la clé API, que la page ne connaît jamais |
 | `correcteur.rs` | Correcteur grammatical (moteur grammaria-rc lié à l'application) |
@@ -29,7 +29,7 @@ Le journal, les réglages, la clé API et les mots valides de la version 0.2.x s
 - **Une politique de sécurité stricte** (`tauri.conf.json`) : la page ne charge que ses propres fichiers, sans `unsafe-eval` ni ressource distante. Elle ne joint jamais le modèle elle-même : tout passe par `llm.rs`. La police Inter est embarquée : aucune requête vers Google.
 - **Une fenêtre verrouillée sur la page embarquée** (`lib.rs`) : toute navigation vers une autre origine et toute nouvelle fenêtre sont refusées, et notées dans le journal technique (origine seule). La page de téléchargement d'une mise à jour s'ouvre dans le navigateur du système, par une commande Rust dont l'adresse est fixe.
 - **Un relais du modèle borné** (`llm.rs`, `store.rs`) : l'adresse du modèle ne doit contenir ni identifiants (`utilisateur:motdepasse@`), ni paramètres (`?…`), ni fragment (`#…`) ; le `/v1` final est facultatif. Une redirection du serveur du modèle n'est suivie que vers la même origine, et un événement du flux est limité à 8 Mio.
-- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
+- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE` (seule exception, au caractère près : les instructions de la migration qui retire les colonnes de texte, `MIGRATION_SANS_TEXTE`), ni `VACUUM` hors de la commande `db_compacter`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
 - **Un journal d'une version plus récente n'est jamais ouvert.** Si `grammaria.db` porte une version de schéma (`PRAGMA user_version`) supérieure à celle que l'application connaît, elle affiche l'écran d'erreur « Ce journal a été créé par une version plus récente de Grammaria » et n'écrit rien ; le serveur web refuse de démarrer avec le même message.
 
 ## Journal technique
@@ -87,7 +87,7 @@ Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm 
 
 ### Autotest
 
-L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal, réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
+L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal (schéma 3, et aucun mot des textes corrigés dans les octets du fichier de la base ni de son WAL), réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
 
 1. Lancer le faux serveur du modèle : `node scripts/desktop/faux-modele.mjs`.
 2. Lancer l'application avec `GRAMMARIA_AUTOTEST_OUT=/chemin/autotest.json` (sous Linux sans écran : `xvfb-run`). Elle écrit ses résultats puis se ferme, avec le code 0 si tout est tenu.
