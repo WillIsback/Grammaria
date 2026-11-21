@@ -18,7 +18,7 @@ import type { LTMatch } from "./src/types.ts";
 
 /**
  * Délai maximal d'une analyse, chargement initial des données compris (une demi-seconde
- * mesurée). Plus court que le délai de la page (30 s, src/services/languagetool.ts) : le
+ * mesurée pour le moteur seul, 3 à 4 secondes dans l'image Docker). Plus court que le délai de la page (30 s, src/services/languagetool.ts) : le
  * serveur répond une erreur avant que la page abandonne.
  */
 const CHECK_TIMEOUT_MS = 15_000;
