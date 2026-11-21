@@ -55,8 +55,11 @@ services:
   grammaria:
     image: ${IMAGE}
     container_name: grammaria
+    # Publié sur la boucle locale uniquement : le serveur n'a pas
+    # d'authentification. Pour l'ouvrir à d'autres machines, remplacez par
+    # "25000:25000" ET placez devant un proxy inverse qui authentifie.
     ports:
-      - "25000:25000"
+      - "127.0.0.1:${PORT}:25000"
     env_file: .env
     volumes:
       - ./data:/app/data
