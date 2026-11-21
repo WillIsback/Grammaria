@@ -54,8 +54,12 @@ export const PROGRESSION = {
 
   /** Règles les plus fréquentes affichées (fautes des semaines affichées). */
   reglesFrequentesMax: 8,
-  /** Règle des fautes de frappe : hors des règles fréquentes, comme hors du cycle. */
+  /**
+   * Règle des fautes de frappe : listée parmi les règles fréquentes sous un
+   * libellé à part (`libelleOrthographe`), mais toujours hors du cycle.
+   */
   regleOrthographe: REGLE_ORTHOGRAPHE,
+  libelleOrthographe: "Fautes de frappe",
 
   /**
    * Paliers du score de maîtrise, pour une lecture en mots (la couleur n'est

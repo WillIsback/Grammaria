@@ -561,9 +561,12 @@ function ReglesFrequentes({ data }: { data: Progression }) {
       <h3 id="progression-frequentes" className={cardTitle}>
         Règles les plus fréquentes
       </h3>
-      <p className={cardHint}>Fautes de grammaire et de conjugaison, sur {data.weeks} semaines.</p>
+      <p className={cardHint}>
+        Fautes comptées dans la note, sur {data.weeks} semaines. Les fautes de frappe y figurent
+        aussi, mais ne reçoivent jamais d'astuce.
+      </p>
       {data.frequentRules.length === 0 ? (
-        <p className={`mt-3 ${discret}`}>Aucune faute de grammaire sur la période. Bravo !</p>
+        <p className={`mt-3 ${discret}`}>Aucune faute sur la période. Bravo !</p>
       ) : (
         <ol className="mt-3 space-y-2.5">
           {data.frequentRules.map((r) => (

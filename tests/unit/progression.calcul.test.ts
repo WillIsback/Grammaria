@@ -205,7 +205,7 @@ describe("progression — règles", () => {
     expect(p.rules.active[0]).toMatchObject({ label: "Règle B", state: "travaillee" });
   });
 
-  it("classe les règles les plus fréquentes, sans les fautes d'orthographe", () => {
+  it("classe les règles les plus fréquentes, fautes de frappe comprises, hors cycle", () => {
     const faults = [
       faute(jour(0), "PAIRE:a/à"),
       faute(jour(-1), "PAIRE:a/à"),
@@ -217,6 +217,14 @@ describe("progression — règles", () => {
     ];
     const frequentes = reglesFrequentes(faults, [regle("PAIRE:a/à", "signalee")]);
     expect(frequentes).toEqual([
+      // Les fautes de frappe : un libellé clair, jamais d'état (hors du cycle).
+      {
+        ruleKey: "FR_SPELLING_RULE",
+        label: "Fautes de frappe",
+        categoryName: "Grammaire",
+        count: 3,
+        state: null,
+      },
       {
         ruleKey: "PAIRE:a/à",
         label: "Règle PAIRE:a/à",

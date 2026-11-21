@@ -95,6 +95,8 @@ describe("ProgressionScreen", () => {
 
     const frequentes = screen.getByRole("region", { name: "Règles les plus fréquentes" });
     expect(within(frequentes).getByText("on / ont")).toBeTruthy();
+    // Les fautes de frappe y figurent sous un libellé clair, sans état du cycle.
+    expect(within(frequentes).getByText("Fautes de frappe")).toBeTruthy();
     // Aucun mot de l'utilisateur n'est affiché : plus de « Mots pièges » (#32).
     expect(screen.queryByRole("region", { name: "Mots pièges" })).toBeNull();
 
