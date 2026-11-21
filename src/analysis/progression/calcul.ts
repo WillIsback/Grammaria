@@ -27,9 +27,8 @@ export interface LigneTexte {
 export interface LigneFaute {
   at: number;
   ruleKey: string;
-  word: string;
-  replacement: string;
-  message: string;
+  /** Libellé fixe de la règle (`rule_labels`) ; null s'il est inconnu. */
+  label: string | null;
   categoryName: string;
 }
 
@@ -103,14 +102,6 @@ interface RegleFrequente {
   state: EtatCycle | null;
 }
 
-interface MotPiege {
-  /** Forme fautive, en minuscules. */
-  word: string;
-  /** Bonne forme : la correction la plus fréquente pour ce mot. */
-  replacement: string;
-  count: number;
-}
-
 /** Réponse de `GET /api/progress`. */
 export interface Progression {
   generatedAt: number;
@@ -138,7 +129,6 @@ export interface Progression {
     acquired: RegleResumee[];
   };
   frequentRules: RegleFrequente[];
-  trapWords: MotPiege[];
 }
 
 const arrondi = (n: number, chiffres = 1) => {
@@ -247,7 +237,11 @@ function resumer(r: RegleSuivie): RegleResumee {
   };
 }
 
-/** Règles les plus fréquentes, hors fautes d'orthographe (suivies par mot). */
+/**
+ * Règles les plus fréquentes, hors fautes de frappe : la détection générique
+ * « faute de frappe possible » n'est pas une règle à apprendre (voir
+ * `REGLES_HORS_CYCLE`).
+ */
 export function reglesFrequentes(faults: LigneFaute[], rules: RegleSuivie[]): RegleFrequente[] {
   const parCle = new Map(rules.map((r) => [r.ruleKey, r]));
   const compte = new Map<string, { count: number; last: LigneFaute }>();
@@ -273,41 +267,6 @@ export function reglesFrequentes(faults: LigneFaute[], rules: RegleSuivie[]): Re
     })
     .sort((a, b) => b.count - a.count || a.ruleKey.localeCompare(b.ruleKey))
     .slice(0, PROGRESSION.reglesFrequentesMax);
-}
-
-/**
- * « Mots pièges » : mots le plus souvent mal orthographiés, avec la
- * correction la plus fréquente (la plus récente en cas d'égalité).
- */
-export function motsPieges(faults: LigneFaute[]): MotPiege[] {
-  const parMot = new Map<
-    string,
-    { count: number; formes: Map<string, { n: number; at: number }> }
-  >();
-  for (const f of faults) {
-    if (f.ruleKey !== PROGRESSION.regleOrthographe) continue;
-    const word = f.word.trim().toLowerCase();
-    if (!word) continue;
-    let m = parMot.get(word);
-    if (!m) {
-      m = { count: 0, formes: new Map() };
-      parMot.set(word, m);
-    }
-    m.count++;
-    const replacement = f.replacement.trim();
-    if (!replacement) continue;
-    const forme = m.formes.get(replacement) ?? { n: 0, at: 0 };
-    m.formes.set(replacement, { n: forme.n + 1, at: Math.max(forme.at, f.at) });
-  }
-  return [...parMot.entries()]
-    .map(([word, { count, formes }]) => {
-      const meilleure = [...formes.entries()].sort(
-        (a, b) => b[1].n - a[1].n || b[1].at - a[1].at,
-      )[0];
-      return { word, replacement: meilleure?.[0] ?? "", count };
-    })
-    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word, "fr"))
-    .slice(0, PROGRESSION.motsPiegesMax);
 }
 
 /** Tout l'écran « Progression » en un seul calcul. */
@@ -363,6 +322,5 @@ export function calculerProgression(entree: EntreeProgression, now: number): Pro
     series,
     rules: { counts: compterEtats(entree.rules), active, acquired },
     frequentRules: reglesFrequentes(faults, entree.rules),
-    trapWords: motsPieges(faults),
   };
 }

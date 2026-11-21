@@ -26,6 +26,7 @@ export function creerPiloteTauri(invoke: Invoke): JournalDriver {
           ...(expectChanges === undefined ? {} : { expectChanges }),
         })),
       }),
+    compacter: () => appeler("db_compacter"),
     // La base reste ouverte côté Rust pendant toute la vie de l'application.
   };
 }

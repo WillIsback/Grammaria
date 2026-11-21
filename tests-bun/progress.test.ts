@@ -47,7 +47,8 @@ describe("Journal.progress", () => {
     expect(p.rules.counts.signalee).toBe(1);
     expect(p.rules.active[0]).toMatchObject({ ruleKey: "PAIRE:on/ont", label: "on / ont" });
     expect(p.frequentRules[0]).toMatchObject({ ruleKey: "PAIRE:on/ont", count: 3 });
-    expect(p.trapWords).toEqual([{ word: "apareil", replacement: "appareil", count: 1 }]);
+    expect(p).not.toHaveProperty("trapWords");
+    expect(JSON.stringify(p)).not.toContain("apareil");
     await journal.close();
   });
 });
@@ -82,7 +83,7 @@ describe("GET /api/progress (serveur)", () => {
     expect(p.totals.texts).toBe(2);
     expect(p.series).toHaveLength(12);
     expect(p.mastery.score).toBeNull(); // moins de 5 textes récents
-    expect(p.trapWords[0]).toMatchObject({ word: "apareil", replacement: "appareil" });
+    expect(JSON.stringify(p)).not.toContain("apareil");
   });
 
   it("refuse un en-tête Host étranger en mode bureau, comme les autres routes du journal", async () => {

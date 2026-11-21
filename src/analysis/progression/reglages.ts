@@ -54,9 +54,7 @@ export const PROGRESSION = {
 
   /** Règles les plus fréquentes affichées (fautes des semaines affichées). */
   reglesFrequentesMax: 8,
-  /** « Mots pièges » affichés (fautes d'orthographe des semaines affichées). */
-  motsPiegesMax: 10,
-  /** Règle LanguageTool des fautes de frappe : suivie par mot, pas comme une règle. */
+  /** Règle des fautes de frappe : hors des règles fréquentes, comme hors du cycle. */
   regleOrthographe: REGLE_ORTHOGRAPHE,
 
   /**

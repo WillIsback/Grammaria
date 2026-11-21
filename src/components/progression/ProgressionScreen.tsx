@@ -319,10 +319,7 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
 
       <Regles data={data} />
 
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
-        <ReglesFrequentes data={data} />
-        <MotsPieges data={data} />
-      </div>
+      <ReglesFrequentes data={data} />
 
       {/* Pas de cadre autour de la galerie : chaque badge est déjà une carte. */}
       {badges && (
@@ -593,43 +590,6 @@ function ReglesFrequentes({ data }: { data: Progression }) {
             </li>
           ))}
         </ol>
-      )}
-    </section>
-  );
-}
-
-function MotsPieges({ data }: { data: Progression }) {
-  return (
-    <section aria-labelledby="progression-mots" className={card}>
-      <h3 id="progression-mots" className={cardTitle}>
-        Mots pièges
-      </h3>
-      <p className={cardHint}>Les mots que vous écrivez le plus souvent de travers.</p>
-      {data.trapWords.length === 0 ? (
-        <p className={`mt-3 ${discret}`}>Aucune faute d'orthographe sur la période.</p>
-      ) : (
-        <ul className="mt-3 divide-y divide-gray-100 dark:divide-gray-800">
-          {data.trapWords.map((m) => (
-            <li key={m.word} className="py-2 flex items-center justify-between gap-3 text-sm">
-              <span className="min-w-0 break-words">
-                <span className="sr-only">Écrit </span>
-                <del className="text-gray-600 dark:text-gray-400 decoration-red-500/70">
-                  {m.word}
-                </del>
-                <span aria-hidden="true" className="mx-2 text-gray-400 dark:text-gray-500">
-                  →
-                </span>
-                <span className="sr-only"> au lieu de </span>
-                <strong className="font-semibold text-gray-900 dark:text-white">
-                  {m.replacement || "?"}
-                </strong>
-              </span>
-              <span className="shrink-0 tabular-nums text-gray-600 dark:text-gray-400">
-                {pluriel(m.count, "fois", "fois")}
-              </span>
-            </li>
-          ))}
-        </ul>
       )}
     </section>
   );

@@ -12,13 +12,10 @@ function rempli(): Progression {
     words: 120,
     faults: i % 3,
   }));
-  const S = "FR_SPELLING_RULE";
-  const faute = (at: number, ruleKey: string, word = "", replacement = "") => ({
+  const faute = (at: number, ruleKey: string) => ({
     at,
     ruleKey,
-    word,
-    replacement,
-    message: "",
+    label: null,
     categoryName: "Grammaire",
   });
   const rules = [
@@ -49,7 +46,7 @@ function rempli(): Progression {
       faults: [
         faute(jour(-1), "PAIRE:on/ont"),
         faute(jour(-2), "PAIRE:on/ont"),
-        faute(jour(-3), S, "apareil", "appareil"),
+        faute(jour(-3), "FR_SPELLING_RULE"),
       ],
       rules,
     },
@@ -76,7 +73,7 @@ function servir(...reponses: (Progression | Error)[]) {
 }
 
 describe("ProgressionScreen", () => {
-  it("affiche le score de maîtrise, les graphiques accessibles, les règles et les mots pièges", async () => {
+  it("affiche le score de maîtrise, les graphiques accessibles et les règles", async () => {
     const data = rempli();
     servir(data);
     render(<ProgressionScreen onClose={vi.fn()} />);
@@ -96,9 +93,10 @@ describe("ProgressionScreen", () => {
     expect(within(regles).getByText("a / à")).toBeTruthy();
     expect(within(regles).getByText("Travaillées")).toBeTruthy();
 
-    const mots = screen.getByRole("region", { name: "Mots pièges" });
-    expect(within(mots).getByText("apareil")).toBeTruthy();
-    expect(within(mots).getByText("appareil")).toBeTruthy();
+    const frequentes = screen.getByRole("region", { name: "Règles les plus fréquentes" });
+    expect(within(frequentes).getByText("on / ont")).toBeTruthy();
+    // Aucun mot de l'utilisateur n'est affiché : plus de « Mots pièges » (#32).
+    expect(screen.queryByRole("region", { name: "Mots pièges" })).toBeNull();
 
     // Pas de galerie de badges tant qu'elle n'est pas fournie.
     expect(screen.queryByRole("region", { name: "Badges" })).toBeNull();

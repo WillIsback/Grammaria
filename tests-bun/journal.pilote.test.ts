@@ -69,7 +69,14 @@ describe("Journal — lire, calculer, écrire un lot", () => {
     await corriger(journal, FAUTE_ON, jour(0));
     const [lot] = pilote.appels.lots;
     const cibles = lot.map((s) => s.sql.match(/INTO (\w+)/)?.[1]);
-    expect(cibles).toEqual(["texts", "faults", "rule_states", "rule_events", "badges"]);
+    expect(cibles).toEqual([
+      "texts",
+      "faults",
+      "rule_labels",
+      "rule_states",
+      "rule_events",
+      "badges",
+    ]);
     expect(lot[1].params?.[0]).toEqual({ $rowid: 0 });
   });
 
@@ -140,6 +147,7 @@ describe("Journal — lire, calculer, écrire un lot", () => {
       read: (sql, params) => Bun.sleep(1).then(() => pilote.read(sql, params)),
       readMany: (queries) => Bun.sleep(1).then(() => pilote.readMany(queries)),
       batch: (statements) => Bun.sleep(1).then(() => pilote.batch(statements)),
+      compacter: () => Bun.sleep(1).then(() => pilote.compacter()),
     };
     const journal = await Journal.ouvrir(lent);
     await Promise.all([
@@ -168,7 +176,7 @@ describe("Journal — le texte et ses fautes ne sont jamais perdus", () => {
     expect(pilote.appels.batch).toBe(1);
     const cibles = pilote.appels.lots[0].map((s) => s.sql.match(/INTO (\w+)/)?.[1]);
     // Texte, faute… et les badges, calculés sans le suivi.
-    expect(cibles.filter((c) => c !== "badges")).toEqual(["texts", "faults"]);
+    expect(cibles.filter((c) => c !== "badges")).toEqual(["texts", "faults", "rule_labels"]);
     expect((await journal.period(7, jour(2))).faults).toBe(2);
     expect((await journal.rules())[0]).toMatchObject({ occurrences: 1 });
   });
@@ -195,7 +203,14 @@ describe("Journal — le texte et ses fautes ne sont jamais perdus", () => {
     expect(erreurs[0]).toContain("[Badges]");
     expect(suivi?.intervention).toMatchObject({ type: "astuce", ruleKey: "PAIRE:on/ont" });
     const cibles = pilote.appels.lots[0].map((s) => s.sql.match(/INTO (\w+)/)?.[1]);
-    expect(cibles).toEqual(["texts", "faults", "rule_states", "rule_events", "rule_events"]);
+    expect(cibles).toEqual([
+      "texts",
+      "faults",
+      "rule_labels",
+      "rule_states",
+      "rule_events",
+      "rule_events",
+    ]);
     expect((await journal.period(7, jour(5))).texts).toBe(5);
     expect((await journal.rules())[0]).toMatchObject({ state: "signalee", occurrences: 3 });
     expect((await journal.badges.obtained()).has("jours-5")).toBe(false);
@@ -224,6 +239,7 @@ describe("Journal — le texte et ses fautes ne sont jamais perdus", () => {
     expect(pilote.appels.lots[1].map((s) => s.sql.match(/INTO (\w+)/)?.[1])).toEqual([
       "texts",
       "faults",
+      "rule_labels",
     ]);
     expect((await journal.period(7, jour(2))).faults).toBe(2);
     expect(await journal.rules()).toEqual(avant);

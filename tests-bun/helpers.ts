@@ -78,6 +78,7 @@ export function piloteEspion(path = ":memory:") {
       espion.avantBatch?.(statements);
       return pilote.batch(statements);
     },
+    compacter: () => pilote.compacter(),
     close: () => pilote.close(),
   };
   return espion;
