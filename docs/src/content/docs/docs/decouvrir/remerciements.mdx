@@ -1,0 +1,56 @@
+---
+title: "Remerciements"
+description: "Les projets libres dont Grammaria et son moteur de grammaire reprennent du code, des données ou des idées."
+---
+
+Grammaria et son [moteur de grammaire](/docs/decouvrir/moteur/) s'appuient sur le travail de nombreux projets libres. Ils sont cités ici, avec leurs auteurs et leurs licences. Ces mentions sont aussi une obligation des licences : elles doivent rester exactes et visibles.
+
+## Le moteur de grammaire
+
+### LanguageTool
+
+[LanguageTool](https://languagetool.org), © Daniel Naber et les contributeurs de LanguageTool, sous licence LGPL-2.1 ou ultérieure.
+
+- Le moteur lit tels quels ses fichiers de règles et ses dictionnaires français : 5 343 règles de grammaire et 1 674 règles de style.
+- Sa chaîne d'analyse (découpage, étiquetage, désambiguïsation, filtres) a été portée de Java vers Rust.
+- Les messages de ses règles écrites en Java viennent de ses fichiers de traduction française.
+
+### Grammalecte et Dicollecte
+
+[Grammalecte](https://grammalecte.net) et Dicollecte, © Olivier R.
+
+- Le dictionnaire français du moteur dérive des données Dicollecte et Grammalecte (MPL-2.0), par l'intermédiaire du dictionnaire français de LanguageTool.
+- Les phrases de test de Grammalecte (GPL-3.0) ont servi de banc d'essai pour écrire les 1 320 règles propres au moteur. Ces règles ont été écrites d'après le comportement attendu, pas copiées du code de Grammalecte.
+
+### Morfologik
+
+[Morfologik](https://github.com/morfologik/morfologik-stemming), © Dawid Weiss et Marcin Miłkowski, sous licence BSD-3-Clause. Son lecteur de dictionnaire et son correcteur orthographique ont été portés en Rust.
+
+### Numbertext
+
+Les programmes d'écriture des nombres en lettres du projet Numbertext, fournis avec les données de LanguageTool.
+
+### ltjs
+
+`@valueerror/ltjs` (paquet [`@valueerror/ltjs-core`](https://www.npmjs.com/package/@valueerror/ltjs-core)), le portage JavaScript de LanguageTool qui équipait Grammaria jusqu'à la version 0.3.0. Il a servi de référence de comparaison pour vérifier le moteur. Aucun code n'en provient.
+
+### Prose de mesure
+
+Les fausses alertes ont été mesurées sur des textes de [Wikipédia](https://fr.wikipedia.org) (CC BY-SA) et de [Wikisource](https://fr.wikisource.org) (domaine public). Ces textes ne sont pas redistribués.
+
+## L'application
+
+- **[ai_corrector](https://github.com/WillIsback/ai_corrector)**, publié sous licence MIT : le projet dont Grammaria est issu. Sa notice d'origine est conservée dans le fichier `LICENSE-MIT` du dépôt.
+- **[Inter](https://github.com/rsms/inter)**, la police de l'interface, sous licence SIL Open Font License 1.1. Elle est embarquée dans l'application (`src/assets/fonts/`).
+- **Les outils qui font tourner Grammaria** : [React](https://react.dev) pour l'interface, [Vite+](https://viteplus.dev) pour l'outillage, [Bun](https://bun.sh) pour le serveur, [Tauri](https://tauri.app) pour l'application de bureau, [Astro Starlight](https://starlight.astro.build) pour ce site.
+
+## Licences
+
+| Partie | Licence |
+|---|---|
+| Grammaria | GPL-3.0-or-later |
+| Moteur grammaria-rc | `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` |
+| Police Inter | SIL Open Font License 1.1 |
+| Notice d'ai_corrector | MIT |
+
+Le détail des licences du moteur est dans son fichier [`THIRD_PARTY_LICENSES.md`](https://github.com/WillIsback/grammaria-rc/blob/main/THIRD_PARTY_LICENSES.md).

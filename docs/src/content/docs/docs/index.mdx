@@ -5,43 +5,43 @@ description: "Grammaria corrige vos textes en français aussi vite qu'un correct
 
 ## Pour qui
 
-Grammaria s'adresse aux **adultes qui écrivent en français tous les jours** — messages, courriels, comptes rendus — et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
+Pour **ceux qui écrivent en français tous les jours** — messages, courriels, comptes rendus — et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
 
-Ce n'est pas un outil scolaire. Il ne propose ni cours à suivre ni séries d'exercices. Il part d'un constat : quand on est pressé, on veut un texte propre tout de suite, pas une leçon.
+Grammaria n'est pas un outil scolaire. Il ne propose ni cours à suivre ni séries d'exercices. Quand on est pressé, on veut un texte propre tout de suite, pas une leçon.
 
 ## Pourquoi
 
 Un correcteur automatique rend service, mais il a un effet pervers : on colle son texte, on copie le résultat, et **on n'apprend jamais rien**. Les mêmes fautes reviennent pendant des mois.
 
-Les méthodes d'apprentissage classiques échouent pour la raison inverse : elles demandent du temps et de l'attention au moment précis où l'on n'en a pas.
+Les méthodes d'apprentissage classiques échouent pour la raison inverse : elles demandent du temps au moment précis où l'on n'en a pas.
 
 Grammaria cherche le point d'équilibre :
 
 - la correction reste **instantanée**, sans étape imposée ;
-- l'application **observe** les fautes qui reviennent, sur vos vrais textes ;
-- elle n'intervient que rarement, sur une seule règle à la fois, avec une explication courte du type « remplacez par X, car Y ».
+- l'application **repère** les fautes qui reviennent, sur vos vrais textes ;
+- elle n'intervient que rarement, sur une seule règle à la fois, avec une explication courte : « remplacez par X, car Y ».
 
 ## Comment
 
-1. Vous collez votre texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie immédiatement.
-2. En parallèle, Grammaria compare votre texte au texte corrigé et classe chaque faute par règle.
-3. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
-4. Une **note sur 20** suit votre progression, texte par texte et sur sept jours.
-5. Les confusions les plus courantes (a/à, on/ont, ces/ses, -er/-é…) sont accompagnées d'une **fiche** qui donne le test à appliquer.
+1. Vous collez votre texte et cliquez sur **Corriger**. Le texte corrigé s'affiche à mesure que le modèle l'écrit, et se copie aussitôt.
+2. Grammaria compare votre texte au texte corrigé et nomme chaque faute, grâce à son [moteur de grammaire](/docs/decouvrir/moteur/).
+3. Les confusions les plus courantes (a/à, on/ont, ces/ses, -er/-é…) sont accompagnées d'une **fiche** qui donne un test simple.
+4. Chaque faute est notée dans un **journal** qui reste chez vous. Seule la phrase concernée est gardée, jamais le texte entier.
+5. Une **note sur 20** suit votre progression, texte par texte et sur sept jours.
+6. Quand une faute revient, une **astuce** puis un **choix entre deux formes** s'affichent près du bouton **Copier**, sans retarder la copie.
+7. L'écran **Progression** et les **badges** montrent le chemin parcouru.
 
-6. Quand une faute revient, une **astuce** puis un **choix entre deux formes** s'affichent près du bouton Copier, sans retarder la copie (voir [Corriger un texte](/docs/utiliser/corriger/)).
-7. L'écran [Progression](/docs/utiliser/progression/) et les [badges](/docs/utiliser/badges/) montrent le chemin parcouru.
+Pour le détail : [Comment ça marche](/docs/decouvrir/fonctionnement/), puis [Corriger un texte](/docs/utiliser/corriger/).
 
-Le détail du mécanisme est décrit dans [Fonctionnement](/docs/decouvrir/fonctionnement/), et ce qui est prévu dans la [feuille de route](/docs/decouvrir/feuille-de-route/).
+## Vos textes restent chez vous
 
-## Ce qu'il faut pour l'utiliser
+Grammaria s'installe chez vous. Vos textes ne sont envoyés qu'au modèle de langage que vous avez choisi. L'analyse des fautes et le journal restent sur votre ordinateur ou votre serveur. Avec un modèle installé chez vous, rien ne sort de chez vous.
 
-Grammaria s'héberge soi-même. Vos textes ne quittent pas votre infrastructure.
+## Deux façons de l'utiliser
 
-- un modèle de langage accessible par une API compatible OpenAI (vLLM, SGLang, Ollama, ou un fournisseur en ligne) ;
-- Docker, ou Bun, Node.js et Rust (pour compiler le correcteur grammatical) ;
-- environ 300 Mo de mémoire vive pour le serveur.
+Il vous faut dans les deux cas un **modèle de langage** : sur votre ordinateur (par exemple [Ollama](https://ollama.com)) ou chez un fournisseur dont l'API est compatible OpenAI.
 
-Le correcteur grammatical, qui applique les règles françaises de [LanguageTool](https://languagetool.org) et des règles propres à Grammaria, est intégré au serveur : aucun service supplémentaire n'est à lancer.
-
-Poursuivez avec l'[installation](/docs/demarrer/installation/).
+| | Pour qui | Guide |
+|---|---|---|
+| **Application de bureau** (Windows, Linux) | Une personne, sur son ordinateur. Rien d'autre à installer. | [Application de bureau](/docs/demarrer/application-bureau/) |
+| **Serveur** (Docker ou sources) | Une personne qui veut l'ouvrir dans son navigateur, depuis plusieurs appareils. | [Installer un serveur](/docs/demarrer/installation/) |

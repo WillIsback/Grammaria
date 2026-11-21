@@ -1,0 +1,92 @@
+---
+title: "Le moteur de grammaire"
+description: "grammaria-rc, le moteur maison de Grammaria : ce qu'il est, d'où il vient, et ses performances comparées à LanguageTool."
+---
+
+Pour repérer et classer vos fautes, Grammaria utilise son propre moteur de grammaire : [grammaria-rc](https://github.com/WillIsback/grammaria-rc). C'est un moteur **maison**, écrit en Rust pour le projet, sans aucune dépendance. Il est léger, rapide, et tourne entièrement sur votre ordinateur ou votre serveur.
+
+Il équipe Grammaria depuis la version 0.4.0. Il remplace l'ancien correcteur, un portage JavaScript de LanguageTool.
+
+## Ce qu'il fait
+
+Le moteur lit votre texte et signale les fautes qu'il y trouve. Pour chacune, il donne :
+
+- l'endroit exact de la faute ;
+- un message qui l'explique ;
+- une ou plusieurs corrections possibles ;
+- un identifiant de règle stable, qui permet à Grammaria de suivre vos fautes récurrentes.
+
+Il ne réécrit pas votre texte : c'est le modèle de langage qui corrige. Le moteur sert à **nommer** chaque faute. Voir [Comment ça marche](/docs/decouvrir/fonctionnement/).
+
+## D'où il vient
+
+grammaria-rc est né de la fusion de plusieurs projets libres, réunis dans un seul programme :
+
+- **La chaîne d'analyse de LanguageTool**, portée de Java vers Rust : découpage en phrases et en mots, étiquetage grammatical, désambiguïsation, filtres. Le moteur lit tels quels les fichiers de règles et les dictionnaires français de LanguageTool : 5 343 règles de grammaire et 1 674 règles de style.
+- **Le dictionnaire français de Dicollecte et Grammalecte**, dont dérive le dictionnaire utilisé.
+- **Le lecteur de dictionnaire et le correcteur orthographique de Morfologik**, portés en Rust.
+- **1 320 règles propres à Grammaria**, dont l'identifiant commence par `GRM_`. Elles visent les fautes que LanguageTool ne voyait pas : accords du participe, conjugaison, infinitif, homophones et confusions, groupe nominal, typographie. Elles ont été écrites d'après le comportement attendu, en s'appuyant sur les phrases de test de Grammalecte comme banc d'essai, sans reprendre le code de Grammalecte.
+
+Un **profil** retire enfin ce qui dérange plus qu'il n'aide : sept règles de LanguageTool trop bruyantes sont coupées, et un mot inconnu qui ressemble à un nom propre ou à un sigle n'est pas signalé comme faute d'orthographe. Le détail est dans [Comment ça marche](/docs/decouvrir/fonctionnement/#les-règles-coupées).
+
+Le moteur n'a donc pas été écrit de zéro : il doit beaucoup à ces projets, cités dans les [remerciements](/docs/decouvrir/remerciements/).
+
+## Comparé à LanguageTool
+
+Toutes les mesures ci-dessous comparent grammaria-rc à **LanguageTool 6.9 dans son portage JavaScript, l'ancien correcteur de Grammaria**, sur la même machine.
+
+### Rapidité et mémoire
+
+Le moteur seul :
+
+| | LanguageTool 6.9 (portage JavaScript) | grammaria-rc |
+|---|---:|---:|
+| Démarrage | 4,3 à 4,6 s | **0,5 s** |
+| Mémoire | 924 à 937 Mio | **220 à 250 Mio** |
+| Texte de 160 mots, moteur déjà chargé | 179 à 192 ms | **47 à 58 ms** |
+
+### Qualité
+
+| | LanguageTool 6.9 (portage JavaScript) | grammaria-rc |
+|---|---:|---:|
+| Fautes trouvées, sur l'ensemble des bancs d'essai | 76,4 % | **86,4 %** |
+| Fautes trouvées, phrases de test de Grammalecte | 59,6 % | **83,5 %** |
+| Fautes trouvées, textes corrigés à la main | 75 sur 92 | **83 sur 92** |
+| Fausses alertes sur de la prose soignée (pour 1 000 mots) | 21,6 | **8,8** |
+
+Avec les seules règles de LanguageTool, le moteur reproduit fidèlement l'original : sur 29 047 textes de test, 99,97 % donnent exactement les mêmes signalements.
+
+:::note
+Les règles maison ont été mises au point sur une partie des bancs d'essai. Sur la moitié mise de côté pendant leur écriture, le gain est plus faible : 82,7 % de fautes trouvées, contre 76,2 % pour LanguageTool.
+:::
+
+### Dans l'application
+
+Mesuré sur les versions publiées de Grammaria, sous Linux :
+
+| | Version 0.3.0 (LanguageTool en JavaScript) | Version 0.4.0 (grammaria-rc) |
+|---|---:|---:|
+| Application de bureau : correcteur prêt après le lancement | 5,8 à 6,2 s | **1,4 à 1,5 s** |
+| Application de bureau : mémoire après 10 corrections | environ 1,1 Go | **environ 0,63 Go** |
+| Application de bureau : contrôle d'un texte de 160 mots | 254 ms | **44 ms** |
+| Serveur Docker : mémoire | 1 087 Mo | **290 Mo** |
+
+Au démarrage du serveur Docker, les règles sont chargées en 3 à 4 secondes.
+
+Le paquet de l'application de bureau reste petit : environ 9 Mo pour le paquet `.deb`, environ 7 Mo pour l'installeur Windows.
+
+## Pour aller plus loin
+
+- Le dépôt du moteur, avec ses mesures détaillées et la façon de les reproduire : [github.com/WillIsback/grammaria-rc](https://github.com/WillIsback/grammaria-rc).
+- La comparaison faite au moment de l'intégration dans Grammaria : `benchmark/moteur-rust/rapport.md` dans le dépôt de Grammaria.
+- La façon dont le serveur et l'application de bureau l'embarquent : [Architecture](/docs/reference/architecture/).
+
+## Licence
+
+Le moteur est distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` :
+
+- son propre code et ses règles maison sous MPL-2.0 ;
+- les modules portés de LanguageTool et les données de LanguageTool sous LGPL-2.1 ou ultérieure ;
+- le portage de Morfologik sous BSD-3-Clause.
+
+Ces licences sont compatibles avec la licence GPL-3.0-or-later de Grammaria. Le détail est dans le fichier `THIRD_PARTY_LICENSES.md` du moteur.
