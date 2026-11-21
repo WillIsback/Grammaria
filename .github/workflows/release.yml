@@ -99,8 +99,13 @@ jobs:
       - name: Patch install.sh with actual image name
         env:
           IMAGE_TAG: ${{ env.PRERELEASE == 'true' && steps.meta.outputs.version || 'latest' }}
+          REPO: ${{ github.repository }}
+        # Docker refuse les majuscules dans un nom d'image : « WillIsback/Grammaria »
+        # devient « willisback/grammaria » (${REPO,,}). La dernière ligne arrête la
+        # release si le script publié ne porte pas un nom d'image valide.
         run: |
-          sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${{ github.repository }}:${IMAGE_TAG}|g" install.sh
+          sed -i "s|ghcr.io/OWNER/grammaria:latest|ghcr.io/${REPO,,}:${IMAGE_TAG}|g" install.sh
+          grep -Eq '^IMAGE="ghcr\.io/[a-z0-9._/-]+:[A-Za-z0-9._-]+"$' install.sh
 
       # Seulement les paquets (grammaria-desktop-linux, grammaria-desktop-windows) :
       # les résultats de l'autotest (autotest-*) ne sont pas publiés.
