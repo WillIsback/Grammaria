@@ -455,7 +455,11 @@ describe("Journal — migration du schéma", () => {
 
       const apres = contenu(path);
       expect(apres.texts).toEqual(avant.texts);
-      expect(apres.faults).toEqual(avant.faults);
+      // Les fautes restent, sans leurs colonnes de texte (version 3).
+      const sansTexte = (avant.faults as Record<string, unknown>[]).map(
+        ({ message: _m, word: _w, replacement: _r, sentence: _s, ...faute }) => faute,
+      );
+      expect(apres.faults).toEqual(sansTexte);
       expect(apres.version).toBe(SCHEMA_VERSION);
     });
   });

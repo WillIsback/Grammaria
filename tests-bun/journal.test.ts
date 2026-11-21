@@ -27,7 +27,11 @@ describe("Journal", () => {
       ["PAIRE:on/ont", 2],
       ["TERMINAISON:er/é", 2],
     ]);
-    expect(summary.words).toContainEqual({ word: "on", replacement: "ont", count: 2 });
+    expect(summary.rules[0]).toMatchObject({
+      label: "on / ont",
+      categoryName: "Confusion de mots",
+    });
+    expect(summary).not.toHaveProperty("words");
   });
 
   it("exclut les textes plus anciens que la période", async () => {

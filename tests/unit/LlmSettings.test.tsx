@@ -35,6 +35,40 @@ describe("LlmSettings — serveur du modèle (application de bureau)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("bureau : dit où est rangée la clé enregistrée (trousseau ou fichier)", () => {
+    const avecCle = { ...base, configured: true, llmTarget: "https://api.exemple.fr" };
+    const { rerender } = render(
+      <LlmSettings
+        settings={{ ...avecCle, hasApiKey: true, apiKeyStorage: "trousseau" }}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Clé protégée par le trousseau de votre système.")).toBeTruthy();
+    expect(screen.queryByText(/Aucun trousseau/)).toBeNull();
+
+    rerender(
+      <LlmSettings
+        settings={{ ...avecCle, hasApiKey: true, apiKeyStorage: "fichier" }}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Aucun trousseau disponible sur ce système : la clé est gardée dans un fichier lisible par votre seul compte.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/protégée par le trousseau/)).toBeNull();
+  });
+
+  it("sans clé, ou sur le serveur web (champ absent) : aucune phrase sur le stockage", () => {
+    const { rerender } = render(
+      <LlmSettings settings={{ ...base, apiKeyStorage: "aucune" }} onSaved={vi.fn()} />,
+    );
+    expect(screen.queryByText(/trousseau/)).toBeNull();
+    rerender(<LlmSettings settings={{ ...base, hasApiKey: true }} onSaved={vi.fn()} />);
+    expect(screen.queryByText(/trousseau/)).toBeNull();
+  });
+
   it("enregistre l'adresse et la clé, puis vide le champ de la clé", async () => {
     const saved = {
       ...base,

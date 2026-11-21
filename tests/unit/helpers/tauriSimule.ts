@@ -180,6 +180,9 @@ export function tauriSimule(options: OptionsSimulation = {}) {
         );
       case "db_batch":
         return lot(args.statements as never);
+      case "db_compacter":
+        db.exec("VACUUM");
+        return null;
       case "settings_get":
         return vue();
       case "settings_set": {

@@ -59,6 +59,7 @@ describe("Journal d'une version future de Grammaria", () => {
       read: (sql, params) => (ordre.push(`read ${sql}`), pilote.read(sql, params)),
       readMany: (queries) => (ordre.push("readMany"), pilote.readMany(queries)),
       batch: (statements) => (ordre.push("batch"), pilote.batch(statements)),
+      compacter: () => (ordre.push("compacter"), pilote.compacter()),
     };
     await Journal.ouvrir(espion);
     expect(ordre[0]).toBe("read PRAGMA user_version");

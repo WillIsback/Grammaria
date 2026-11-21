@@ -33,6 +33,10 @@ WORKDIR /app
 # sollicitations (une par règle et par jour) changerait à minuit UTC.
 RUN apk add --no-cache tzdata
 
+# Version publiée (passée par la release), inscrite dans l'export de la bêta.
+ARG VERSION=0.0.0
+ENV GRAMMARIA_VERSION=$VERSION
+
 # Copier les artefacts du build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public

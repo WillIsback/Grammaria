@@ -54,12 +54,15 @@ describe("Dockerfile — étapes et contexte", () => {
     expect(manquants).toEqual([]);
   });
 
-  it("aucun ARG ni --build-context requis : release.yml construit l'image sans option", () => {
+  it("aucun ARG obligatoire ni --build-context : l'image se construit sans option", () => {
     const release = readFileSync(join(RACINE, ".github/workflows/release.yml"), "utf-8");
     expect(release).not.toMatch(/build-contexts?:/);
-    for (const etape of etapes) {
-      expect(etape.instructions.filter((i) => i.commande === "ARG")).toEqual([]);
-    }
+    // Un ARG doit avoir une valeur par défaut : `docker build .` seul doit suffire.
+    const args = etapes.flatMap((e) => e.instructions.filter((i) => i.commande === "ARG"));
+    for (const arg of args) expect(arg.arguments).toMatch(/^[A-Z_]+=\S+$/);
+    // Le seul prévu : la version publiée, que la release fournit.
+    expect(args.map((a) => a.arguments)).toEqual(["VERSION=0.0.0"]);
+    expect(release).toContain("VERSION=${{ env.TAG }}");
   });
 });
 

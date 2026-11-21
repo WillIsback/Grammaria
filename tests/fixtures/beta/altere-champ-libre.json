@@ -1,0 +1,198 @@
+{
+  "format": "grammaria-beta",
+  "version": 1,
+  "application": "0.5.0",
+  "plateforme": "serveur",
+  "participant": "a17c4e9b2d6f0a3c8e5b1d7f2a9c4e6b",
+  "seuils": {
+    "cycle": {
+      "signalementOccurrences": 3,
+      "signalementFenetreJours": 7,
+      "astucesAvantTravail": 3,
+      "acquisitionJoursSansFaute": 14,
+      "acquisitionTextesMin": 5,
+      "acquisitionJoursActifsMin": 3,
+      "travailleesMax": 3,
+      "sollicitationsParRegleEtParJour": 1,
+      "choixLongueurMaxForme": 24,
+      "choixContexteMax": 60
+    },
+    "mesure": {
+      "motsParTaux": 1000,
+      "avantMinimumTextes": 3,
+      "avantMinimumMots": 400,
+      "depuisMinimumTextes": 5,
+      "depuisMinimumMots": 1000
+    }
+  },
+  "semaines": [
+    {
+      "semaine": 0,
+      "textes": 5,
+      "mots": 763,
+      "fautes": 9
+    },
+    {
+      "semaine": 1,
+      "textes": 4,
+      "mots": 566,
+      "fautes": 2
+    },
+    {
+      "semaine": 2,
+      "textes": 5,
+      "mots": 743,
+      "fautes": 9
+    },
+    {
+      "semaine": 3,
+      "textes": 5,
+      "mots": 776,
+      "fautes": 10
+    },
+    {
+      "semaine": 4,
+      "textes": 3,
+      "mots": 449,
+      "fautes": 4
+    }
+  ],
+  "regles": [
+    {
+      "regle": "PAIRE:et/est",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "travaillee",
+      "semainePivot": 0,
+      "avant": {
+        "textes": 5,
+        "mots": 763,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 17,
+        "mots": 2534,
+        "fautes": 5
+      },
+      "suffisant": true,
+      "astuces": 3,
+      "choix": 1,
+      "reponsesJustes": 1,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "PAIRE:on/ont",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "travaillee",
+      "semainePivot": 1,
+      "avant": {
+        "textes": 8,
+        "mots": 1194,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 14,
+        "mots": 2103,
+        "fautes": 3
+      },
+      "suffisant": true,
+      "astuces": 3,
+      "choix": 1,
+      "reponsesJustes": 1,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "PAIRE:a/à",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "signalee",
+      "semainePivot": 2,
+      "avant": {
+        "textes": 11,
+        "mots": 1595,
+        "fautes": 5
+      },
+      "depuis": {
+        "textes": 9,
+        "mots": 1390,
+        "fautes": 1
+      },
+      "suffisant": true,
+      "astuces": 1,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "FR_SPELLING_RULE",
+      "categorie": "TYPOS",
+      "groupe": "comparaison",
+      "etat": null,
+      "semainePivot": 2,
+      "avant": {
+        "textes": 11,
+        "mots": 1614,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 11,
+        "mots": 1683,
+        "fautes": 8
+      },
+      "suffisant": true,
+      "astuces": 0,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    }
+  ],
+  "synthese": {
+    "suivies": {
+      "regles": 3,
+      "reglesSuffisantes": 3,
+      "avant": {
+        "textes": 24,
+        "mots": 3552,
+        "fautes": 12
+      },
+      "depuis": {
+        "textes": 40,
+        "mots": 6027,
+        "fautes": 9
+      }
+    },
+    "comparaison": {
+      "regles": 1,
+      "reglesSuffisantes": 1,
+      "avant": {
+        "textes": 11,
+        "mots": 1614,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 11,
+        "mots": 1683,
+        "fautes": 8
+      }
+    },
+    "choix": {
+      "justes": 2,
+      "fausses": 0
+    },
+    "acquises": {
+      "total": 0,
+      "restees": 0,
+      "rechutes": 0
+    }
+  },
+  "commentaire": "Bonjour, voici la lettre que j'ai écrite à mon médecin."
+}

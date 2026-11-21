@@ -18,6 +18,7 @@
     "serve": "bun run server.ts",
     "test:journal": "bun test tests-bun",
     "reference:correcteur": "bun scripts/desktop/reference-correcteur.ts",
+    "beta:agreger": "bun scripts/beta/agreger.ts",
     "prepare": "vp config"
   },
   "dependencies": {

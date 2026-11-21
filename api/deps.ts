@@ -34,6 +34,14 @@ export interface JournalDeps {
   summary(days: number): MaybePromise<unknown>;
   /** Écran « Progression » (`GET /api/progress`). */
   progress(): MaybePromise<unknown>;
+  /**
+   * Export anonyme de la bêta (`GET /api/progress/export`) : déjà validé par
+   * `validerExport` (src/analysis/progression/export.ts).
+   */
+  exportBeta(options: {
+    application: string;
+    plateforme: "bureau" | "serveur";
+  }): MaybePromise<unknown>;
   /** Cycle de vie des règles. */
   rules(): MaybePromise<readonly { state: EtatCycle }[]>;
   ruleEvents(options: { limit?: number; ruleKey?: string }): MaybePromise<unknown[]>;
@@ -131,6 +139,11 @@ export interface ModeleDeps {
 export interface OptionsGestionnaire {
   /** Mode bureau : réglages modifiables. Le filtrage Host/Origine reste au serveur. */
   bureau: boolean;
+  /**
+   * Version publiée de Grammaria (« 0.5.0 »), inscrite dans l'export de la bêta.
+   * Absente (développement, tests) : « 0.0.0 ».
+   */
+  versionApplication?: () => Promise<string>;
   /** Origines autorisées à lire les réponses (CORS), en plus des origines locales. */
   originesCors: readonly string[];
   /** `top_k` envoyé au modèle s'il est > 0 (-1 : désactivé, non envoyé). */

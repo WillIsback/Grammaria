@@ -8,7 +8,8 @@
 //! Rust fournit ce que la page ne peut pas faire seule, par des commandes que seule la
 //! capability locale `capabilities/default.json` autorise : accès SQLite au journal (`db`),
 //! réglages, clé API et mots valides (`store`), relais du modèle en streaming (`llm`), mise à
-//! jour de l'application (`update`), journal technique `grammaria.log` (`logs`), et le
+//! jour de l'application (`update`), journal technique `grammaria.log` (`logs`), écriture de
+//! l'export anonyme de la bêta dans le dossier Téléchargements (`export`), et le
 //! correcteur grammatical (`correcteur` : moteur Rust grammaria-rc). Les
 //! fichiers du dossier de données sont ceux de la version 0.2 : les données sont reprises
 //! telles quelles.
@@ -21,9 +22,11 @@ use tauri::{Manager, Url, WebviewWindowBuilder};
 mod autotest;
 mod correcteur;
 mod db;
+mod export;
 mod llm;
 mod logs;
 mod store;
+mod trousseau;
 mod update;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -62,6 +65,7 @@ pub fn run() {
             db::db_read,
             db::db_read_many,
             db::db_batch,
+            db::db_compacter,
             store::settings_get,
             store::settings_set,
             store::valid_words_get,
@@ -72,9 +76,11 @@ pub fn run() {
             logs::log_page,
             correcteur::correcteur_prechauffer,
             correcteur::correcteur_controler,
+            export::export_beta_enregistrer,
             // Inertes sans GRAMMARIA_AUTOTEST_OUT (voir autotest.rs).
             autotest::autotest_config,
             autotest::autotest_terminer,
+            autotest::autotest_textes_journal,
         ])
         .setup(|app| {
             app.manage(update::UpdateState::new(app));
@@ -99,8 +105,25 @@ pub fn run() {
                 logs::ecrire(logs::Niveau::Info, "application", "Mode autotest.");
             }
             fs::create_dir_all(&data_dir)?;
+            // Export de la bêta : dossier Téléchargements, fixé ici et jamais par la page.
+            // Autotest : à côté des données isolées.
+            app.manage(export::DossierExport(match &autotest {
+                Some(_) => Some(data_dir.join("telechargements")),
+                None => app.path().download_dir().ok(),
+            }));
             app.manage(db::Db::new(data_dir.join(db::JOURNAL_FILE)));
-            let store = store::Store::new(&data_dir);
+            // Clé API dans le trousseau du système. Autotest : une entrée à
+            // part, vidée avant et après (jamais celle de l'utilisateur).
+            let compte = match &autotest {
+                Some(_) => autotest::nettoyer_trousseau_au_depart(),
+                None => trousseau::COMPTE,
+            };
+            let store = store::Store::new(&data_dir, Box::new(trousseau::Systeme::new(compte)));
+            // Une clé encore en clair dans `settings.json` (version
+            // précédente, ou trousseau indisponible jusqu'ici) passe dans le
+            // trousseau. À part : le trousseau peut tarder à répondre.
+            let migration = store.clone();
+            std::thread::spawn(move || migration.migrer_vers_le_trousseau());
             // Un fichier de réglages abîmé est ignoré (valeurs par défaut) et
             // remplacé au prochain enregistrement : le support doit le savoir.
             for fichier in store.fichiers_illisibles() {
@@ -285,7 +308,7 @@ mod tests {
             .collect();
         declared.sort_unstable();
         assert_eq!(declared, commandes_enregistrees());
-        assert_eq!(declared.len(), 19);
+        assert_eq!(declared.len(), 22);
     }
 
     fn json(text: &str) -> Value {
@@ -321,7 +344,7 @@ mod tests {
             .collect();
         attendues.sort_unstable();
         assert_eq!(permissions, attendues);
-        assert_eq!(permissions.len(), 17);
+        assert_eq!(permissions.len(), 19);
     }
 
     /// Une seule capability, déclarée explicitement : un fichier ajouté au

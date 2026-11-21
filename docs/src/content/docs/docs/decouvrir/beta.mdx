@@ -1,0 +1,300 @@
+---
+title: "Bêta : démarche et méthode de test"
+description: "La version 0.5 est une bêta de test. Ce qui est éprouvé, ce qui ne l'est pas, où vont les données, comment tester et comment tout effacer."
+---
+
+import { Steps } from "@astrojs/starlight/components";
+
+Grammaria corrige vos textes avec un modèle de langage, puis repère les fautes qui reviennent et vous les signale par une courte astuce. La version 0.5 est une **bêta de test**. Elle sert à vérifier une seule chose : est-ce que ces astuces font vraiment progresser ?
+
+## En bref
+
+| | État |
+|---|---|
+| La correction rapide par un modèle de langage | **Éprouvée par l'usage.** L'auteur s'en sert tous les jours depuis des mois. |
+| L'effet des astuces : une faute signalée revient moins souvent ensuite | **Jamais vérifié.** C'est l'objet de cette bêta. |
+
+- **Ce que l'on cherche à savoir** : après une astuce, la faute revient-elle moins souvent qu'avant ?
+- **Comment** : quelques volontaires utilisent Grammaria comme d'habitude pendant 4 à 6 semaines, puis transmettent un fichier de chiffres.
+- **Ce qui n'est pas collecté** : aucun texte. Ni phrase, ni mot, ni correction.
+- **Ce que la bêta ne pourra pas prouver** : avec peu de participants et sans tirage au sort, le résultat sera une indication, pas une preuve. Voir [ce que cela ne prouve pas](#ce-que-lon-mesure-et-ce-que-cela-ne-prouve-pas).
+
+Grammaria est un projet ouvert, mené par une seule personne. Cette page décrit la démarche telle qu'elle est, limites comprises.
+
+Chaque partie se lit seule :
+
+- vous décidez pour votre organisation : [Pour une DSI](#pour-une-dsi) ;
+- on vous a proposé de tester : [Pour un testeur](#pour-un-testeur) ;
+- vous voulez juger la méthode : [Ce que l'on mesure](#ce-que-lon-mesure-et-ce-que-cela-ne-prouve-pas) ;
+- vous voulez savoir ce qui part de votre poste : [Ce qui est partagé, exactement](#ce-qui-est-partagé-exactement) ;
+- vous voulez arrêter : [Arrêter, effacer](#arrêter-effacer).
+
+## Pour une DSI
+
+### Ce que c'est
+
+Un correcteur de français. L'utilisateur colle un texte, un modèle de langage le corrige, et Grammaria nomme chaque faute avec son propre moteur de grammaire. Il existe en deux formes : une **application de bureau** (Windows, Linux) et un **serveur** (Docker). Pour la bêta, l'application de bureau est le cas prévu.
+
+### Où vont les données
+
+Le texte à corriger est envoyé **au modèle de langage choisi dans les réglages**. C'est le principe même de la correction. Ce modèle peut tourner sur le poste (par exemple Ollama), sur un serveur interne, ou chez un fournisseur dont l'API est compatible OpenAI. **Le choix du modèle décide donc de l'endroit où part le texte.**
+
+Tout le reste se passe sur le poste (application de bureau) ou sur le serveur de l'organisation (Docker) : l'analyse des fautes par le moteur de grammaire, le journal des fautes, les calculs de progression.
+
+| Donnée | Où elle va | Qui la voit |
+|---|---|---|
+| Le texte à corriger | Au modèle de langage configuré, et nulle part ailleurs | Celui qui exploite ce modèle |
+| Le texte corrigé | Revient du modèle et s'affiche à l'écran | L'utilisateur |
+| L'analyse des fautes | Calculée sur le poste (ou le serveur Docker) | Personne d'autre |
+| Le journal des fautes (sans texte) | Un fichier sur le poste (ou le serveur Docker) | L'utilisateur |
+| La clé API du modèle, s'il en faut une | Rangée dans le trousseau du système ; sur un Linux sans trousseau, dans un fichier lisible par le seul compte de l'utilisateur, et l'application le signale | L'utilisateur |
+| Le fichier d'export de la bêta | Enregistré sur le poste ; transmis à la main par le testeur, s'il le veut | La personne qui reçoit le fichier |
+
+Grammaria n'a **pas de serveur central**, pas de compte utilisateur et pas de télémétrie vers l'auteur.
+
+### Ce qui sort du poste
+
+Avec l'application de bureau, deux flux sortants, et seulement deux :
+
+1. **Vers le modèle de langage** configuré : le texte à corriger, à chaque correction. La page de l'application ne peut joindre aucune adresse elle-même (politique de sécurité de la fenêtre) : les appels au modèle passent par un relais interne qui ne contacte que l'adresse configurée. Voir [Sécurité de la page](/docs/reference/bureau/#sécurité-de-la-page).
+2. **Vers GitHub**, pour proposer les mises à jour : à chaque démarrage, l'application lit sur `github.com` un [petit fichier public](https://github.com/WillIsback/Grammaria/releases/latest/download/latest.json) qui annonce la dernière version. Aucune donnée de l'utilisateur n'est envoyée ; comme pour toute requête web, GitHub voit l'adresse IP. Si ce flux est bloqué, la recherche échoue sans message et l'application fonctionne normalement. Le paquet de mise à jour n'est téléchargé, depuis GitHub, que si l'utilisateur clique sur **Installer et redémarrer**. Le code : [`update.rs`](https://github.com/WillIsback/Grammaria/blob/main/src-tauri/src/update.rs).
+
+L'application de bureau **n'ouvre aucun port** sur le poste.
+
+Avec le **serveur Docker**, le seul flux sortant est celui vers le modèle de langage. L'image ne contacte rien d'autre d'elle-même : pas de recherche de mise à jour. La télémétrie OpenTelemetry est **désactivée par défaut**. Si un exploitant l'active, les traces envoyées à **son** collecteur contiennent les textes (voir [Télémétrie](/docs/exploiter/telemetrie/)).
+
+### Imposer un modèle interne
+
+- **Serveur Docker** : le modèle est fixé par l'exploitant (`LLM_TARGET`, voir [Configuration du serveur](/docs/exploiter/configuration/)). Avec un modèle interne, aucun flux ne sort de l'organisation. Attention : le serveur n'a pas d'authentification et ne gère qu'**un seul utilisateur** (un seul journal). Pour la bêta, il faut donc un serveur par testeur.
+- **Application de bureau** : l'utilisateur saisit l'adresse du modèle dans **Paramètres → IA**. Vous pouvez lui donner l'adresse de votre modèle interne. L'application n'a pas de réglage verrouillé : elle ne peut pas empêcher un utilisateur de choisir un autre modèle.
+
+### Ce qui est enregistré sur le poste
+
+Depuis la version 0.5, le journal des fautes ne garde **aucun texte** : ni phrase, ni mot, ni correction, ni message de règle (qui peut citer un mot du texte). Pour chaque faute, il garde l'identifiant de la règle (par exemple `PAIRE:a/à`), sa catégorie, son type et la date. Pour chaque texte : la date, le nombre de mots, le nombre de fautes et la note. S'y ajoutent l'état de chaque règle suivie et les badges obtenus. Le détail : [Ce que contient le journal](/docs/utiliser/note-et-journal/#ce-que-contient-le-journal).
+
+Les journaux des versions précédentes contenaient des phrases. Ils sont nettoyés à la mise à jour, et le fichier est réécrit : les anciens textes ne restent pas sur le disque.
+
+Le journal technique de l'application (`grammaria.log`) ne contient ni texte, ni correction, ni clé API.
+
+**La preuve est dans les tests.** À chaque modification du code, des tests automatiques corrigent des textes qui contiennent des mots improbables (« Kwaxolotl », « zorglubienne »…). Ils cherchent ensuite ces mots dans les octets du fichier du journal, et dans les réponses de toutes les routes de consultation de l'application (bilan, règles, badges, progression, export). Le test échoue si un seul mot est retrouvé. L'application réelle, construite, est vérifiée de la même façon sous Linux et sous Windows.
+
+- Le test : [`tests-bun/journal.sans-texte.test.ts`](https://github.com/WillIsback/Grammaria/blob/main/tests-bun/journal.sans-texte.test.ts)
+- La vérification de l'application réelle : [`build-desktop.yml`](https://github.com/WillIsback/Grammaria/blob/main/.github/workflows/build-desktop.yml) et [`src/desktop/autotest.ts`](https://github.com/WillIsback/Grammaria/blob/main/src/desktop/autotest.ts)
+
+### Installation et intégrité
+
+- **Windows** : installation pour le compte de l'utilisateur, **sans droits d'administrateur**. Un **MSI** existe pour un déploiement géré.
+- **Linux** : paquet `.deb` ou AppImage.
+- **Pas de Mac.**
+- Les paquets Windows des versions publiées sont **signés** : Windows affiche l'éditeur au lieu d'« éditeur inconnu ».
+- Les **sommes de contrôle SHA-256** de tous les paquets sont publiées avec chaque version.
+- Les **mises à jour sont signées**, et la signature est vérifiée avant l'installation. Un paquet modifié est refusé. Elles sont **proposées, jamais forcées** : rien ne s'installe sans un clic de l'utilisateur. Avec le MSI, l'application signale la nouvelle version, et c'est l'administrateur qui la déploie.
+
+Le détail : [Application de bureau](/docs/demarrer/application-bureau/) et [build, signature et mise à jour](/docs/reference/bureau/).
+
+### Licences et code source
+
+- Grammaria est un logiciel libre, sous licence **GPL-3.0-or-later**.
+- Son moteur de grammaire, [grammaria-rc](https://github.com/WillIsback/grammaria-rc), est sous licence **LGPL-2.1-or-later**.
+- Le code source est public sur [GitHub](https://github.com/WillIsback/Grammaria). Chaque version correspond à une étiquette Git : on peut relire exactement ce qui est installé.
+
+### Ce que le projet n'est pas
+
+À dire clairement avant de décider :
+
+- **un seul mainteneur**, qui fait ce projet sur son temps ;
+- **aucun engagement de support** ni de délai de correction ;
+- **aucun audit de sécurité externe** ;
+- **une version bêta** : des défauts sont possibles.
+
+### Arrêter
+
+À tout moment, chaque testeur peut effacer son journal et désinstaller l'application. Voir [Arrêter, effacer](#arrêter-effacer).
+
+## Pour un testeur
+
+### Ce test est-il pour vous ?
+
+Oui, si vous écrivez beaucoup (courriels, comptes rendus, messages) et que vous refaites certaines fautes. Si vous écrivez déjà sans faute, Grammaria n'aura rien à vous signaler : le test ne vous apprendra rien.
+
+### Ce que vous avez à faire
+
+<Steps>
+
+1. **Installer Grammaria.**
+
+   Sur la [page de téléchargement](/telecharger/), cliquez sur le bouton de votre système. Puis suivez le [premier lancement](/docs/demarrer/application-bureau/#premier-lancement).
+
+   Au premier lancement, Grammaria demande l'adresse du modèle de langage. La personne qui vous a proposé le test vous la donne.
+
+2. **Écrire comme d'habitude, pendant 4 à 6 semaines.**
+
+   Passez vos textes par Grammaria : collez, cliquez sur **Corriger**, copiez le résultat.
+
+   Ne changez rien à votre façon d'écrire. Ne cherchez pas à « vous appliquer » : on veut savoir ce qui se passe dans la vraie vie.
+
+   Plus vous écrivez, plus la mesure est fiable. Quelques milliers de mots au total, c'est bien.
+
+3. **Lire les astuces quand elles apparaissent.**
+
+   Quand une faute revient (3 fois en 7 jours), une astuce s'affiche près du bouton **Copier**. Plus tard, le bouton peut vous proposer de choisir entre deux formes : choisissez. Il n'y a rien d'autre à faire.
+
+4. **À la fin, exporter vos résultats.**
+
+   Ouvrez l'écran **Progression** (le bouton en forme de graphique, en haut à droite). Dans la section **Ce que changent les astuces**, cliquez sur **Exporter mes résultats**.
+
+   Une fenêtre montre le contenu exact du fichier. Lisez-le si vous le souhaitez, puis cliquez sur **Enregistrer le fichier**. La fenêtre indique où il est enregistré : dans votre dossier **Téléchargements**.
+
+   On peut aussi vous demander un export à mi-parcours. C'est le même geste.
+
+5. **Transmettre le fichier.**
+
+   Envoyez le fichier `grammaria-beta-….json` à la personne qui vous a proposé le test. Grammaria ne l'envoie pas à votre place.
+
+6. **Dire ce qui vous a gêné.**
+
+   Un message trop long, une astuce fausse, une lenteur : tout compte. Dites-le à la personne qui vous a proposé le test, ou ouvrez une [issue sur GitHub](https://github.com/WillIsback/Grammaria/issues).
+
+</Steps>
+
+Vous pouvez **arrêter à tout moment**, sans vous justifier. Voir [Arrêter, effacer](#arrêter-effacer).
+
+### Ce que voit l'écran Progression
+
+La section **Ce que changent les astuces** vous montre, faute par faute, ce que le test mesure pour vous. Les chiffres n'apparaissent qu'avec assez de textes : il est normal qu'elle reste presque vide la première semaine. Le mode d'emploi : [Progression](/docs/utiliser/progression/#ce-que-changent-les-astuces).
+
+## Ce que l'on mesure et ce que cela ne prouve pas
+
+### La mesure
+
+Pour chaque faute qui a reçu une astuce, Grammaria compte combien de fois elle revenait **pour 1 000 mots écrits** :
+
+- **avant** la première astuce : de la première fois où la faute apparaît, jusqu'au texte où l'astuce s'affiche ;
+- **depuis** la première astuce : tous les textes corrigés ensuite.
+
+Si l'astuce aide, le chiffre « depuis » devrait être plus bas que le chiffre « avant ».
+
+**Un groupe de comparaison** : les fautes de frappe. Elles ne reçoivent jamais d'astuce. On les coupe au même moment, quand elles atteignent le même seuil (3 fautes en 7 jours). Si les fautes de frappe baissent autant que les fautes signalées, ce n'est sans doute pas l'astuce qui a joué.
+
+**Un volume minimal** : une faute n'est chiffrée qu'avec au moins **3 textes et 400 mots** avant la première astuce, et **5 textes et 1 000 mots** depuis. En dessous, un « zéro faute » ne voudrait rien dire.
+
+**Deux indicateurs en appui** :
+
+- la part de **bonnes réponses** quand le bouton Copier propose de choisir entre deux formes ;
+- les règles **acquises** (plus de faute depuis 14 jours d'usage) qui le sont **restées**, sans rechute.
+
+Ces réglages sont dans le code, à un seul endroit ([`reglages.ts`](https://github.com/WillIsback/Grammaria/blob/main/src/analysis/progression/reglages.ts) et [`seuils.ts`](https://github.com/WillIsback/Grammaria/blob/main/src/analysis/regles/seuils.ts)). Ils sont recopiés dans chaque export : deux exports ne se comparent que s'ils ont été calculés avec les mêmes. Le calcul : [`mesure.ts`](https://github.com/WillIsback/Grammaria/blob/main/src/analysis/progression/mesure.ts).
+
+### Les limites, sans détour
+
+- **Ce n'est pas une preuve.** Il n'y a aucun test statistique, seulement des chiffres et leurs volumes.
+- **Peu de participants.** Quelques collègues, pas des centaines.
+- **Des volontaires, pas de tirage au sort.** Ceux qui acceptent de tester ne ressemblent pas forcément à tout le monde. Et personne n'est placé au hasard dans un groupe « sans astuce ».
+- **Le retour à la normale.** Une faute qui vient de revenir trois fois en une semaine revient souvent moins ensuite, astuce ou pas : c'était peut-être une mauvaise semaine. La comparaison avec les fautes de frappe n'en tient compte **qu'en partie** : ce sont des fautes d'une autre nature.
+- **Seules comptent les fautes vues par Grammaria.** Ce que le testeur écrit sans passer par Grammaria n'est pas mesuré.
+- **La période « avant » est courte par construction.** L'astuce arrive dès que la faute revient 3 fois en 7 jours : la période « avant » dure souvent quelques jours seulement.
+
+### Ce qui serait un résultat décevant
+
+Si les fautes qui ont reçu une astuce **ne baissent pas plus que les fautes de frappe**, la promesse centrale de Grammaria n'est pas tenue, du moins pas de façon visible sur quelques semaines.
+
+Ce résultat sera publié aussi, comme un résultat favorable. Il dirait qu'il faut revoir les astuces, ou la promesse.
+
+## Ce qui est partagé, exactement
+
+### Le fichier d'export
+
+Le bouton **Exporter mes résultats** produit un seul fichier, nommé `grammaria-beta-` suivi de 8 caractères, par exemple `grammaria-beta-3f9a0c2e.json`. Avant l'enregistrement, la fenêtre affiche son contenu exact.
+
+Il contient :
+
+- `format` et `version` : le nom et la version du format (`grammaria-beta`, 1).
+- `application` : la version de Grammaria, par exemple `0.5.0`.
+- `plateforme` : `bureau` ou `serveur`.
+- `participant` : un numéro tiré au hasard (voir plus bas).
+- `seuils` : les réglages en vigueur, c'est-à-dire les seuils des astuces et ceux de la mesure. Les mêmes pour tout le monde, sauf changement de version.
+- `semaines` : pour chaque semaine, le nombre de textes, de mots et de fautes.
+- `regles` : pour chaque faute suivie et pour les fautes de frappe, l'identifiant de la règle (par exemple `PAIRE:a/à`), sa catégorie, son état, les textes, mots et fautes avant et depuis la première astuce, le nombre d'astuces et de choix, les bonnes et mauvaises réponses, les rechutes.
+- `synthese` : les mêmes chiffres additionnés.
+
+**Il ne contient pas** : aucun texte, aucun mot, aucune correction, aucun libellé de règle, aucun nom, aucune information sur la machine (ni nom d'ordinateur, ni chemin, ni système). **Aucune date** : le temps est compté en semaines depuis le premier texte corrigé (semaine 0, 1, 2…).
+
+Le format est vérifié de façon stricte, à l'export comme à la collecte : un champ inconnu, ou une valeur hors des formes prévues, et le fichier est refusé. Le code : [`export.ts`](https://github.com/WillIsback/Grammaria/blob/main/src/analysis/progression/export.ts). Dans l'application de bureau, le fichier est revérifié avant d'être écrit, et son nom et son dossier sont fixés par l'application, pas par la page ([`export.rs`](https://github.com/WillIsback/Grammaria/blob/main/src-tauri/src/export.rs)).
+
+### Le numéro de participant
+
+Il est tiré au hasard au premier export. Il ne dérive ni de la machine, ni de la personne. Il sert à une seule chose : reconnaître deux exports du même testeur (par exemple à mi-parcours et à la fin). Il est effacé avec le journal.
+
+Soyons honnêtes : c'est un **pseudonyme**, pas un anonymat complet. La personne qui reçoit le fichier sait qui le lui a envoyé. Elle voit aussi combien vous avez écrit chaque semaine. La synthèse, elle, ne cite que les 8 premiers caractères du numéro.
+
+### Rien ne part tout seul
+
+Grammaria **n'envoie rien**. Le fichier est enregistré sur le poste : dans le dossier **Téléchargements** pour l'application de bureau, là où le navigateur range ses téléchargements pour la version serveur. C'est le testeur qui le transmet, s'il le souhaite, à la personne qui lui a proposé le test.
+
+### La collecte
+
+La personne qui reçoit les fichiers les réunit dans un dossier et lance :
+
+```bash
+npm run beta:agreger -- <dossier>
+```
+
+L'outil ([`agreger.ts`](https://github.com/WillIsback/Grammaria/blob/main/scripts/beta/agreger.ts)) écrit une synthèse à lire (`synthese.md`) et un tableau (`synthese.csv`). Il garde l'export le plus récent de chaque participant. Tout fichier qui ne respecte pas strictement le format est **refusé sans être affiché** : seuls son nom et la raison du refus apparaissent.
+
+Voici à quoi ressemble la synthèse.
+
+:::caution[Données simulées]
+L'extrait ci-dessous est produit à partir de **fichiers d'exemple inventés** pour tester l'outil de collecte (dossier `tests/fixtures/beta`). Ils ne viennent d'aucun testeur. **Ces chiffres ne disent rien de l'effet réel des astuces.**
+:::
+
+```md
+3 participants retenus (un seul fichier par personne : le plus récent).
+
+5 fichiers refusés (format non reconnu ou contenu non autorisé ;
+ils n'ont pas été lus plus loin) :
+- altere-libelle.json (export.regles[0] : champ inconnu)
+- …
+
+## En bref
+
+- Fautes qui ont reçu une astuce : 3,4 pour 1 000 mots avant la première
+  astuce, 1,4 depuis (60 % de moins), tous participants confondus
+  (3 participants avec assez de textes).
+- Pour comparer, les fautes de frappe (jamais d'astuce) : 4,1 pour 1 000 mots
+  avant le même seuil, 7,2 depuis (73 % de plus), sur 3 participants.
+- Le taux baisse pour 3 participants sur 3 ayant une mesure.
+
+## Par participant
+
+| Participant | Semaines | Mots  | Avant | Depuis | Évolution     | Fautes de frappe |
+|-------------|---------:|------:|------:|-------:|---------------|------------------|
+| 3f9a0c2e    |        6 | 3 907 |   2,9 |    1,6 | 44 % de moins | 3 % de plus      |
+| a17c4e9b    |        5 | 3 297 |   3,4 |    1,5 | 56 % de moins | 92 % de plus     |
+| c0ffee12    |        4 | 2 429 |   4,2 |    0,8 | 81 % de moins | 42 % de plus     |
+```
+
+La synthèse réelle se termine par les mêmes mises en garde que cette page, à reprendre avant de citer un chiffre.
+
+## Arrêter, effacer
+
+Vous pouvez arrêter à tout moment, sans prévenir personne.
+
+<Steps>
+
+1. **Effacer le journal.**
+
+   Dans la barre latérale de gauche, section **Journal des fautes**, cliquez sur **Effacer le journal**, puis sur **Effacer**. Si la fenêtre est étroite et que la barre n'est pas visible, ouvrez-la avec le bouton **Réglages de correction** de l'en-tête.
+
+   Tout l'historique est supprimé : fautes, état des règles, badges. Le numéro de participant aussi : un export fait plus tard porterait un autre numéro.
+
+2. **Supprimer les fichiers exportés**, si vous en avez enregistré. Ils sont dans votre dossier **Téléchargements**. Effacer le journal ne les supprime pas.
+
+3. **Désinstaller l'application**, comme tout autre logiciel de votre système.
+
+   Avant de désinstaller, supprimez la clé API du modèle s'il y en a une : **Paramètres → IA**, **Supprimer la clé enregistrée**. Elle est rangée dans le trousseau du système, que la désinstallation ne vide pas (voir [La clé API](/docs/demarrer/application-bureau/#la-clé-api)).
+
+   Pour ne rien laisser, supprimez aussi le dossier de données s'il reste après la désinstallation : `%APPDATA%\fr.willisback.grammaria\` sous Windows, `~/.local/share/fr.willisback.grammaria/` sous Linux. Il contient le journal et les réglages, et la clé API sur un Linux sans trousseau (voir [Où sont mes données ?](/docs/demarrer/application-bureau/#où-sont-mes-données)).
+
+</Steps>
+
+Un fichier déjà transmis est entre les mains de la personne qui l'a reçu. Si vous ne voulez plus qu'il compte, dites-le-lui.

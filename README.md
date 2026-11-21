@@ -2,9 +2,12 @@
 
 **Le correcteur de français qui corrige tout de suite, et vous aide à ne plus refaire les mêmes fautes.**
 
+Version bêta : la correction est éprouvée, l'effet sur la progression est en cours de test. Voir [Bêta : démarche et méthode de test](https://grammaria.fr/docs/decouvrir/beta/).
+
 [![Installer pour Windows](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://grammaria.fr/telecharger/)
 [![Installer pour Linux](https://img.shields.io/badge/Linux-Installer-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://grammaria.fr/telecharger/)
 [![Documentation](https://img.shields.io/badge/Documentation-grammaria.fr-2E7D32?style=for-the-badge&logo=readthedocs&logoColor=white)](https://grammaria.fr/docs/)
+[![Version bêta](https://img.shields.io/badge/Version-B%C3%AAta-B45309?style=for-the-badge)](https://grammaria.fr/docs/decouvrir/beta/)
 
 Les deux premiers boutons mènent à la [page de téléchargement](https://grammaria.fr/telecharger/) : un bouton par système, le bon fichier se télécharge directement.
 
@@ -20,7 +23,7 @@ Un correcteur automatique a un effet pervers : on colle son texte, on copie le r
 
 - **La correction reste instantanée.** Vous collez un texte, cliquez sur **Corriger** : le texte corrigé s'affiche à mesure que le modèle de langage l'écrit, et se copie aussitôt.
 - **Chaque faute est nommée.** Grammaria compare votre texte au texte corrigé ; son moteur de grammaire nomme chaque faute. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é…) ont une fiche « remplacez par X, car Y ».
-- **Les fautes qui reviennent sont repérées.** Un journal local garde la phrase fautive, jamais le texte entier. Quand une faute revient, une astuce puis un choix entre deux formes s'affichent près du bouton **Copier**, sans retarder la copie.
+- **Les fautes qui reviennent sont repérées.** Un journal local garde le nom des règles et des compteurs, jamais vos textes. Quand une faute revient, une astuce puis un choix entre deux formes s'affichent près du bouton **Copier**, sans retarder la copie.
 - **La progression se voit.** Une note sur 20, un écran **Progression** et des badges sobres montrent le chemin parcouru.
 
 Vos textes ne sont envoyés qu'au modèle de langage que vous avez choisi (Ollama, vLLM, ou toute API compatible OpenAI). L'analyse des fautes et le journal restent chez vous.

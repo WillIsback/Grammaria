@@ -125,13 +125,16 @@ jobs:
           workspaces: src-tauri
 
       # xvfb : écran virtuel de l'autotest (dbus-run-session vient du paquet
-      # dbus, toujours présent).
+      # dbus, toujours présent). gnome-keyring : vrai service de secrets pour
+      # l'autotest, qui range la clé API dans le trousseau (src-tauri/src/
+      # trousseau.rs) ; seulement pour le test : la compilation n'en a pas
+      # besoin (D-Bus en Rust pur) et le paquet .deb ne le requiert pas.
       - name: Dépendances système (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
-            libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
+            libayatana-appindicator3-dev librsvg2-dev patchelf xvfb gnome-keyring
 
       - name: Install dependencies
         env:
@@ -553,6 +556,10 @@ jobs:
           # Dossiers personnels isolés : rien n'est écrit chez l'utilisateur du
           # runner (l'application range déjà ses données à côté du JSON).
           # timeout tue tout le groupe (xvfb-run, dbus, application) au besoin.
+          # Trousseau : gnome-keyring démarré dans la session D-Bus de
+          # l'application, avec un trousseau « login » créé et déverrouillé
+          # (mot de passe non vide : sinon il demanderait une fenêtre). Ses
+          # fichiers vont dans le dossier personnel isolé ($XDG_DATA_HOME).
           env HOME="$dir/home" \
             XDG_DATA_HOME="$dir/home/data" \
             XDG_CONFIG_HOME="$dir/home/config" \
@@ -560,7 +567,8 @@ jobs:
             WEBKIT_DISABLE_COMPOSITING_MODE=1 \
             GRAMMARIA_AUTOTEST_OUT="$dir/autotest.json" \
             timeout --kill-after=10 200 \
-            xvfb-run -a dbus-run-session -- src-tauri/target/release/grammaria \
+            xvfb-run -a dbus-run-session -- sh -c \
+            'printf autotest | gnome-keyring-daemon --unlock --components=secrets > /dev/null && exec src-tauri/target/release/grammaria' \
             > "$dir/app.log" 2>&1 || code=$?
           duree=$(( $(date +%s) - debut ))
           kill "$modele" 2> /dev/null || true
@@ -640,7 +648,9 @@ jobs:
           code=$(tr -d '\r\n' < "$dir/code-application" 2> /dev/null || true)
           duree=$(tr -d '\r\n' < "$dir/duree-application" 2> /dev/null || true)
           verification=0
-          node scripts/desktop/verifier-autotest.mjs "$dir/autotest.json" \
+          # Trousseau exigé sur les deux systèmes : Gestionnaire d'identification
+          # sous Windows, gnome-keyring lancé avec l'application sous Linux.
+          node scripts/desktop/verifier-autotest.mjs "$dir/autotest.json" --stockage trousseau \
             > "$dir/verification.txt" 2>&1 || verification=$?
           cat "$dir/verification.txt"
           moteur="WebKitGTK"

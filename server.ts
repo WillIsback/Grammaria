@@ -179,6 +179,8 @@ const gestionnaireApi = creerGestionnaire({
   modele,
   options: {
     bureau: config.desktop,
+    // L'image Docker reçoit le tag de la release (« v0.5.0 ») ; hors image : « 0.0.0 ».
+    versionApplication: async () => (process.env.GRAMMARIA_VERSION || "0.0.0").replace(/^v/, ""),
     originesCors: config.corsOrigins,
     llmTopK: config.llmTopK,
   },

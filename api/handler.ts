@@ -3,7 +3,11 @@ import { analyze } from "../src/analysis/analyze.ts";
 import { compterEtats } from "../src/analysis/regles/cycle.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
 import { parsePeriodDays } from "../src/analysis/score.ts";
-import { classerErreurModele, messageErreurModele } from "../src/utils/erreursModele.ts";
+import {
+  classerErreurModele,
+  messageErreurModele,
+  messageSansEntree,
+} from "../src/utils/erreursModele.ts";
 import { cleanLlmOutput } from "../src/utils/llmText.ts";
 import { creerDetecteurModele } from "../src/utils/modeles.ts";
 import { isStreamTeardownError } from "../src/utils/streamErrors.ts";
@@ -36,6 +40,7 @@ const JOURNAL_PATHS = new Set([
   "/api/analyze",
   "/api/journal",
   "/api/progress",
+  "/api/progress/export",
   "/api/badges",
   "/api/rules",
   "/api/rules/events",
@@ -279,6 +284,14 @@ export function creerGestionnaire(
         return json(await journal.progress(), headers);
       }
 
+      // Export anonyme de la bêta (issue #34) : nombres et identifiants seulement,
+      // validés avant de sortir. Rien n'est envoyé : l'interface en fait un fichier.
+      if (path === "/api/progress/export" && req.method === "GET") {
+        const plateforme = options.bureau ? "bureau" : "serveur";
+        const application = (await options.versionApplication?.()) ?? "0.0.0";
+        return json(await journal.exportBeta({ application, plateforme }), headers);
+      }
+
       if (path === "/api/journal" && req.method === "GET") {
         const days = parsePeriodDays(url.searchParams.get("days"));
         return json(await journal.summary(days), headers);
@@ -312,7 +325,8 @@ export function creerGestionnaire(
         const matches = await correcteur.check(text);
         return json({ matches }, headers);
       } catch (error) {
-        console.error("[Grammar] Check failed:", error);
+        // Message filtré : une erreur du correcteur pourrait citer le texte contrôlé.
+        console.error(`[Grammar] Check failed: ${messageSansEntree(error)}`);
         return json({ error: "Grammar checker unavailable" }, headers, 503);
       }
     }
@@ -457,7 +471,7 @@ export function creerGestionnaire(
                 // instead of turning a completed ~12s stream into an error. Any
                 // other error is rethrown to the outer catch (→ SSE error event).
                 if (isStreamTeardownError(loopErr)) {
-                  console.warn(`[LLM] Stream teardown race ignored: ${String(loopErr)}`);
+                  console.warn(`[LLM] Stream teardown race ignored: ${messageSansEntree(loopErr)}`);
                 } else {
                   throw loopErr;
                 }
@@ -499,7 +513,9 @@ export function creerGestionnaire(
               span.setStatus({ code: SpanStatusCode.ERROR, message: String(err) });
               span.end();
               const erreur = erreurPourInterface(err, modifiable);
-              console.error(`[LLM] Erreur pendant le flux : ${erreur.details}`);
+              // Journal du serveur (gardé par Docker) : jamais la requête qu'une erreur
+              // amont recopierait. L'interface reçoit le détail complet, pour l'utilisateur.
+              console.error(`[LLM] Erreur pendant le flux : ${messageSansEntree(err)}`);
               safeEnqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({ error: erreur.message, cause: erreur.cause, details: erreur.details })}\n\n`,
@@ -526,10 +542,7 @@ export function creerGestionnaire(
         return new Response(readable, { headers });
       } catch (error) {
         const duration = horloge() - startTime;
-        console.error(
-          `[LLM] Erreur après ${duration}ms:`,
-          error instanceof Error ? error.message : error,
-        );
+        console.error(`[LLM] Erreur après ${duration}ms: ${messageSansEntree(error)}`);
         const message = error instanceof Error ? error.message : "Unknown error";
         span.setStatus({ code: SpanStatusCode.ERROR, message });
         span.end();

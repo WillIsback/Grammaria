@@ -14,12 +14,14 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 
 | Module | Rôle |
 |---|---|
-| `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien |
+| `db.rs` | Accès SQLite au journal des fautes (`grammaria.db`) : lectures, lots d'écritures tout ou rien, compactage après la migration qui efface les textes |
 | `store.rs` | Réglages du modèle (`settings.json`), clé API, mots valides (`valid-words.json`) |
+| `trousseau.rs` | Accès au trousseau du système, où est rangée la clé API (voir [La clé API](#la-clé-api)) |
 | `llm.rs` | Relais du modèle en streaming : Rust ajoute l'adresse et la clé API, que la page ne connaît jamais |
 | `correcteur.rs` | Correcteur grammatical (moteur grammaria-rc lié à l'application) |
 | `update.rs` | Mise à jour de l'application |
 | `logs.rs` | Journal technique `grammaria.log` |
+| `export.rs` | Export anonyme de la bêta : écrit le fichier dans le dossier Téléchargements. Le dossier et le nom du fichier sont fixés par Rust, jamais par la page ; le contenu est revérifié (taille, JSON, format `grammaria-beta`) avant d'être écrit. La page n'a aucun autre accès aux fichiers |
 
 Le journal, les réglages, la clé API et les mots valides de la version 0.2.x sont repris tels quels (mêmes fichiers, même dossier). Les préférences d'affichage (mode de correction et types de corrections de la barre latérale) étaient gardées par la page elle-même ; l'origine de la page ayant changé, elles ne sont pas reprises. Un `settings.json` de la version 0.2 (sans `settingsVersion`) est relu sans son réglage « Couper le raisonnement du modèle », qui revient à sa valeur par défaut (coupé) ; le fichier n'est réécrit qu'au prochain enregistrement des réglages.
 
@@ -28,9 +30,28 @@ Le journal, les réglages, la clé API et les mots valides de la version 0.2.x s
 - **Une seule capability, locale.** `src-tauri/capabilities/default.json` autorise la fenêtre `main`, pour la page embarquée seulement, à appeler les commandes de l'application, une par une : ni les commandes de Tauri (`core:default`), ni celles des plugins, ni aucune origine distante. La liste des commandes est aussi déclarée dans `src-tauri/build.rs` ; un test Rust vérifie que les commandes enregistrées, celles de `build.rs` et celles de la capability coïncident.
 - **Une politique de sécurité stricte** (`tauri.conf.json`) : la page ne charge que ses propres fichiers, sans `unsafe-eval` ni ressource distante. Elle ne joint jamais le modèle elle-même : tout passe par `llm.rs`. La police Inter est embarquée : aucune requête vers Google.
 - **Une fenêtre verrouillée sur la page embarquée** (`lib.rs`) : toute navigation vers une autre origine et toute nouvelle fenêtre sont refusées, et notées dans le journal technique (origine seule). La page de téléchargement d'une mise à jour s'ouvre dans le navigateur du système, par une commande Rust dont l'adresse est fixe.
+- **Une clé API que la page ne voit jamais**, rangée dans le trousseau du système : voir [La clé API](#la-clé-api).
 - **Un relais du modèle borné** (`llm.rs`, `store.rs`) : l'adresse du modèle ne doit contenir ni identifiants (`utilisateur:motdepasse@`), ni paramètres (`?…`), ni fragment (`#…`) ; le `/v1` final est facultatif. Une redirection du serveur du modèle n'est suivie que vers la même origine, et un événement du flux est limité à 8 Mio.
-- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
+- **Un accès au journal borné** (`db.rs`) : une instruction par entrée, ni déclencheur, ni vue, ni `DROP`, ni `ALTER TABLE` (seule exception, au caractère près : les instructions de la migration qui retire les colonnes de texte, `MIGRATION_SANS_TEXTE`), ni `VACUUM` hors de la commande `db_compacter`, une commande interrompue au-delà de 10 secondes, des lectures plafonnées. Le pilote du serveur web (`journal.driver.ts`) applique les mêmes refus, vérifiés par les tests des deux côtés.
 - **Un journal d'une version plus récente n'est jamais ouvert.** Si `grammaria.db` porte une version de schéma (`PRAGMA user_version`) supérieure à celle que l'application connaît, elle affiche l'écran d'erreur « Ce journal a été créé par une version plus récente de Grammaria » et n'écrit rien ; le serveur web refuse de démarrer avec le même message.
+
+### La clé API
+
+La clé API du modèle est rangée dans le trousseau du système (`trousseau.rs`, crates `keyring-core` et un magasin par système, MIT ou Apache-2.0) :
+
+| Système | Trousseau |
+|---|---|
+| Windows | Gestionnaire d'identification : identifiant générique `cle-api-modele.fr.willisback.grammaria`, persistance locale (pas d'itinérance) |
+| Linux | Service de secrets freedesktop (GNOME Keyring, KWallet…), collection par défaut, joint par D-Bus en Rust pur (`zbus-secret-service-keyring-store`, zbus étant déjà lié par les plugins) : aucune bibliothèque système de plus, la clé circule chiffrée sur le bus |
+
+Une seule entrée : service `fr.willisback.grammaria` (identifiant de l'application), compte `cle-api-modele`. `settings.json` ne contient plus la clé, seulement l'indicateur non secret `"llmApiKeyInKeyring": true`.
+
+- **La page ne voit jamais la clé.** `settings_get` renvoie `hasApiKey` et `apiKeyStorage` (`trousseau`, `fichier` ou `aucune`), affiché sous le champ de la clé dans **Paramètres → IA**. Aucune commande ne renvoie la clé ; Rust ne la lit dans le trousseau qu'au moment d'appeler le modèle, puis la garde en mémoire jusqu'à la fermeture. Une clé enregistrée est relue dans le trousseau avant d'être retirée du fichier.
+- **Migration.** Au démarrage, une clé en clair dans `settings.json` (version précédente, ou trousseau indisponible jusqu'ici) est écrite dans le trousseau, relue à l'identique, puis le fichier est réécrit sans elle (écriture atomique). Si le trousseau refuse, rien ne change.
+- **Repli sans trousseau** (Linux sans service de secrets : bureau minimal, conteneur, session sans D-Bus) : la clé reste dans `settings.json`, dont les droits sont ramenés à 0600 à chaque démarrage, et la page l'indique. Pas de chiffrement maison avec une clé rangée à côté, qui ne protégerait rien. Un trousseau qui ne répond pas en 30 secondes (fenêtre de déverrouillage que personne ne voit) compte comme indisponible.
+- **Effacement.** **Supprimer la clé enregistrée**, ou une adresse vers un autre serveur sans nouvelle clé, supprime l'entrée du trousseau (et la clé du fichier, en repli). La désinstallation ne touche pas au trousseau.
+- **Journal technique.** Seule l'issue est notée (« Clé API déplacée dans le trousseau du système. », « Trousseau indisponible (…) : repli sur le fichier… »), jamais la clé.
+- **Autotest.** Il utilise une autre entrée (compte `cle-api-modele-autotest`), vidée au départ et à la fin, jamais celle de l'utilisateur.
 
 ## Journal technique
 
@@ -87,7 +108,7 @@ Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm 
 
 ### Autotest
 
-L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal, réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
+L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal (schéma 3, et aucun mot des textes corrigés dans les octets du fichier de la base ni de son WAL), export de la bêta (valide, sans texte, écrit par Rust sous son nom fixe), réglages (la clé API n'est jamais renvoyée à la page ; elle est rangée dans le trousseau et n'apparaît dans aucun fichier du dossier de données, ou, sans trousseau, dans un `settings.json` en 0600), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
 
 1. Lancer le faux serveur du modèle : `node scripts/desktop/faux-modele.mjs`.
 2. Lancer l'application avec `GRAMMARIA_AUTOTEST_OUT=/chemin/autotest.json` (sous Linux sans écran : `xvfb-run`). Elle écrit ses résultats puis se ferme, avec le code 0 si tout est tenu.

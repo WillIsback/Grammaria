@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { saveServerSettings, type ServerSettings } from "../services/settings";
+import { type ApiKeyStorage, saveServerSettings, type ServerSettings } from "../services/settings";
 import { sectionTitle } from "./Sidebar";
 
 interface Props {
@@ -13,6 +13,17 @@ const input =
   "focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-400";
 
 /**
+ * Où est rangée la clé enregistrée (application de bureau). Le serveur web
+ * n'envoie pas `apiKeyStorage` : rien n'est affiché.
+ */
+const STOCKAGE_CLE: Record<ApiKeyStorage, string | null> = {
+  trousseau: "Clé protégée par le trousseau de votre système.",
+  fichier:
+    "Aucun trousseau disponible sur ce système : la clé est gardée dans un fichier lisible par votre seul compte.",
+  aucune: null,
+};
+
+/**
  * Adresse du serveur LLM et clé API, dans l'application de bureau : sans
  * terminal, c'est ici que l'utilisateur choisit son modèle (Ollama en local,
  * ou une API compatible OpenAI).
@@ -23,6 +34,7 @@ export function LlmSettings({ settings, onSaved }: Props) {
   const [disableThinking, setDisableThinking] = useState(settings.llmDisableThinking);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const stockageCle = settings.hasApiKey ? STOCKAGE_CLE[settings.apiKeyStorage ?? "aucune"] : null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -119,6 +131,11 @@ export function LlmSettings({ settings, onSaved }: Props) {
         className={input}
         autoComplete="off"
       />
+      {stockageCle && (
+        <p className="mt-1 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+          {stockageCle}
+        </p>
+      )}
       {settings.hasApiKey && (
         <button
           type="button"

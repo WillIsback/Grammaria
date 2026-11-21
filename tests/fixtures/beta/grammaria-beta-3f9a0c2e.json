@@ -1,0 +1,203 @@
+{
+  "format": "grammaria-beta",
+  "version": 1,
+  "application": "0.5.0",
+  "plateforme": "bureau",
+  "participant": "3f9a0c2e7b1d4e8fa6c5b2d1e0f9a8b7",
+  "seuils": {
+    "cycle": {
+      "signalementOccurrences": 3,
+      "signalementFenetreJours": 7,
+      "astucesAvantTravail": 3,
+      "acquisitionJoursSansFaute": 14,
+      "acquisitionTextesMin": 5,
+      "acquisitionJoursActifsMin": 3,
+      "travailleesMax": 3,
+      "sollicitationsParRegleEtParJour": 1,
+      "choixLongueurMaxForme": 24,
+      "choixContexteMax": 60
+    },
+    "mesure": {
+      "motsParTaux": 1000,
+      "avantMinimumTextes": 3,
+      "avantMinimumMots": 400,
+      "depuisMinimumTextes": 5,
+      "depuisMinimumMots": 1000
+    }
+  },
+  "semaines": [
+    {
+      "semaine": 0,
+      "textes": 4,
+      "mots": 614,
+      "fautes": 8
+    },
+    {
+      "semaine": 1,
+      "textes": 4,
+      "mots": 597,
+      "fautes": 6
+    },
+    {
+      "semaine": 2,
+      "textes": 4,
+      "mots": 597,
+      "fautes": 13
+    },
+    {
+      "semaine": 3,
+      "textes": 4,
+      "mots": 587,
+      "fautes": 9
+    },
+    {
+      "semaine": 4,
+      "textes": 6,
+      "mots": 908,
+      "fautes": 9
+    },
+    {
+      "semaine": 5,
+      "textes": 4,
+      "mots": 604,
+      "fautes": 7
+    }
+  ],
+  "regles": [
+    {
+      "regle": "PAIRE:a/à",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "travaillee",
+      "semainePivot": 1,
+      "avant": {
+        "textes": 3,
+        "mots": 436,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 20,
+        "mots": 2998,
+        "fautes": 4
+      },
+      "suffisant": true,
+      "astuces": 3,
+      "choix": 2,
+      "reponsesJustes": 2,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "PAIRE:et/est",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "travaillee",
+      "semainePivot": 3,
+      "avant": {
+        "textes": 12,
+        "mots": 1790,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 13,
+        "mots": 1963,
+        "fautes": 4
+      },
+      "suffisant": true,
+      "astuces": 3,
+      "choix": 1,
+      "reponsesJustes": 1,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "PAIRE:on/ont",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "signalee",
+      "semainePivot": 3,
+      "avant": {
+        "textes": 13,
+        "mots": 1936,
+        "fautes": 5
+      },
+      "depuis": {
+        "textes": 12,
+        "mots": 1817,
+        "fautes": 3
+      },
+      "suffisant": true,
+      "astuces": 1,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "FR_SPELLING_RULE",
+      "categorie": "TYPOS",
+      "groupe": "comparaison",
+      "etat": null,
+      "semainePivot": 0,
+      "avant": {
+        "textes": 4,
+        "mots": 614,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 22,
+        "mots": 3293,
+        "fautes": 22
+      },
+      "suffisant": true,
+      "astuces": 0,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    }
+  ],
+  "synthese": {
+    "suivies": {
+      "regles": 3,
+      "reglesSuffisantes": 3,
+      "avant": {
+        "textes": 28,
+        "mots": 4162,
+        "fautes": 12
+      },
+      "depuis": {
+        "textes": 45,
+        "mots": 6778,
+        "fautes": 11
+      }
+    },
+    "comparaison": {
+      "regles": 1,
+      "reglesSuffisantes": 1,
+      "avant": {
+        "textes": 4,
+        "mots": 614,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 22,
+        "mots": 3293,
+        "fautes": 22
+      }
+    },
+    "choix": {
+      "justes": 3,
+      "fausses": 0
+    },
+    "acquises": {
+      "total": 0,
+      "restees": 0,
+      "rechutes": 0
+    }
+  }
+}

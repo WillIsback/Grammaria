@@ -147,7 +147,7 @@ describe("Journal — migration du schéma v1 vers v2 (badges)", () => {
       expect(apres.rules).toEqual(avant.rules);
       expect(apres.events).toEqual(avant.events);
       expect(apres.version).toBe(SCHEMA_VERSION);
-      expect(SCHEMA_VERSION).toBe(2);
+      expect(SCHEMA_VERSION).toBe(3);
     });
   });
 
@@ -160,7 +160,7 @@ describe("Journal — migration du schéma v1 vers v2 (badges)", () => {
       const second = await ouvrirJournal(path);
       expect(await second.badges.obtained()).toEqual(badges);
       await second.close();
-      expect(contenu(path).version).toBe(2);
+      expect(contenu(path).version).toBe(SCHEMA_VERSION);
     });
   });
 });

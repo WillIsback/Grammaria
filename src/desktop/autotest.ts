@@ -15,9 +15,12 @@
  *  2. correcteur : premier contrôle (temps depuis le lancement), détections du corpus
  *     comparées à la référence du serveur (tests/fixtures/correcteur/reference.json), produite
  *     par le même moteur Rust ;
- *  3. journal : analyses enregistrées (astuce à la 3ᵉ faute), lot SQLite atomique et lots
- *     refusés par le pilote Tauri (rien d'écrit), effacement ;
- *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ;
+ *  3. journal : schéma 3, analyses enregistrées (astuce à la 3ᵉ faute), aucun mot des textes
+ *     corrigés dans le fichier de la base (commande `autotest_textes_journal`), lot SQLite atomique et lots
+ *     refusés par le pilote Tauri (rien d'écrit), export de la bêta (valide, sans texte, écrit
+ *     par Rust sous son nom fixe), effacement ;
+ *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ; stockage
+ *     de la clé (trousseau du système, ou fichier sans trousseau) ;
  *  5. modèle (faux serveur local, scripts/desktop/faux-modele.mjs) : ordre des fragments,
  *     annulation pendant le flux et avant le premier fragment, refus de chat_template_kwargs
  *     puis relance, interruption d'une correction par src/utils/llm.ts ;
@@ -28,6 +31,11 @@
  */
 import reference from "../../tests/fixtures/correcteur/reference.json";
 import { estConflit } from "../../journal.driver.ts";
+import {
+  nomFichierExport,
+  texteExport,
+  validerTexteExport,
+} from "../analysis/progression/export.ts";
 import type { CorrectionSettings, LTMatch } from "../types.ts";
 import { CORRECTION_REMPLACEE, correctText } from "../utils/llm.ts";
 import type { CorrecteurBureau } from "./correcteur.ts";
@@ -233,7 +241,7 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
     j.userVersion = (
       await pilote.read<{ user_version: number }>("PRAGMA user_version")
     )[0]?.user_version;
-    critere("schéma du journal en version 2", j.userVersion === 2, j.userVersion);
+    critere("schéma du journal en version 3", j.userVersion === 3, j.userVersion);
 
     // Analyses par le pont : l'astuce apparaît à la 3e faute de la même règle.
     const interventions: (string | null)[] = [];
@@ -254,27 +262,80 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       interventions,
     );
 
+    // Aucun texte de l'utilisateur dans le fichier du journal (#32) : des textes à mots
+    // improbables, avec les vraies détections du correcteur, puis Rust cherche ces mots
+    // dans les octets de la base et de ses fichiers annexes (UTF-8 et UTF-16).
+    const sentinelles = ["Zorglubienne", "Brabanthrope", "quixotérismal", "Vélocipédisme-ζ"];
+    for (const [original, corrected] of [
+      [
+        "Hier, Zorglubienne et Brabanthrope mange des quixotérismals.",
+        "Hier, Zorglubienne et Brabanthrope mangent des quixotérismal.",
+      ],
+      ["Ils on vu Vélocipédisme-ζ hier soir.", "Ils ont vu Vélocipédisme-ζ hier soir."],
+    ]) {
+      const { matches } = (await (await postJson("/api/check", { text: original })).json()) as {
+        matches: LTMatch[];
+      };
+      await (await postJson("/api/analyze", { original, corrected, matches })).json();
+    }
+    j.textesTrouves = await api.invoke<string[]>("autotest_textes_journal", { sentinelles });
+    critere(
+      "aucun texte de l'utilisateur dans le fichier du journal",
+      Array.isArray(j.textesTrouves) && j.textesTrouves.length === 0,
+      j.textesTrouves,
+    );
+
+    // Export anonyme de la bêta (#34) : par le pont, valide et sans aucun mot des textes, puis
+    // écrit par Rust (dossier fixé par Rust : ici, celui des données isolées de l'autotest).
+    const reponseExport = await fetch("/api/progress/export");
+    const texteBrut = await reponseExport.text();
+    const resultatExport = validerTexteExport(texteBrut);
+    j.export = { statut: reponseExport.status, valide: resultatExport.ok };
+    critere(
+      "export de la bêta valide, sans aucun mot des textes corrigés",
+      reponseExport.status === 200 &&
+        resultatExport.ok &&
+        sentinelles.every((mot) => !texteBrut.toLowerCase().includes(mot.toLowerCase())),
+      j.export,
+    );
+    if (resultatExport.ok) {
+      const contenu = texteExport(resultatExport.export);
+      const chemin = await api.invoke<string>("export_beta_enregistrer", { contenu });
+      const refus = await api
+        .invoke<string>("export_beta_enregistrer", { contenu: '{"format":"autre"}' })
+        .then(
+          () => "ACCEPTÉ",
+          (error: unknown) => messageErreur(error),
+        );
+      j.exportEcrit = { chemin, refus };
+      critere(
+        "export écrit par Rust sous son nom fixe ; contenu hors format refusé",
+        chemin.endsWith(nomFichierExport(resultatExport.export.participant)) && refus !== "ACCEPTÉ",
+        j.exportEcrit,
+      );
+    }
+
     const compter = async () =>
       (
         await pilote.read<{ texts: number; faults: number }>(
           "SELECT (SELECT COUNT(*) FROM texts) AS texts, (SELECT COUNT(*) FROM faults) AS faults",
         )
       )[0];
-    const lot = (marque: string) => [
+    const lot = () => [
       {
         sql: "INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score) VALUES (?, ?, ?, ?, ?)",
         params: [Date.now(), 10, 2, 0, 15],
       },
       ...[0, 1].map(() => ({
         sql: `INSERT INTO faults (text_id, created_at, rule_key, source, category_id, category_name,
-                issue_type, message, word, replacement, sentence, counted)
-              VALUES (?, ?, 'AUTOTEST', 'lt', 'GRAMMAR', 'Grammaire', 'grammar', ?, 'a', 'à', 'a', 1)`,
-        params: [{ $rowid: 0 }, Date.now(), marque],
+                issue_type, counted)
+              VALUES (?, ?, 'AUTOTEST', 'lt', 'GRAMMAR', 'Grammaire', 'grammar', 1)`,
+        params: [{ $rowid: 0 }, Date.now()],
       })),
     ];
     const avant = await compter();
     const t = maintenant();
-    const resultats = await pilote.batch(lot("autotest"));
+    const resultats = await pilote.batch(lot());
     j.lotMs = arrondi(maintenant() - t);
     const apres = await compter();
     critere(
@@ -297,11 +358,11 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       return null;
     };
     await tenter("instructionInvalide", () =>
-      pilote.batch([...lot("refuse"), { sql: "INSERT INTO table_absente VALUES (1)" }]),
+      pilote.batch([...lot(), { sql: "INSERT INTO table_absente VALUES (1)" }]),
     );
     const conflit = await tenter("gardeExpectChanges", () =>
       pilote.batch([
-        ...lot("refuse"),
+        ...lot(),
         { sql: "UPDATE texts SET score = 0 WHERE id = -1", expectChanges: 1 },
       ]),
     );
@@ -334,17 +395,26 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
     const texte = await reponse.text();
     const lecture = await (await fetch("/api/settings")).text();
     const etat = await etatModele();
+    const vue = JSON.parse(texte) as { hasApiKey?: boolean; apiKeyStorage?: string };
     r.reglages = {
       statut: reponse.status,
-      vue: JSON.parse(texte),
+      vue,
       cleRecueParLeModele: etat.cleConforme,
+      // Vérifié par scripts/desktop/verifier-autotest.mjs sur les fichiers du dossier de
+      // données : « trousseau », la clé n'est dans aucun ; « fichier », réglages en 0600.
+      stockageCle: vue.apiKeyStorage,
     };
-    critere("réglages enregistrés", reponse.status === 200 && JSON.parse(texte).hasApiKey === true);
+    critere("réglages enregistrés", reponse.status === 200 && vue.hasApiKey === true);
     critere(
       "clé API jamais renvoyée à la page",
       !texte.includes(config.cle) && !lecture.includes(config.cle),
     );
     critere("clé API transmise au modèle par l'application", etat.cleConforme === true);
+    critere(
+      `stockage de la clé API : ${vue.apiKeyStorage}`,
+      vue.apiKeyStorage === "trousseau" || vue.apiKeyStorage === "fichier",
+      vue.apiKeyStorage,
+    );
   });
 
   // ───────────────────────── 5. Modèle ─────────────────────────
