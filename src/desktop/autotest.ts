@@ -15,7 +15,8 @@
  *  2. correcteur : premier contrôle (temps depuis le lancement), détections du corpus
  *     comparées à la référence du serveur (tests/fixtures/correcteur/reference.json), produite
  *     par le même moteur Rust ;
- *  3. journal : analyses enregistrées (astuce à la 3ᵉ faute), lot SQLite atomique et lots
+ *  3. journal : schéma 3, analyses enregistrées (astuce à la 3ᵉ faute), aucun mot des textes
+ *     corrigés dans le fichier de la base (commande `autotest_textes_journal`), lot SQLite atomique et lots
  *     refusés par le pilote Tauri (rien d'écrit), effacement ;
  *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ;
  *  5. modèle (faux serveur local, scripts/desktop/faux-modele.mjs) : ordre des fragments,
@@ -233,7 +234,7 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
     j.userVersion = (
       await pilote.read<{ user_version: number }>("PRAGMA user_version")
     )[0]?.user_version;
-    critere("schéma du journal en version 2", j.userVersion === 2, j.userVersion);
+    critere("schéma du journal en version 3", j.userVersion === 3, j.userVersion);
 
     // Analyses par le pont : l'astuce apparaît à la 3e faute de la même règle.
     const interventions: (string | null)[] = [];
@@ -254,27 +255,50 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       interventions,
     );
 
+    // Aucun texte de l'utilisateur dans le fichier du journal (#32) : des textes à mots
+    // improbables, avec les vraies détections du correcteur, puis Rust cherche ces mots
+    // dans les octets de la base et de ses fichiers annexes (UTF-8 et UTF-16).
+    const sentinelles = ["Zorglubienne", "Brabanthrope", "quixotérismal", "Vélocipédisme-ζ"];
+    for (const [original, corrected] of [
+      [
+        "Hier, Zorglubienne et Brabanthrope mange des quixotérismals.",
+        "Hier, Zorglubienne et Brabanthrope mangent des quixotérismal.",
+      ],
+      ["Ils on vu Vélocipédisme-ζ hier soir.", "Ils ont vu Vélocipédisme-ζ hier soir."],
+    ]) {
+      const { matches } = (await (await postJson("/api/check", { text: original })).json()) as {
+        matches: LTMatch[];
+      };
+      await (await postJson("/api/analyze", { original, corrected, matches })).json();
+    }
+    j.textesTrouves = await api.invoke<string[]>("autotest_textes_journal", { sentinelles });
+    critere(
+      "aucun texte de l'utilisateur dans le fichier du journal",
+      Array.isArray(j.textesTrouves) && j.textesTrouves.length === 0,
+      j.textesTrouves,
+    );
+
     const compter = async () =>
       (
         await pilote.read<{ texts: number; faults: number }>(
           "SELECT (SELECT COUNT(*) FROM texts) AS texts, (SELECT COUNT(*) FROM faults) AS faults",
         )
       )[0];
-    const lot = (marque: string) => [
+    const lot = () => [
       {
         sql: "INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score) VALUES (?, ?, ?, ?, ?)",
         params: [Date.now(), 10, 2, 0, 15],
       },
       ...[0, 1].map(() => ({
         sql: `INSERT INTO faults (text_id, created_at, rule_key, source, category_id, category_name,
-                issue_type, message, word, replacement, sentence, counted)
-              VALUES (?, ?, 'AUTOTEST', 'lt', 'GRAMMAR', 'Grammaire', 'grammar', ?, 'a', 'à', 'a', 1)`,
-        params: [{ $rowid: 0 }, Date.now(), marque],
+                issue_type, counted)
+              VALUES (?, ?, 'AUTOTEST', 'lt', 'GRAMMAR', 'Grammaire', 'grammar', 1)`,
+        params: [{ $rowid: 0 }, Date.now()],
       })),
     ];
     const avant = await compter();
     const t = maintenant();
-    const resultats = await pilote.batch(lot("autotest"));
+    const resultats = await pilote.batch(lot());
     j.lotMs = arrondi(maintenant() - t);
     const apres = await compter();
     critere(
@@ -297,11 +321,11 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       return null;
     };
     await tenter("instructionInvalide", () =>
-      pilote.batch([...lot("refuse"), { sql: "INSERT INTO table_absente VALUES (1)" }]),
+      pilote.batch([...lot(), { sql: "INSERT INTO table_absente VALUES (1)" }]),
     );
     const conflit = await tenter("gardeExpectChanges", () =>
       pilote.batch([
-        ...lot("refuse"),
+        ...lot(),
         { sql: "UPDATE texts SET score = 0 WHERE id = -1", expectChanges: 1 },
       ]),
     );
