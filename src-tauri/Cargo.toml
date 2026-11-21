@@ -39,6 +39,12 @@ url = "2"
 # et un magasin par système, sans le paquet « keyring » qui en lierait d'autres.
 keyring-core = "1"
 
+# Correcteur grammatical : moteur Rust grammaria-rc, lié à l'application. Le paquet s'appelle
+# aussi « grammaria » : il est renommé ici. La révision ci-dessous est la seule source de
+# vérité : scripts/moteur/construire.sh la lit pour construire les données (moteur/data), le
+# moteur du serveur et celui de l'image Docker (test : tests/unit/moteurRevision.test.ts).
+grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "7d93483067e9ef1389fa4277c546d13bb7bb7bde" }
+
 # Windows : Gestionnaire d'identification (API Win32, aucune dépendance de plus
 # que windows-sys). Sans la recherche (`search`), inutile ici.
 [target.'cfg(windows)'.dependencies]
@@ -50,12 +56,6 @@ windows-native-keyring-store = { version = "1", default-features = false }
 # sur le bus (session « dh-ietf1024-sha256-aes128-cbc-pkcs7 »), sans OpenSSL.
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
-
-# Correcteur grammatical : moteur Rust grammaria-rc, lié à l'application. Le paquet s'appelle
-# aussi « grammaria » : il est renommé ici. La révision ci-dessous est la seule source de
-# vérité : scripts/moteur/construire.sh la lit pour construire les données (moteur/data), le
-# moteur du serveur et celui de l'image Docker (test : tests/unit/moteurRevision.test.ts).
-grammaria_rc = { package = "grammaria", git = "https://github.com/WillIsback/grammaria-rc", rev = "7d93483067e9ef1389fa4277c546d13bb7bb7bde" }
 
 [dev-dependencies]
 tempfile = "3"
