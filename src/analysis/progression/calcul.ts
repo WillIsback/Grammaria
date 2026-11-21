@@ -238,15 +238,15 @@ function resumer(r: RegleSuivie): RegleResumee {
 }
 
 /**
- * Règles les plus fréquentes, hors fautes de frappe : la détection générique
- * « faute de frappe possible » n'est pas une règle à apprendre (voir
- * `REGLES_HORS_CYCLE`).
+ * Règles les plus fréquentes. Les fautes de frappe y figurent sous un libellé
+ * à part (`PROGRESSION.libelleOrthographe`) et sans état : la détection
+ * générique « faute de frappe possible » reste hors du cycle (voir
+ * `REGLES_HORS_CYCLE`), ce n'est pas une règle à apprendre.
  */
 export function reglesFrequentes(faults: LigneFaute[], rules: RegleSuivie[]): RegleFrequente[] {
   const parCle = new Map(rules.map((r) => [r.ruleKey, r]));
   const compte = new Map<string, { count: number; last: LigneFaute }>();
   for (const f of faults) {
-    if (f.ruleKey === PROGRESSION.regleOrthographe) continue;
     const c = compte.get(f.ruleKey);
     if (!c) compte.set(f.ruleKey, { count: 1, last: f });
     else {
@@ -257,6 +257,10 @@ export function reglesFrequentes(faults: LigneFaute[], rules: RegleSuivie[]): Re
   return [...compte.entries()]
     .map(([ruleKey, { count, last }]) => {
       const suivie = parCle.get(ruleKey);
+      if (ruleKey === PROGRESSION.regleOrthographe) {
+        const label = PROGRESSION.libelleOrthographe;
+        return { ruleKey, label, categoryName: last.categoryName, count, state: null };
+      }
       return {
         ruleKey,
         label: suivie?.label ?? libelleSansFiche(ruleKey, last),

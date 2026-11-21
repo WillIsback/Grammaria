@@ -9,6 +9,7 @@ import type {
 } from "../../api/deps";
 import { creerGestionnaire } from "../../api/handler";
 import type { ServerSettings, SettingsUpdate } from "../../api/reglages";
+import paquet from "../../package.json";
 
 /**
  * Le gestionnaire d'API avec des dépendances factices : un journal
@@ -36,6 +37,7 @@ function journalAsynchrone() {
     period: (days) => plusTard({ days, average: 15 }),
     summary: (days) => plusTard({ days, rules: [] }),
     progress: () => plusTard({ empty: true }),
+    exportBeta: (options) => plusTard({ format: "grammaria-beta", ...options }),
     rules: () => plusTard([{ state: "observee" as const }, { state: "acquise" as const }]),
     ruleEvents: (options) => plusTard([{ id: 1, ...options }]),
     answerChoice: (choiceId, correct) => {
@@ -253,6 +255,20 @@ describe("creerGestionnaire — journal asynchrone", () => {
     expect(await (await traiter(requete("/api/badges")))!.json()).toMatchObject({ obtenus: 0 });
     expect((await traiter(requete("/api/progress", { method: "POST" })))!.status).toBe(405);
   });
+
+  it("GET /api/progress/export : version de l'application et plateforme, rien d'autre à fournir", async () => {
+    const bureau = creer();
+    expect(await (await bureau.traiter(requete("/api/progress/export")))!.json()).toEqual({
+      format: "grammaria-beta",
+      application: paquet.version,
+      plateforme: "bureau",
+    });
+    const serveur = creer({ options: { bureau: false, originesCors: [], llmTopK: -1 } });
+    const corps = await (await serveur.traiter(requete("/api/progress/export")))!.json();
+    expect(corps.plateforme).toBe("serveur");
+    const post = await serveur.traiter(requete("/api/progress/export", { method: "POST" }));
+    expect(post!.status).toBe(405);
+  });
 });
 
 describe("creerGestionnaire — correcteur, mots valides et réglages", () => {
@@ -434,6 +450,53 @@ describe("creerGestionnaire — conversation (/v1/chat/completions)", () => {
     ]);
     expect(erreur).toHaveBeenCalledWith(expect.stringContaining("coupure"));
     erreur.mockRestore();
+  });
+
+  it("le journal du serveur ne recopie jamais la requête citée par une erreur amont (#32)", async () => {
+    const prive = "Mon texte très privé";
+    const recopie = `Error code: 400 - {'error': {'message': 'context length exceeded'}} kwargs={'messages': [{'role': 'user', 'content': '${prive}'}]}`;
+    const journaux: string[] = [];
+    const espions = (["error", "warn", "log"] as const).map((niveau) =>
+      vi.spyOn(console, niveau).mockImplementation((...args: unknown[]) => {
+        journaux.push(args.map(String).join(" "));
+      }),
+    );
+    try {
+      // En cours de flux, puis avant le premier fragment, puis au correcteur.
+      const { modele } = modeleFactice();
+      modele.ouvrirFlux = async () =>
+        (async function* () {
+          yield { content: "Bon" };
+          throw new Error(recopie);
+        })();
+      const enFlux = creer({ modele });
+      const events = await evenements(
+        (await enFlux.traiter(post("/v1/chat/completions", conversation)))!,
+      );
+      // L'interface garde le détail complet, pour l'utilisateur qui l'a écrit.
+      expect(JSON.stringify(events)).toContain(prive);
+
+      modele.ouvrirFlux = async () => {
+        throw new Error(recopie);
+      };
+      const avant = await creer({ modele }).traiter(post("/v1/chat/completions", conversation));
+      expect(avant?.status).toBe(502);
+
+      const correcteur = creer({
+        correcteur: {
+          check: async () => {
+            throw new Error(`analyse impossible : "text": "${prive}"`);
+          },
+        },
+      });
+      const check = await correcteur.traiter(post("/api/check", { text: prive }));
+      expect(check?.status).toBe(503);
+    } finally {
+      for (const espion of espions) espion.mockRestore();
+    }
+    expect(journaux.some((l) => l.includes("context length exceeded"))).toBe(true);
+    expect(journaux.some((l) => l.includes("analyse impossible"))).toBe(true);
+    expect(journaux.filter((l) => l.includes(prive))).toEqual([]);
   });
 
   it.each([

@@ -98,3 +98,25 @@ export class ErreurCorrection extends Error {
     this.details = details;
   }
 }
+
+/** Clés qui peuvent porter la requête, donc le texte de l'utilisateur (voir `messageSansEntree`). */
+const CLES_ENTREE =
+  /["'\\]+(?:input|inputs|messages|content|prompt|text)["'\\]+\s*[:=]|\b(?:input|inputs|messages|content|prompt|text)\s*=/i;
+
+/**
+ * Message d'une erreur amont (modèle, correcteur) bon à écrire dans les
+ * journaux du serveur, que Docker conserve : une erreur de validation
+ * (FastAPI, vLLM…) cite la valeur refusée (`"input": …`), un relais comme
+ * LiteLLM recopie parfois toute la requête (`'messages': […]`) ; le texte de
+ * l'utilisateur ne doit pas y entrer (issue #32). Le message est coupé à la
+ * première clé qui peut le porter, puis borné à 300 caractères. Même règle
+ * que `message_sans_entree` du bureau (src-tauri/src/llm.rs).
+ */
+export function messageSansEntree(erreur: unknown): string {
+  const message = messageDe(erreur);
+  const trouve = CLES_ENTREE.exec(message);
+  const coupe = trouve ? message.slice(0, trouve.index) : message;
+  const caracteres = Array.from(coupe);
+  const texte = caracteres.slice(0, 300).join("");
+  return texte.length < message.length ? `${texte}…` : texte;
+}

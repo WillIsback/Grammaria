@@ -17,7 +17,8 @@
  *     par le même moteur Rust ;
  *  3. journal : schéma 3, analyses enregistrées (astuce à la 3ᵉ faute), aucun mot des textes
  *     corrigés dans le fichier de la base (commande `autotest_textes_journal`), lot SQLite atomique et lots
- *     refusés par le pilote Tauri (rien d'écrit), effacement ;
+ *     refusés par le pilote Tauri (rien d'écrit), export de la bêta (valide, sans texte, écrit
+ *     par Rust sous son nom fixe), effacement ;
  *  4. réglages : clé API jamais renvoyée à la page, mais bien reçue par le modèle ;
  *  5. modèle (faux serveur local, scripts/desktop/faux-modele.mjs) : ordre des fragments,
  *     annulation pendant le flux et avant le premier fragment, refus de chat_template_kwargs
@@ -29,6 +30,11 @@
  */
 import reference from "../../tests/fixtures/correcteur/reference.json";
 import { estConflit } from "../../journal.driver.ts";
+import {
+  nomFichierExport,
+  texteExport,
+  validerTexteExport,
+} from "../analysis/progression/export.ts";
 import type { CorrectionSettings, LTMatch } from "../types.ts";
 import { CORRECTION_REMPLACEE, correctText } from "../utils/llm.ts";
 import type { CorrecteurBureau } from "./correcteur.ts";
@@ -277,6 +283,36 @@ export async function lancerAutotest(contexte: ContexteAutotest): Promise<void> 
       Array.isArray(j.textesTrouves) && j.textesTrouves.length === 0,
       j.textesTrouves,
     );
+
+    // Export anonyme de la bêta (#34) : par le pont, valide et sans aucun mot des textes, puis
+    // écrit par Rust (dossier fixé par Rust : ici, celui des données isolées de l'autotest).
+    const reponseExport = await fetch("/api/progress/export");
+    const texteBrut = await reponseExport.text();
+    const resultatExport = validerTexteExport(texteBrut);
+    j.export = { statut: reponseExport.status, valide: resultatExport.ok };
+    critere(
+      "export de la bêta valide, sans aucun mot des textes corrigés",
+      reponseExport.status === 200 &&
+        resultatExport.ok &&
+        sentinelles.every((mot) => !texteBrut.toLowerCase().includes(mot.toLowerCase())),
+      j.export,
+    );
+    if (resultatExport.ok) {
+      const contenu = texteExport(resultatExport.export);
+      const chemin = await api.invoke<string>("export_beta_enregistrer", { contenu });
+      const refus = await api
+        .invoke<string>("export_beta_enregistrer", { contenu: '{"format":"autre"}' })
+        .then(
+          () => "ACCEPTÉ",
+          (error: unknown) => messageErreur(error),
+        );
+      j.exportEcrit = { chemin, refus };
+      critere(
+        "export écrit par Rust sous son nom fixe ; contenu hors format refusé",
+        chemin.endsWith(nomFichierExport(resultatExport.export.participant)) && refus !== "ACCEPTÉ",
+        j.exportEcrit,
+      );
+    }
 
     const compter = async () =>
       (

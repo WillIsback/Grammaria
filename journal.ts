@@ -9,7 +9,12 @@ import {
   SCHEMA_BADGES,
 } from "./journal.badges.ts";
 import type { AnswerResult } from "./api/deps.ts";
-import { type JournalDriver, MIGRATION_SANS_TEXTE, type Statement } from "./journal.driver.ts";
+import {
+  type JournalDriver,
+  MIGRATION_SANS_TEXTE,
+  type Query,
+  type Statement,
+} from "./journal.driver.ts";
 import {
   type FollowOptions,
   fusionnerEtatsParMot,
@@ -41,6 +46,18 @@ import {
   type LigneTexte,
   type Progression,
 } from "./src/analysis/progression/calcul.ts";
+import {
+  construireExport,
+  type ExportBeta,
+  nouveauParticipant,
+  type Plateforme,
+  validerExport,
+} from "./src/analysis/progression/export.ts";
+import {
+  calculerMesure,
+  type EntreeMesure,
+  type Mesure,
+} from "./src/analysis/progression/mesure.ts";
 import type { RuleState } from "./src/analysis/regles/cycle.ts";
 import { JOUR_MS } from "./src/analysis/regles/seuils.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
@@ -123,6 +140,11 @@ const SCHEMA_JOURNAL: readonly string[] = [
   )`,
   "CREATE INDEX IF NOT EXISTS idx_texts_created ON texts(created_at)",
   "CREATE INDEX IF NOT EXISTS idx_faults_rule ON faults(rule_key, created_at)",
+  // Identifiant aléatoire du participant à la bêta (export anonyme, issue #34) :
+  // une seule ligne au plus, créée au premier export.
+  `CREATE TABLE IF NOT EXISTS beta_participant (
+    id TEXT NOT NULL PRIMARY KEY
+  )`,
 ];
 
 const SQL_TEXTE = `INSERT INTO texts (created_at, word_count, fault_count, unclassified_count, score)
@@ -131,6 +153,9 @@ const SQL_FAUTE = `INSERT INTO faults (text_id, created_at, rule_key, source, ca
     issue_type, counted)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 const SQL_LIBELLE = "INSERT OR REPLACE INTO rule_labels (rule_key, label) VALUES (?, ?)";
+/** Crée l'identifiant du participant s'il n'existe pas encore (une seule ligne). */
+const SQL_PARTICIPANT = `INSERT INTO beta_participant (id)
+  SELECT ? WHERE NOT EXISTS (SELECT 1 FROM beta_participant)`;
 
 /** Le texte et ses fautes : les deux premières lignes de chaque lot de `record`. */
 function instructionsTexte(analysis: Analysis, now: number): Statement[] {
@@ -421,8 +446,8 @@ export class Journal {
   }
 
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
-  async progress(now: number = Date.now()): Promise<Progression> {
-    const [texts, faults, states, dernieres] = await this.driver.readMany([
+  async progress(now: number = Date.now()): Promise<Progression & { mesure: Mesure }> {
+    const [texts, faults, states, dernieres, ...mesure] = await this.driver.readMany([
       REQUETE_TEXTES,
       // Seules les fautes comptées des semaines affichées servent.
       {
@@ -432,12 +457,48 @@ export class Journal {
         params: [debutPremiereSemaine(now)],
       },
       ...REQUETES_LISTE,
+      ...REQUETES_MESURE,
     ]);
     const rules = vueRegles(states as RuleState[], dernieres as Parameters<typeof vueRegles>[1]);
-    return calculerProgression(
-      { texts: texts as LigneTexte[], faults: faults as LigneFaute[], rules },
-      now,
-    );
+    return {
+      ...calculerProgression(
+        { texts: texts as LigneTexte[], faults: faults as LigneFaute[], rules },
+        now,
+      ),
+      // L'état des règles porte ici leur libellé, pour l'écran (jamais exporté).
+      mesure: calculerMesure(entreeMesure(texts, mesure, rules)),
+    };
+  }
+
+  /**
+   * Export anonyme de la bêta (`src/analysis/progression/export.ts`). Crée au
+   * premier appel l'identifiant aléatoire du participant, gardé dans la base
+   * jusqu'à « Effacer le journal ». L'export est validé avant d'être renvoyé :
+   * il ne sort jamais un champ hors du format.
+   */
+  exportBeta(
+    options: { application: string; plateforme: Plateforme },
+    now: number = Date.now(),
+  ): Promise<ExportBeta> {
+    return this.serie(async () => {
+      await this.driver.batch([{ sql: SQL_PARTICIPANT, params: [nouveauParticipant()] }]);
+      const [[{ id: participant }], texts, ...mesure] = (await this.driver.readMany([
+        { sql: "SELECT id FROM beta_participant LIMIT 1" },
+        REQUETE_TEXTES,
+        ...REQUETES_MESURE,
+        { sql: "SELECT rule_key AS ruleKey, state FROM rule_states" },
+      ])) as [{ id: string }[], ...unknown[][]];
+      const states = mesure.pop() as EntreeMesure["states"];
+      const exp = construireExport({
+        ...options,
+        participant,
+        journal: entreeMesure(texts, mesure, states),
+        now,
+      });
+      const resultat = validerExport(exp);
+      if (!resultat.ok) throw new Error(`Export de la bêta invalide : ${resultat.erreur}`);
+      return resultat.export;
+    });
   }
 
   /** Efface le journal, remet à zéro l'état des règles et retire les badges. */
@@ -447,6 +508,8 @@ export class Journal {
         { sql: "DELETE FROM faults" },
         { sql: "DELETE FROM texts" },
         { sql: "DELETE FROM rule_labels" },
+        // Un journal effacé repart sous un nouvel identifiant de participant.
+        { sql: "DELETE FROM beta_participant" },
         ...PURGE_REGLES,
         ...PURGE_BADGES,
       ]);
@@ -459,6 +522,31 @@ export class Journal {
     await this.file;
     await this.driver.close?.();
   }
+}
+
+/**
+ * Lectures de la mesure (à la suite de `REQUETE_TEXTES`) : fautes comptées et
+ * historique des règles. Des identifiants, des dates et des types seulement.
+ */
+const REQUETES_MESURE: readonly Query[] = [
+  {
+    sql: `SELECT created_at AS at, rule_key AS ruleKey, category_id AS categoryId
+          FROM faults WHERE counted = 1 ORDER BY created_at, id`,
+  },
+  { sql: "SELECT rule_key AS ruleKey, created_at AS at, type FROM rule_events ORDER BY id" },
+];
+
+function entreeMesure(
+  texts: unknown[],
+  [faults, events]: unknown[][],
+  states: EntreeMesure["states"],
+): EntreeMesure {
+  return {
+    texts: texts as EntreeMesure["texts"],
+    faults: faults as EntreeMesure["faults"],
+    events: events as EntreeMesure["events"],
+    states,
+  };
 }
 
 const SQL_PERIODE = `SELECT COUNT(*) AS texts, COALESCE(SUM(word_count), 0) AS words,

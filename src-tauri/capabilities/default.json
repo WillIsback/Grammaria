@@ -22,6 +22,7 @@
     "allow-llm-cancel",
     "allow-log-page",
     "allow-correcteur-prechauffer",
-    "allow-correcteur-controler"
+    "allow-correcteur-controler",
+    "allow-export-beta-enregistrer"
   ]
 }

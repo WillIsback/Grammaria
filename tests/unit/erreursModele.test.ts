@@ -3,6 +3,7 @@ import {
   classerErreurModele,
   ErreurCorrection,
   messageErreurModele,
+  messageSansEntree,
 } from "../../src/utils/erreursModele";
 import { correctText } from "../../src/utils/llm";
 
@@ -53,6 +54,39 @@ describe("classerErreurModele", () => {
     ["quelque chose d'inattendu", undefined, "autre"],
   ])("%s (statut %s) → %s", (message, status, cause) => {
     expect(classerErreurModele(Object.assign(new Error(message), { status }))).toBe(cause);
+  });
+});
+
+describe("messageSansEntree — journal du serveur (#32)", () => {
+  const prive = "Mon texte privé";
+  it.each([
+    [
+      "validation FastAPI / vLLM",
+      `{"detail":[{"msg":"Extra inputs are not permitted","input":{"messages":[{"role":"user","content":"${prive}"}]}}]}`,
+      "Extra inputs are not permitted",
+    ],
+    [
+      "relais LiteLLM (dict Python)",
+      `litellm.BadRequestError: Error code: 400 - {'error': {'message': 'context length exceeded'}} kwargs={'messages': [{'role': 'user', 'content': '${prive}'}]}`,
+      "context length exceeded",
+    ],
+    [
+      "JSON échappé dans une chaîne",
+      `{"error":{"message":"upstream error: {\\"messages\\":[{\\"content\\":\\"${prive}\\"}]}"}}`,
+      "upstream error",
+    ],
+    ["argument nommé", `bad request: prompt=${prive}`, "bad request"],
+  ])("%s : le message est coupé avant la requête", (_cas, message, garde) => {
+    const journalise = messageSansEntree(new Error(message));
+    expect(journalise).not.toContain(prive);
+    expect(journalise).toContain(garde);
+    expect(journalise.endsWith("…")).toBe(true);
+  });
+
+  it("garde un message sans requête tel quel, et borne sa longueur", () => {
+    expect(messageSansEntree(new Error("HTTP 503"))).toBe("HTTP 503");
+    expect(messageSansEntree("tcp connect error")).toBe("tcp connect error");
+    expect(Array.from(messageSansEntree("é".repeat(400)))).toHaveLength(301);
   });
 });
 

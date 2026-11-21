@@ -6,7 +6,15 @@ import { GrammarChecker } from "../grammar.ts";
 import { Journal, SCHEMA_VERSION } from "../journal.ts";
 import { ouvrirPiloteBun } from "../journal.driver.bun.ts";
 import { analyze, regleDuMoteur } from "../src/analysis/analyze.ts";
+import {
+  estIdentifiantRegle,
+  type ExportBeta,
+  texteExport,
+  validerExport,
+} from "../src/analysis/progression/export.ts";
+import { ETATS_CYCLE } from "../src/analysis/regles/cycle.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
+import { agreger } from "../scripts/beta/agreger.ts";
 import type { LTMatch } from "../src/types.ts";
 import reference from "../tests/fixtures/correcteur/reference.json";
 import { avecBase, DAY, jour } from "./helpers.ts";
@@ -59,6 +67,29 @@ function motsDansLesOctets(path: string, mots: readonly string[]): string[] {
 
 const motsDans = (texte: string, mots: readonly string[]) =>
   formes(mots).filter((mot) => texte.includes(mot));
+
+/** Clés et chaînes d'un export qui ne sont ni un nom de champ, ni une valeur de forme contrôlée. */
+function chainesHorsFormes(valeur: unknown, cle = ""): string[] {
+  if (typeof valeur === "string") {
+    const permise =
+      estIdentifiantRegle(valeur) ||
+      /^[A-Z0-9_]*$/.test(valeur) ||
+      /^[0-9a-f]{32}$/.test(valeur) ||
+      /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(valeur) ||
+      ["grammaria-beta", "bureau", "serveur", "suivie", "comparaison", ...ETATS_CYCLE].includes(
+        valeur,
+      );
+    return permise ? [] : [`${cle}=${valeur}`];
+  }
+  if (Array.isArray(valeur)) return valeur.flatMap((v) => chainesHorsFormes(v, cle));
+  if (valeur && typeof valeur === "object") {
+    return Object.entries(valeur).flatMap(([k, v]) => [
+      ...(/^[a-zA-Z]+$/.test(k) ? [] : [`clé ${k}`]),
+      ...chainesHorsFormes(v, k),
+    ]);
+  }
+  return [];
+}
 
 describe("Journal — aucun texte de l'utilisateur enregistré (#32)", () => {
   const correcteur = new GrammarChecker();
@@ -169,6 +200,7 @@ describe("Journal — aucun texte de l'utilisateur enregistré (#32)", () => {
 
       // Toutes les routes de consultation.
       for (const route of [
+        "/api/progress/export",
         "/api/journal?days=365",
         "/api/progress",
         "/api/badges",
@@ -188,6 +220,19 @@ describe("Journal — aucun texte de l'utilisateur enregistré (#32)", () => {
       expect(
         motsDans(consultations, ["Vérifiez", "Vouliez-vous", "Faute de frappe possible trouvée"]),
       ).toEqual([]);
+
+      // Export anonyme de la bêta (#34) : valide, sans sentinelle, et aucune chaîne hors
+      // des formes autorisées (identifiants de règle, de catégorie, énumérations).
+      const exportBeta = reponses.find((r) => r.includes('"grammaria-beta"'))!;
+      expect(motsDans(exportBeta, SENTINELLES)).toEqual([]);
+      const exp = JSON.parse(exportBeta) as ExportBeta;
+      expect(validerExport(exp)).toEqual({ ok: true, export: exp });
+      expect(exp.regles.length).toBeGreaterThan(0);
+      expect(chainesHorsFormes(exp)).toEqual([]);
+      // Ni libellé, ni message de règle, ni date : l'export ne dépend que des nombres.
+      expect(exportBeta).not.toContain("on / ont");
+      expect(exportBeta).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+      expect(exportBeta).not.toContain(String(jour(0)).slice(0, 5));
 
       // Base ouverte (WAL vivant), puis fermée.
       const interdits = [...SENTINELLES, "boton", "pile poil", "PILE_POIL", "SIMPLE_JAI"];
@@ -320,6 +365,7 @@ const COLONNES_AUTORISEES: Record<string, Record<string, string>> = {
     to_state: "état du cycle",
   },
   badges: { badge_id: "identifiant du badge", obtained_at: "date" },
+  beta_participant: { id: "identifiant aléatoire de 128 bits (export de la bêta)" },
 };
 
 describe("Schéma du journal : liste blanche des colonnes", () => {
@@ -528,6 +574,50 @@ describe("Migration v2 → v3 : les textes sont effacés, l'historique reste", (
     expect(resume.rules).toEqual([
       { ruleKey: "REGLE_X", categoryName: "Grammaire", label: "Description fixe", count: 1 },
     ]);
+    await journal.close();
+  });
+});
+
+describe("Export de la bêta : un export altéré est refusé (#34)", () => {
+  it("par validerExport et par l'outil de collecte, sans recopier son contenu", async () => {
+    const journal = await Journal.ouvrir(ouvrirPiloteBun(":memory:"));
+    for (let i = 0; i < 12; i++) {
+      const fiche = [`Ils on vu ${DANS_LE_CHOIX} hier.`, `Ils ont vu ${DANS_LE_CHOIX} hier.`];
+      await journal.record(analyze(fiche[0], fiche[1], []), jour(i), { original: fiche[0] });
+    }
+    const exp = await journal.exportBeta({ application: "0.5.0", plateforme: "serveur" }, jour(13));
+    await journal.close();
+    expect(validerExport(exp).ok).toBe(true);
+    expect(exp.regles.map((r) => r.regle)).toEqual(["PAIRE:on/ont"]);
+    expect(motsDans(texteExport(exp), SENTINELLES)).toEqual([]);
+
+    const alteres: Record<string, (e: Record<string, any>) => void> = {
+      "champ-libre.json": (e) => (e.texte = `Hier, ${DANS_LA_PHRASE} est venu.`),
+      "libelle.json": (e) => (e.regles[0].libelle = "on / ont"),
+      "date.json": (e) => (e.semaines[0].semaine = "2025-01-06T12:00:00.000Z"),
+      "chemin.json": (e) => (e.regles[0].regle = `/home/${DANS_LA_PHRASE}/lettre.txt`),
+    };
+    const fichiers = [{ nom: "intact.json", texte: texteExport(exp) }];
+    for (const [nom, alterer] of Object.entries(alteres)) {
+      const copie = structuredClone(exp) as Record<string, any>;
+      alterer(copie);
+      expect(validerExport(copie).ok).toBe(false);
+      fichiers.push({ nom, texte: JSON.stringify(copie, null, 2) });
+    }
+    const agregat = agreger(fichiers);
+    expect(agregat.refuses.map((r) => r.fichier).sort()).toEqual(Object.keys(alteres).sort());
+    expect(agregat.participants).toHaveLength(1);
+    expect(motsDans(JSON.stringify(agregat), SENTINELLES)).toEqual([]);
+  });
+
+  it("le participant est créé au premier export, gardé, puis oublié avec le journal", async () => {
+    const journal = await Journal.ouvrir(ouvrirPiloteBun(":memory:"));
+    const options = { application: "0.5.0", plateforme: "serveur" as const };
+    const [a, b] = await Promise.all([journal.exportBeta(options), journal.exportBeta(options)]);
+    expect(a.participant).toMatch(/^[0-9a-f]{32}$/);
+    expect(b.participant).toBe(a.participant);
+    await journal.purge();
+    expect((await journal.exportBeta(options)).participant).not.toBe(a.participant);
     await journal.close();
   });
 });

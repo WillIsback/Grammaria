@@ -10,7 +10,14 @@ export default defineConfig({
   fmt: {
     printWidth: 100,
     // Projets annexes (site Astro, évaluations Python) et données générées.
-    ignorePatterns: ["docs/**", "eval/**", "benchmark/**", "public/**"],
+    // Le fichier d'export volontairement illisible des tests de la collecte (bêta) aussi.
+    ignorePatterns: [
+      "docs/**",
+      "eval/**",
+      "benchmark/**",
+      "public/**",
+      "tests/fixtures/beta/pas-un-export.json",
+    ],
   },
   lint: {
     plugins: ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],

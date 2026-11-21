@@ -24,6 +24,7 @@ fn main() {
             "log_page",
             "correcteur_prechauffer",
             "correcteur_controler",
+            "export_beta_enregistrer",
             "autotest_config",
             "autotest_terminer",
             "autotest_textes_journal",

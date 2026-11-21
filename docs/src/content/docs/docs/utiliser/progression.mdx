@@ -1,6 +1,6 @@
 ---
 title: "Progression"
-description: "L'écran Progression : score de maîtrise, note semaine après semaine, règles par état et règles les plus fréquentes."
+description: "L'écran Progression : score de maîtrise, note semaine après semaine, règles par état, règles les plus fréquentes, ce que changent les astuces et l'export de vos résultats."
 ---
 
 L'écran **Progression** montre votre évolution dans le temps, et pas seulement la note du dernier texte. Il s'ouvre avec le bouton en forme de graphique, en haut à droite, à côté du bouton **Paramètres**. Le bouton **Retour à la correction** (ou la touche Échap) vous ramène à votre texte, qui n'a pas bougé. Si un texte finit d'être corrigé pendant que l'écran est ouvert, les chiffres se mettent à jour d'eux-mêmes.
@@ -60,9 +60,38 @@ Suivent la liste des règles **à travailler** (signalées et travaillées) et c
 
 ## Règles les plus fréquentes
 
-Les fautes de grammaire et de conjugaison qui reviennent le plus sur les 12 semaines. Depuis la version 0.4, des règles propres à Grammaria (identifiant en `GRM_`) peuvent y figurer, à côté de celles reprises de LanguageTool (voir [Règles propres à Grammaria](/docs/utiliser/corrections/#règles-propres-à-grammaria)).
+Les fautes comptées dans la note qui reviennent le plus sur les 12 semaines. Les fautes de frappe y figurent toutes ensemble, sous la ligne **Fautes de frappe** : elles comptent dans la note, mais ne reçoivent jamais d'astuce (ce n'est pas une règle que l'on peut acquérir). Depuis la version 0.4, des règles propres à Grammaria (identifiant en `GRM_`) peuvent y figurer, à côté de celles reprises de LanguageTool (voir [Règles propres à Grammaria](/docs/utiliser/corrections/#règles-propres-à-grammaria)).
 
 Les mots eux-mêmes ne sont jamais listés : le journal ne garde aucun de vos textes (voir [Note et journal des fautes](/docs/utiliser/note-et-journal/#ce-que-contient-le-journal)).
+
+## Ce que changent les astuces
+
+Grammaria promet qu'une faute signalée revient moins souvent ensuite. Cette section montre ce qu'il en est **pour vous**, faute par faute.
+
+Pour chaque faute qui a reçu une astuce près du bouton Copier, elle compare deux périodes :
+
+- **avant la première astuce** : de la première fois que vous avez fait cette faute jusqu'au texte où l'astuce est apparue ;
+- **depuis** : tous les textes corrigés après.
+
+Pour comparer des périodes de longueurs différentes, les fautes sont comptées **pour 1 000 mots** écrits. Par exemple : « a / à : 12 fautes pour 1 000 mots avant la première astuce, 4 depuis (sur 3 200 mots) ». Une phrase de synthèse additionne toutes les fautes mesurées.
+
+**Pour comparer**, la même chose est calculée pour les **fautes de frappe**, qui ne reçoivent jamais d'astuce, à partir du jour où elles ont atteint le même seuil (3 fautes en 7 jours). Si vos fautes de frappe baissent autant que les fautes signalées, ce n'est sans doute pas l'astuce qui a joué.
+
+Une faute n'est chiffrée qu'avec assez de textes : au moins **3 textes et 400 mots** avant la première astuce, et **5 textes et 1 000 mots** depuis. En dessous, l'écran indique par exemple « pas encore assez de textes depuis l'astuce (il en manque 4) ».
+
+Deux indicateurs complètent la section : la part de **bonnes réponses** aux choix proposés sur le bouton Copier, et le nombre de **règles acquises** qui le sont restées, sans rechute.
+
+:::caution[Ce n'est pas une preuve]
+Ces chiffres portent sur peu de textes, et personne n'a été tiré au sort. Surtout, une faute qui vient de revenir plusieurs fois revient souvent moins ensuite, astuce ou pas : c'est pour cela que la comparaison avec les fautes de frappe, choisies au même moment, compte autant que la baisse elle-même.
+:::
+
+## Exporter mes résultats
+
+Le bouton **Exporter mes résultats**, en bas de la section précédente, sert aux tests de Grammaria (bêta). Il ouvre une fenêtre qui montre **le contenu exact du fichier** avant de l'enregistrer.
+
+- **Ce que contient le fichier** : des chiffres. Le nombre de textes, de mots et de fautes de chaque semaine, et pour chaque faute suivie, les mêmes volumes avant et depuis la première astuce, le nombre d'astuces et de choix, vos réponses, les rechutes. Les fautes y sont désignées par l'identifiant de leur règle (par exemple `PAIRE:a/à`), jamais par un libellé.
+- **Ce qu'il ne contient pas** : aucun de vos textes, aucun mot, aucune date ni heure (le temps est compté en semaines depuis votre premier texte : semaine 0, 1, 2…), aucun nom, aucune information sur votre ordinateur. Seulement un numéro tiré au hasard au premier export, qui permet de reconnaître vos exports successifs ; il est oublié quand vous [effacez le journal](/docs/utiliser/note-et-journal/#effacer-le-journal).
+- **Grammaria n'envoie rien.** Le fichier, nommé `grammaria-beta-` suivi de huit caractères, est enregistré sur votre ordinateur : dans le dossier **Téléchargements** pour l'application de bureau (la fenêtre affiche son emplacement), là où votre navigateur range ses téléchargements pour la version web. C'est vous qui le transmettez, si vous le souhaitez.
 
 ## Badges
 
@@ -73,5 +102,5 @@ Le bas de l'écran présente la galerie des [badges](/docs/utiliser/badges/), pa
 Tant qu'aucun texte n'a été corrigé, l'écran l'explique et propose de **corriger un premier texte** ; la galerie des badges apparaît dès le premier texte. Après [l'effacement du journal](/docs/utiliser/note-et-journal/#effacer-le-journal), l'écran repart de zéro, sans avoir à recharger la page.
 
 :::note
-Les seuils (60 % / 40 %, 5 textes et 300 mots, 4 et 12 semaines) sont des choix de départ, réunis dans `src/analysis/progression/reglages.ts`. Ils seront ajustés sur des données réelles.
+Les seuils (60 % / 40 %, 5 textes et 300 mots, 4 et 12 semaines, et ceux de la section « Ce que changent les astuces ») sont des choix de départ, réunis dans `src/analysis/progression/reglages.ts`. Ils seront ajustés sur des données réelles.
 :::
