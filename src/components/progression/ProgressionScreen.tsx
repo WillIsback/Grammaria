@@ -1,12 +1,14 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import type { Progression, RegleResumee, Tendance } from "../../analysis/progression/calcul";
+import type { RegleResumee, Tendance } from "../../analysis/progression/calcul";
 import type { EtatCycle } from "../../analysis/regles/cycle";
 import { SEUILS } from "../../analysis/regles/seuils";
 import { useChargement } from "../../hooks/useChargement";
-import { fetchProgress } from "../../services/progress";
+import { fetchProgress, type Progression } from "../../services/progress";
 import { dateLongue, nombre } from "../../utils/format";
 import { MasteryRing, WeeklyChart } from "./charts";
+import { MesureAstuces } from "./MesureAstuces";
+import { boutonPrincipal, card, cardHint, cardTitle, discret } from "./styles";
 
 interface Props {
   /** Retour à l'écran de correction. */
@@ -22,14 +24,6 @@ interface Props {
   reloadKey?: unknown;
 }
 
-const card =
-  "bg-white dark:bg-gray-900/70 rounded-2xl border border-gray-200/70 dark:border-gray-800 shadow-card p-4 sm:p-5 min-w-0";
-const cardTitle = "text-sm font-semibold text-gray-900 dark:text-white";
-const cardHint = "text-xs text-gray-600 dark:text-gray-400 mt-0.5";
-/** Texte d'accompagnement : explications, listes vides. */
-const discret = "text-sm text-gray-600 dark:text-gray-400";
-const boutonPrincipal =
-  "rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors";
 /** Partie remplie d'une barre de progression. */
 const remplissage = "h-full rounded-full bg-brand-500 dark:bg-brand-400";
 
@@ -320,6 +314,8 @@ function Contenu({ data, badges }: { data: Progression; badges?: React.ReactNode
       <Regles data={data} />
 
       <ReglesFrequentes data={data} />
+
+      <MesureAstuces mesure={data.mesure} />
 
       {/* Pas de cadre autour de la galerie : chaque badge est déjà une carte. */}
       {badges && (

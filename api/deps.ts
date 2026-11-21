@@ -34,6 +34,14 @@ export interface JournalDeps {
   summary(days: number): MaybePromise<unknown>;
   /** Écran « Progression » (`GET /api/progress`). */
   progress(): MaybePromise<unknown>;
+  /**
+   * Export anonyme de la bêta (`GET /api/progress/export`) : déjà validé par
+   * `validerExport` (src/analysis/progression/export.ts).
+   */
+  exportBeta(options: {
+    application: string;
+    plateforme: "bureau" | "serveur";
+  }): MaybePromise<unknown>;
   /** Cycle de vie des règles. */
   rules(): MaybePromise<readonly { state: EtatCycle }[]>;
   ruleEvents(options: { limit?: number; ruleKey?: string }): MaybePromise<unknown[]>;

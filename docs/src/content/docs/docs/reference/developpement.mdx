@@ -21,6 +21,7 @@ Node.js `^22.18`, `^24.11` ou `>=26` est requis, ainsi que [Rust](https://rustup
 | `npm run build:moteur` | Construit le moteur grammatical (`moteur/grammaria` et ses données `moteur/data/`) : récupère grammaria-rc à la révision épinglée dans `src-tauri/Cargo.toml` (seule source de vérité), le compile dans `.moteur-build/`. `GRAMMARIA_RC_SRC` désigne un clone local à utiliser à la place du réseau (il doit être à la même révision ; `GRAMMARIA_RC_REV_LIBRE=1` pour travailler sur le moteur lui-même). À lancer avant `npm run test:journal`, `bun run server.ts` et le build du bureau |
 | `npm run build:bureau` | Build de l'application de bureau, côté page : interface (`dist/bureau`). Sans Bun |
 | `npm run reference:correcteur` | Régénère la référence du correcteur (`tests/fixtures/correcteur/reference.json`) avec le correcteur du serveur. Nécessite Bun |
+| `npm run beta:agreger -- <dossier>` | Synthèse des exports de la bêta réunis dans un dossier (voir [Bêta : collecte des exports](#bêta--collecte-des-exports)). Nécessite Bun |
 
 ## Lancer en développement
 
@@ -49,6 +50,21 @@ npx tauri build --debug
 ```bash
 cd src-tauri && cargo test
 ```
+
+## Bêta : collecte des exports
+
+Pendant la bêta, chaque testeur exporte ses résultats depuis l'écran Progression (**Exporter mes résultats**) et transmet lui-même le fichier `grammaria-beta-xxxxxxxx.json` ; le format est décrit dans [`GET /api/progress/export`](/docs/reference/api/#get-apiprogressexport). Une fois les fichiers réunis dans un dossier :
+
+```bash
+npm run beta:agreger -- ~/beta/exports
+```
+
+`scripts/beta/agreger.ts` lit tous les `.json` du dossier (pas les sous-dossiers), refuse en le nommant, sans en afficher le contenu, tout fichier qui ne passe pas `validerExport`, garde l'export le plus récent de chaque participant (celui qui couvre le plus de semaines), puis écrit dans le même dossier :
+
+- `synthese.md`, à lire : par participant (semaines d'usage, mots, règles suivies et mesurées, taux avant / depuis la première astuce, comparaison avec les fautes de frappe, bons choix, règles restées acquises), l'ensemble (somme des fautes sur somme des mots, nombre de participants dont le taux baisse, évolution médiane) et les mises en garde à citer avec ces chiffres ;
+- `synthese.csv`, pour un tableur (séparateur `;`, virgule décimale).
+
+Des exports d'exemple, valides et altérés, sont dans `tests/fixtures/beta/`. Pour essayer la chaîne entière sur un journal simulé (un texte d'environ 150 mots par jour ouvré, des confusions qui reviennent tous les deux ou trois textes), `bun scripts/beta/simuler.ts <journal.db> [jours] [graine]` remplit un journal de test, que le serveur ouvre avec `JOURNAL_PATH=<journal.db>`.
 
 ## Tests
 

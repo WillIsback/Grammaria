@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { calculerProgression, type Progression } from "../../src/analysis/progression/calcul";
+import { calculerProgression } from "../../src/analysis/progression/calcul";
+import { construireExport, texteExport } from "../../src/analysis/progression/export";
+import { calculerMesure, type EntreeMesure } from "../../src/analysis/progression/mesure";
 import { ProgressionScreen } from "../../src/components/progression/ProgressionScreen";
+import type { Progression } from "../../src/services/progress";
 
 const NOW = new Date(2026, 10, 19, 15).getTime();
 const jour = (n: number) => new Date(2026, 10, 16 + n, 12).getTime();
@@ -40,21 +43,47 @@ function rempli(): Progression {
       acquiredAt: jour(-1),
     },
   ];
-  return calculerProgression(
-    {
-      texts,
-      faults: [
-        faute(jour(-1), "PAIRE:on/ont"),
-        faute(jour(-2), "PAIRE:on/ont"),
-        faute(jour(-3), "FR_SPELLING_RULE"),
-      ],
-      rules,
-    },
-    NOW,
+  // Mesure « avant / depuis » : on / ont mesurée, a / à trop récente, fautes de frappe en comparaison.
+  const f = (n: number, ruleKey: string) => ({ at: jour(n), ruleKey, categoryId: "X" });
+  const e = (n: number, ruleKey: string, type: string) => ({ at: jour(n), ruleKey, type });
+  const mesure: EntreeMesure = {
+    texts,
+    faults: [
+      ...[-58, -52, -50, -30, -2].map((n) => f(n, "PAIRE:on/ont")),
+      ...[-20, -10, -8, -6].map((n) => f(n, "PAIRE:a/à")),
+      ...[-46, -40, -38, -36, -20, -3].map((n) => f(n, "FR_SPELLING_RULE")),
+    ],
+    events: [
+      e(-50, "PAIRE:on/ont", "astuce"),
+      e(-30, "PAIRE:on/ont", "choix"),
+      e(-30, "PAIRE:on/ont", "reponse_juste"),
+      e(-6, "PAIRE:a/à", "astuce"),
+    ],
+    states: rules,
+  };
+  return avecMesure(
+    calculerProgression(
+      {
+        texts,
+        faults: [
+          faute(jour(-1), "PAIRE:on/ont"),
+          faute(jour(-2), "PAIRE:on/ont"),
+          faute(jour(-3), "FR_SPELLING_RULE"),
+        ],
+        rules,
+      },
+      NOW,
+    ),
+    mesure,
   );
 }
 
-const vide = () => calculerProgression({ texts: [], faults: [], rules: [] }, NOW);
+const sansDonnees: EntreeMesure = { texts: [], faults: [], events: [], states: [] };
+const avecMesure = (
+  p: ReturnType<typeof calculerProgression>,
+  entree: EntreeMesure = sansDonnees,
+): Progression => ({ ...p, mesure: calculerMesure(entree) });
+const vide = () => avecMesure(calculerProgression({ texts: [], faults: [], rules: [] }, NOW));
 
 /**
  * Simule `GET /api/progress` : une réponse par appel, dans l'ordre (la dernière
@@ -86,7 +115,8 @@ describe("ProgressionScreen", () => {
     // Graphiques : titre et description, valeurs en tableau.
     const graphique = screen.getByRole("img", { name: /Note moyenne sur 20, par semaine/ });
     expect(graphique.querySelector("desc")?.textContent).toMatch(/semaines avec des textes/);
-    expect(screen.getAllByRole("table")).toHaveLength(2);
+    // Deux tableaux des graphiques, un tableau « avant / depuis ».
+    expect(screen.getAllByRole("table")).toHaveLength(3);
 
     const regles = screen.getByRole("region", { name: "Vos règles" });
     expect(within(regles).getByText("on / ont")).toBeTruthy();
@@ -105,9 +135,11 @@ describe("ProgressionScreen", () => {
   });
 
   it("affiche « pas encore assez de textes » plutôt qu'un chiffre trompeur", async () => {
-    const data = calculerProgression(
-      { texts: [{ at: jour(0), words: 40, faults: 1 }], faults: [], rules: [] },
-      NOW,
+    const data = avecMesure(
+      calculerProgression(
+        { texts: [{ at: jour(0), words: 40, faults: 1 }], faults: [], rules: [] },
+        NOW,
+      ),
     );
     servir(data);
     render(<ProgressionScreen onClose={vi.fn()} />);
@@ -178,5 +210,126 @@ describe("ProgressionScreen", () => {
     render(<ProgressionScreen onClose={vi.fn()} />);
     await screen.findByText("Aucun texte corrigé pour l'instant");
     expect(fetch.mock.calls[0][0]).toBe("/api/progress");
+  });
+});
+
+describe("ProgressionScreen — ce que changent les astuces (#33) et export (#34)", () => {
+  /** `GET /api/progress` et `GET /api/progress/export`. */
+  function servirAvecExport(data: Progression, exp: unknown) {
+    const mock = vi.fn((url: string, _init?: RequestInit) =>
+      Promise.resolve(
+        new Response(JSON.stringify(url === "/api/progress/export" ? exp : data), { status: 200 }),
+      ),
+    );
+    globalThis.fetch = mock as unknown as typeof fetch;
+    return mock;
+  }
+  const exportExemple = () =>
+    construireExport({
+      application: "0.5.0",
+      plateforme: "serveur",
+      participant: "0123456789abcdef0123456789abcdef",
+      journal: { texts: [{ at: jour(0), words: 150 }], faults: [], events: [], states: [] },
+      now: NOW,
+    });
+
+  it("phrases simples, tableau avec en-têtes, comparaison et limites", async () => {
+    servirAvecExport(rempli(), exportExemple());
+    render(<ProgressionScreen onClose={vi.fn()} />);
+    const section = await screen.findByRole("region", { name: "Ce que changent les astuces" });
+    expect(
+      within(section).getByText(
+        "Fautes qui ont reçu une astuce (1 règle mesurée) : 5 fautes pour 1 000 mots avant la première astuce, 0,7 depuis (87 % de moins).",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(section).getByText(
+        /Pour comparer, les fautes de frappe, qui ne reçoivent jamais d'astuce : 5,6 fautes pour 1 000 mots avant d'avoir atteint le même seuil, 0,9 depuis \(83 % de moins\)/,
+      ),
+    ).toBeTruthy();
+
+    const tableau = within(section).getByRole("table");
+    const entetes = within(tableau.querySelector("thead")!)
+      .getAllByRole("columnheader")
+      .map((th) => th.textContent);
+    expect(entetes).toEqual(["Faute", "Avant la première astuce", "Depuis", "Évolution"]);
+    const ligne = (nom: string) =>
+      within(tableau)
+        .getByRole("rowheader", { name: new RegExp(nom) })
+        .closest("tr")!
+        .textContent!.replace(/\s+/g, " ");
+    expect(ligne("on / ont")).toContain("5 pour 1 000 mots");
+    expect(ligne("on / ont")).toContain("3 fautes sur 600 mots (5 textes)");
+    expect(ligne("on / ont")).toContain("87 % de moins");
+    expect(ligne("a / à")).toContain("pas encore assez de textes depuis l'astuce (il en manque 6)");
+    expect(ligne("Fautes de frappe")).toContain("jamais d'astuce");
+
+    expect(within(section).getByText("1 bonne réponse sur 1 (100 %)")).toBeTruthy();
+    const limites = within(section).getByRole("complementary", { name: "Limites de la mesure" });
+    expect(limites.textContent).toMatch(/Ce n'est pas une preuve/);
+    expect(limites.textContent).toMatch(/pas de tirage au sort/);
+  });
+
+  it("sans astuce affichée : explique quand la mesure commencera", async () => {
+    const texts = [{ at: jour(0), words: 40, faults: 1 }];
+    servirAvecExport(
+      avecMesure(calculerProgression({ texts, faults: [], rules: [] }, NOW)),
+      exportExemple(),
+    );
+    render(<ProgressionScreen onClose={vi.fn()} />);
+    const section = await screen.findByRole("region", { name: "Ce que changent les astuces" });
+    expect(within(section).getByText(/Aucune astuce n'a encore été affichée/)).toBeTruthy();
+    expect(within(section).queryByRole("table")).toBeNull();
+  });
+
+  it("la fenêtre d'export montre le contenu exact, puis le télécharge (navigateur)", async () => {
+    const exp = exportExemple();
+    const fetch = servirAvecExport(rempli(), exp);
+    const onClose = vi.fn();
+    render(<ProgressionScreen onClose={onClose} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Exporter mes résultats" }));
+
+    const fenetre = await screen.findByRole("dialog", { name: "Exporter mes résultats" });
+    expect(fenetre.textContent).toMatch(/Grammaria n'envoie rien/);
+    expect(fenetre.textContent).toMatch(/aucun de vos textes/);
+    const contenu = await within(fenetre).findByLabelText(/Contenu exact du fichier/);
+    expect((contenu as HTMLTextAreaElement).value).toBe(texteExport(exp));
+    expect((contenu as HTMLTextAreaElement).readOnly).toBe(true);
+    expect(fenetre.textContent).toContain("grammaria-beta-01234567.json");
+    expect(fetch).toHaveBeenCalledWith("/api/progress/export", expect.anything());
+
+    const blobs: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      blobs.push(blob);
+      return "blob:grammaria";
+    });
+    URL.revokeObjectURL = vi.fn();
+    const telechargements: string[] = [];
+    const clic = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      telechargements.push(this.download);
+    });
+    fireEvent.click(within(fenetre).getByRole("button", { name: "Enregistrer le fichier" }));
+    expect(await within(fenetre).findByText(/Téléchargement lancé/)).toBeTruthy();
+    expect(telechargements).toEqual(["grammaria-beta-01234567.json"]);
+    expect(await blobs[0].text()).toBe(texteExport(exp));
+    clic.mockRestore();
+
+    // Échap ferme la fenêtre, pas l'écran Progression.
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("un export reçu hors du format est refusé, rien n'est affiché", async () => {
+    servirAvecExport(rempli(), { ...exportExemple(), note: "texte libre" });
+    render(<ProgressionScreen onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Exporter mes résultats" }));
+    const fenetre = await screen.findByRole("dialog");
+    expect(await within(fenetre).findByRole("alert")).toBeTruthy();
+    expect(fenetre.textContent).not.toContain("texte libre");
+    const bouton = within(fenetre).getByRole("button", { name: "Enregistrer le fichier" });
+    expect((bouton as HTMLButtonElement).disabled).toBe(true);
   });
 });

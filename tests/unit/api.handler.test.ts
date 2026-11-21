@@ -9,6 +9,7 @@ import type {
 } from "../../api/deps";
 import { creerGestionnaire } from "../../api/handler";
 import type { ServerSettings, SettingsUpdate } from "../../api/reglages";
+import paquet from "../../package.json";
 
 /**
  * Le gestionnaire d'API avec des dépendances factices : un journal
@@ -36,6 +37,7 @@ function journalAsynchrone() {
     period: (days) => plusTard({ days, average: 15 }),
     summary: (days) => plusTard({ days, rules: [] }),
     progress: () => plusTard({ empty: true }),
+    exportBeta: (options) => plusTard({ format: "grammaria-beta", ...options }),
     rules: () => plusTard([{ state: "observee" as const }, { state: "acquise" as const }]),
     ruleEvents: (options) => plusTard([{ id: 1, ...options }]),
     answerChoice: (choiceId, correct) => {
@@ -252,6 +254,20 @@ describe("creerGestionnaire — journal asynchrone", () => {
     expect(await (await traiter(requete("/api/progress")))!.json()).toEqual({ empty: true });
     expect(await (await traiter(requete("/api/badges")))!.json()).toMatchObject({ obtenus: 0 });
     expect((await traiter(requete("/api/progress", { method: "POST" })))!.status).toBe(405);
+  });
+
+  it("GET /api/progress/export : version de l'application et plateforme, rien d'autre à fournir", async () => {
+    const bureau = creer();
+    expect(await (await bureau.traiter(requete("/api/progress/export")))!.json()).toEqual({
+      format: "grammaria-beta",
+      application: paquet.version,
+      plateforme: "bureau",
+    });
+    const serveur = creer({ options: { bureau: false, originesCors: [], llmTopK: -1 } });
+    const corps = await (await serveur.traiter(requete("/api/progress/export")))!.json();
+    expect(corps.plateforme).toBe("serveur");
+    const post = await serveur.traiter(requete("/api/progress/export", { method: "POST" }));
+    expect(post!.status).toBe(405);
   });
 });
 

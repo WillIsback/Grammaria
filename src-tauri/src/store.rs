@@ -480,7 +480,7 @@ fn apply_update(current: &LlmSettings, update: SettingsUpdate) -> LlmSettings {
 
 /// Écriture atomique : fichier temporaire (`<nom>.tmp`, comme le serveur),
 /// puis renommage. `private` : lisible par le seul propriétaire (0600).
-fn write_atomic(path: &Path, content: &str, private: bool) -> std::io::Result<()> {
+pub(crate) fn write_atomic(path: &Path, content: &str, private: bool) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }

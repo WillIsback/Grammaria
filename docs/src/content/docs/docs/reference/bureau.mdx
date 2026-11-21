@@ -20,6 +20,7 @@ L'application de bureau est une application [Tauri 2](https://tauri.app) (`src-t
 | `correcteur.rs` | Correcteur grammatical (moteur grammaria-rc lié à l'application) |
 | `update.rs` | Mise à jour de l'application |
 | `logs.rs` | Journal technique `grammaria.log` |
+| `export.rs` | Export anonyme de la bêta : écrit le fichier dans le dossier Téléchargements. Le dossier et le nom du fichier sont fixés par Rust, jamais par la page ; le contenu est revérifié (taille, JSON, format `grammaria-beta`) avant d'être écrit. La page n'a aucun autre accès aux fichiers |
 
 Le journal, les réglages, la clé API et les mots valides de la version 0.2.x sont repris tels quels (mêmes fichiers, même dossier). Les préférences d'affichage (mode de correction et types de corrections de la barre latérale) étaient gardées par la page elle-même ; l'origine de la page ayant changé, elles ne sont pas reprises. Un `settings.json` de la version 0.2 (sans `settingsVersion`) est relu sans son réglage « Couper le raisonnement du modèle », qui revient à sa valeur par défaut (coupé) ; le fichier n'est réécrit qu'au prochain enregistrement des réglages.
 
@@ -87,7 +88,7 @@ Sous Windows : `npx tauri build --bundles nsis,msi`. Tauri lance lui-même `npm 
 
 ### Autotest
 
-L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal (schéma 3, et aucun mot des textes corrigés dans les octets du fichier de la base ni de son WAL), réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
+L'autotest exécute l'application dans sa vraie WebView (WebKitGTK sous Linux, WebView2 sous Windows) et vérifie de bout en bout : interface montée, correcteur (détections identiques à la référence, temps du premier contrôle et des suivants), journal (schéma 3, et aucun mot des textes corrigés dans les octets du fichier de la base ni de son WAL), export de la bêta (valide, sans texte, écrit par Rust sous son nom fixe), réglages (la clé API n'est jamais renvoyée à la page), flux du modèle (ordre, annulations, relance sans `chat_template_kwargs`) et politique de sécurité.
 
 1. Lancer le faux serveur du modèle : `node scripts/desktop/faux-modele.mjs`.
 2. Lancer l'application avec `GRAMMARIA_AUTOTEST_OUT=/chemin/autotest.json` (sous Linux sans écran : `xvfb-run`). Elle écrit ses résultats puis se ferme, avec le code 0 si tout est tenu.

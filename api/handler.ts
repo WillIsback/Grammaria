@@ -1,4 +1,5 @@
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { version } from "../package.json";
 import { analyze } from "../src/analysis/analyze.ts";
 import { compterEtats } from "../src/analysis/regles/cycle.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
@@ -40,6 +41,7 @@ const JOURNAL_PATHS = new Set([
   "/api/analyze",
   "/api/journal",
   "/api/progress",
+  "/api/progress/export",
   "/api/badges",
   "/api/rules",
   "/api/rules/events",
@@ -281,6 +283,13 @@ export function creerGestionnaire(
       // Écran « Progression » : tout l'écran en une seule requête (issue #15).
       if (path === "/api/progress" && req.method === "GET") {
         return json(await journal.progress(), headers);
+      }
+
+      // Export anonyme de la bêta (issue #34) : nombres et identifiants seulement,
+      // validés avant de sortir. Rien n'est envoyé : l'interface en fait un fichier.
+      if (path === "/api/progress/export" && req.method === "GET") {
+        const plateforme = options.bureau ? "bureau" : "serveur";
+        return json(await journal.exportBeta({ application: version, plateforme }), headers);
       }
 
       if (path === "/api/journal" && req.method === "GET") {

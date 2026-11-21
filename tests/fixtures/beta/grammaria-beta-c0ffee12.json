@@ -1,0 +1,191 @@
+{
+  "format": "grammaria-beta",
+  "version": 1,
+  "application": "0.5.0",
+  "plateforme": "bureau",
+  "participant": "c0ffee12d34e5f6a7b8c9d0e1f2a3b4c",
+  "seuils": {
+    "cycle": {
+      "signalementOccurrences": 3,
+      "signalementFenetreJours": 7,
+      "astucesAvantTravail": 3,
+      "acquisitionJoursSansFaute": 14,
+      "acquisitionTextesMin": 5,
+      "acquisitionJoursActifsMin": 3,
+      "travailleesMax": 3,
+      "sollicitationsParRegleEtParJour": 1,
+      "choixLongueurMaxForme": 24,
+      "choixContexteMax": 60
+    },
+    "mesure": {
+      "motsParTaux": 1000,
+      "avantMinimumTextes": 3,
+      "avantMinimumMots": 400,
+      "depuisMinimumTextes": 5,
+      "depuisMinimumMots": 1000
+    }
+  },
+  "semaines": [
+    {
+      "semaine": 0,
+      "textes": 4,
+      "mots": 564,
+      "fautes": 15
+    },
+    {
+      "semaine": 1,
+      "textes": 5,
+      "mots": 808,
+      "fautes": 7
+    },
+    {
+      "semaine": 2,
+      "textes": 4,
+      "mots": 595,
+      "fautes": 15
+    },
+    {
+      "semaine": 3,
+      "textes": 3,
+      "mots": 462,
+      "fautes": 2
+    }
+  ],
+  "regles": [
+    {
+      "regle": "PAIRE:on/ont",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "acquise",
+      "semainePivot": 0,
+      "avant": {
+        "textes": 3,
+        "mots": 427,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 13,
+        "mots": 2002,
+        "fautes": 1
+      },
+      "suffisant": true,
+      "astuces": 1,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": 2
+    },
+    {
+      "regle": "PAIRE:a/à",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "signalee",
+      "semainePivot": 0,
+      "avant": {
+        "textes": 4,
+        "mots": 564,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 12,
+        "mots": 1865,
+        "fautes": 2
+      },
+      "suffisant": true,
+      "astuces": 3,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "PAIRE:et/est",
+      "categorie": "CONFUSION",
+      "groupe": "suivie",
+      "etat": "signalee",
+      "semainePivot": 1,
+      "avant": {
+        "textes": 9,
+        "mots": 1372,
+        "fautes": 4
+      },
+      "depuis": {
+        "textes": 7,
+        "mots": 1057,
+        "fautes": 1
+      },
+      "suffisant": true,
+      "astuces": 1,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    },
+    {
+      "regle": "FR_SPELLING_RULE",
+      "categorie": "TYPOS",
+      "groupe": "comparaison",
+      "etat": null,
+      "semainePivot": 0,
+      "avant": {
+        "textes": 3,
+        "mots": 427,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 13,
+        "mots": 2002,
+        "fautes": 20
+      },
+      "suffisant": true,
+      "astuces": 0,
+      "choix": 0,
+      "reponsesJustes": 0,
+      "reponsesFausses": 0,
+      "rechutes": 0,
+      "semaineAcquisition": null
+    }
+  ],
+  "synthese": {
+    "suivies": {
+      "regles": 3,
+      "reglesSuffisantes": 3,
+      "avant": {
+        "textes": 16,
+        "mots": 2363,
+        "fautes": 10
+      },
+      "depuis": {
+        "textes": 32,
+        "mots": 4924,
+        "fautes": 4
+      }
+    },
+    "comparaison": {
+      "regles": 1,
+      "reglesSuffisantes": 1,
+      "avant": {
+        "textes": 3,
+        "mots": 427,
+        "fautes": 3
+      },
+      "depuis": {
+        "textes": 13,
+        "mots": 2002,
+        "fautes": 20
+      }
+    },
+    "choix": {
+      "justes": 0,
+      "fausses": 0
+    },
+    "acquises": {
+      "total": 1,
+      "restees": 1,
+      "rechutes": 0
+    }
+  }
+}

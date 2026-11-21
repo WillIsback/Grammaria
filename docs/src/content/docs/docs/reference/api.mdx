@@ -274,9 +274,121 @@ Réponse (extrait, deux semaines sur douze) :
 | `trend` | `baisse`, `hausse` ou `stable` pour les fautes pour 100 mots (`recent` contre `previous`) ; `null` si l'une des périodes n'a aucun mot |
 | `series` | une entrée par semaine, de la plus ancienne à la plus récente |
 | `rules.active`, `rules.acquired` | règles signalées ou travaillées (les plus récemment fautives d'abord), et règles acquises (les plus récemment acquises d'abord) |
-| `frequentRules` | les huit règles les plus fréquentes sur les semaines affichées, hors `FR_SPELLING_RULE` ; `state` vaut `null` pour une règle hors cycle |
+| `frequentRules` | les huit règles les plus fréquentes sur les semaines affichées ; les fautes de frappe (`FR_SPELLING_RULE`) y figurent sous le libellé « Fautes de frappe » ; `state` vaut `null` pour une règle hors cycle |
 
 Score : `arrondi(100 × (0,6 × qualité + 0,4 × part des règles acquises))`, qualité et part étant comprises entre 0 et 1 avant arrondi (qualité = note récente / 20). Sans règle entrée dans le cycle : `arrondi(100 × qualité)`. Explication en langage simple dans [Progression](/docs/utiliser/progression/).
+
+#### `mesure` : ce que changent les astuces
+
+La réponse porte aussi `mesure`, calculée par `src/analysis/progression/mesure.ts` (réglages `MESURE` dans `reglages.ts`) : pour chaque règle qui a reçu une intervention, le taux de fautes avant et depuis la première astuce, et le même calcul pour un groupe de comparaison. Explication en langage simple dans [Progression](/docs/utiliser/progression/#ce-que-changent-les-astuces).
+
+```json
+"mesure": {
+  "motsParTaux": 1000,
+  "minimum": { "avant": { "textes": 3, "mots": 400 }, "depuis": { "textes": 5, "mots": 1000 } },
+  "premierTexte": 1788739200000,
+  "suivies": [
+    {
+      "ruleKey": "PAIRE:on/ont", "label": "on / ont", "categoryId": "CONFUSION",
+      "groupe": "suivie", "etat": "acquise", "pivot": 1788912000000,
+      "avant": { "textes": 3, "mots": 427, "fautes": 3, "taux": 7 },
+      "depuis": { "textes": 13, "mots": 2002, "fautes": 1, "taux": 0.5 },
+      "suffisant": true, "avantTropCourt": false, "textesManquants": 0, "evolution": -93,
+      "astuces": 1, "choix": 0, "reponsesJustes": 0, "reponsesFausses": 0,
+      "rechutes": 0, "acquiseLe": 1790035200000
+    }
+  ],
+  "comparaison": [
+    { "ruleKey": "FR_SPELLING_RULE", "label": "Fautes de frappe", "groupe": "comparaison", "etat": null, "…": "…" }
+  ],
+  "synthese": {
+    "suivies": { "regles": 3, "reglesSuffisantes": 3, "avant": { "textes": 16, "mots": 2363, "fautes": 10, "taux": 4.2 }, "depuis": { "textes": 32, "mots": 4924, "fautes": 4, "taux": 0.8 }, "evolution": -81 },
+    "comparaison": { "regles": 1, "reglesSuffisantes": 1, "…": "…" }
+  },
+  "choix": { "justes": 3, "fausses": 1, "taux": 75 },
+  "acquises": { "total": 1, "restees": 1, "rechutes": 0 }
+}
+```
+
+| Champ | Sens |
+|---|---|
+| `suivies` | règles qui ont reçu au moins une intervention ; `pivot` : date de la première astuce (ou du premier choix à deux formes, s'il n'y a jamais eu d'astuce) |
+| `comparaison` | fautes comptées qui ne reçoivent jamais d'intervention (`REGLES_HORS_CYCLE` : `FR_SPELLING_RULE`) ; `pivot` : date à laquelle elles remplissent le même critère de signalement (3 fautes en 7 jours) |
+| `avant` | fautes de la règle jusqu'au pivot compris, sur les textes écrits entre sa première faute et le pivot |
+| `depuis` | fautes et textes après le pivot |
+| `taux` | fautes pour `motsParTaux` (1 000) mots, arrondi au dixième ; `null` sans aucun mot |
+| `suffisant` | les deux périodes atteignent `minimum` ; sinon `avantTropCourt` (période avant trop courte, elle ne s'allongera plus) ou `textesManquants` (textes à écrire encore, estimés sur la longueur moyenne des textes) |
+| `evolution` | évolution relative du taux, en % entier (négatif : baisse), calculée sur les nombres exacts ; `null` si la règle n'est pas `suffisant` |
+| `synthese` | par groupe, somme des fautes sur somme des mots des seules règles `suffisant` (pas une moyenne de taux) ; un même texte compte pour chaque règle mesurée |
+| `choix` | réponses aux choix à deux formes (justes, fausses) et part de bonnes réponses en % |
+| `acquises` | règles acquises au moins une fois, celles qui n'ont jamais rechuté depuis, et le nombre de rechutes |
+
+`label` sert à l'écran et n'est jamais exporté. Aucun test statistique n'est fait : seulement des chiffres et leurs volumes.
+
+### `GET /api/progress/export`
+
+Export anonyme de la bêta, au format `grammaria-beta` version 1 (`src/analysis/progression/export.ts`). La route ne fait que renvoyer le JSON : rien n'est envoyé nulle part, l'interface en fait un fichier (téléchargement du navigateur, ou commande Rust `export_beta_enregistrer` sur le bureau, qui l'écrit dans le dossier Téléchargements sous le nom `grammaria-beta-<8 premiers caractères du participant>.json`). Le premier appel crée l'identifiant aléatoire du participant (128 bits, table `beta_participant`), gardé jusqu'à l'[effacement du journal](#delete-apijournal). L'export est validé (`validerExport`) avant de sortir. Mêmes contrôles que les autres routes du journal ; 405 pour une autre méthode que `GET` ou `OPTIONS`.
+
+```json
+{
+  "format": "grammaria-beta",
+  "version": 1,
+  "application": "0.5.0",
+  "plateforme": "bureau",
+  "participant": "c0ffee12d34e5f6a7b8c9d0e1f2a3b4c",
+  "seuils": {
+    "cycle": { "signalementOccurrences": 3, "signalementFenetreJours": 7, "astucesAvantTravail": 3, "acquisitionJoursSansFaute": 14, "acquisitionTextesMin": 5, "acquisitionJoursActifsMin": 3, "travailleesMax": 3, "sollicitationsParRegleEtParJour": 1, "choixLongueurMaxForme": 24, "choixContexteMax": 60 },
+    "mesure": { "motsParTaux": 1000, "avantMinimumTextes": 3, "avantMinimumMots": 400, "depuisMinimumTextes": 5, "depuisMinimumMots": 1000 }
+  },
+  "semaines": [
+    { "semaine": 0, "textes": 4, "mots": 564, "fautes": 15 },
+    { "semaine": 1, "textes": 5, "mots": 808, "fautes": 7 }
+  ],
+  "regles": [
+    {
+      "regle": "PAIRE:on/ont", "categorie": "CONFUSION", "groupe": "suivie", "etat": "acquise",
+      "semainePivot": 0,
+      "avant": { "textes": 3, "mots": 427, "fautes": 3 },
+      "depuis": { "textes": 13, "mots": 2002, "fautes": 1 },
+      "suffisant": true, "astuces": 1, "choix": 0, "reponsesJustes": 0, "reponsesFausses": 0,
+      "rechutes": 0, "semaineAcquisition": 2
+    },
+    {
+      "regle": "FR_SPELLING_RULE", "categorie": "TYPOS", "groupe": "comparaison", "etat": null,
+      "semainePivot": 0,
+      "avant": { "textes": 3, "mots": 427, "fautes": 3 },
+      "depuis": { "textes": 13, "mots": 2002, "fautes": 20 },
+      "suffisant": true, "astuces": 0, "choix": 0, "reponsesJustes": 0, "reponsesFausses": 0,
+      "rechutes": 0, "semaineAcquisition": null
+    }
+  ],
+  "synthese": {
+    "suivies": { "regles": 3, "reglesSuffisantes": 3, "avant": { "textes": 16, "mots": 2363, "fautes": 10 }, "depuis": { "textes": 32, "mots": 4924, "fautes": 4 } },
+    "comparaison": { "regles": 1, "reglesSuffisantes": 1, "avant": { "textes": 3, "mots": 427, "fautes": 3 }, "depuis": { "textes": 13, "mots": 2002, "fautes": 20 } },
+    "choix": { "justes": 0, "fausses": 0 },
+    "acquises": { "total": 1, "restees": 1, "rechutes": 0 }
+  }
+}
+```
+
+Le format ne contient que des nombres entiers positifs, des booléens et des chaînes de forme contrôlée, et rien d'autre :
+
+| Champ | Forme |
+|---|---|
+| `format`, `version` | `"grammaria-beta"`, `1` |
+| `application` | version de Grammaria, `x.y.z` |
+| `plateforme` | `"bureau"` ou `"serveur"` |
+| `participant` | 32 caractères hexadécimaux, tirés au hasard ; ne dérive d'aucune donnée de la machine ni de l'utilisateur |
+| `seuils` | `SEUILS` (cycle de vie des règles) et `MESURE` en vigueur : deux exports ne se comparent qu'avec les mêmes |
+| `semaines` | une entrée par semaine relative, sans trou, de 0 (semaine du premier texte corrigé) à la semaine de l'export ; une semaine est un bloc de 7 × 24 heures, sans calendrier ni fuseau. Aucune date ni heure absolue n'est exportée |
+| `regles[].regle` | identifiant de règle du moteur (`[A-Z0-9_]+`) ou d'une fiche maison, prise dans sa liste fermée (`PAIRE:a/à`, `TERMINAISON:er/é`…). Une règle d'une autre forme n'est pas exportée. Aucun libellé |
+| `regles[].categorie` | identifiant de catégorie du moteur (`[A-Z0-9_]*`) |
+| `regles[].groupe`, `etat` | `suivie` ou `comparaison` ; état du cycle (`observee`, `signalee`, `travaillee`, `acquise`), `null` pour la comparaison |
+| `regles[].semainePivot`, `semaineAcquisition` | semaines relatives (`null` : jamais acquise) |
+| `regles[].avant`, `depuis`, `suffisant` | volumes de la [mesure](#mesure--ce-que-changent-les-astuces) ; les taux s'en déduisent |
+| `synthese` | les totaux de la mesure |
+
+`validerExport` refuse tout champ inconnu ou manquant, tout type inattendu, toute chaîne hors de ces formes, tout nombre négatif, non entier, non fini ou supérieur à un milliard, plus de 520 semaines ou de 1 000 règles, et un fichier de plus de 2 Mo. Ses messages d'erreur ne citent jamais le contenu refusé. La collecte des fichiers se fait avec `npm run beta:agreger` (voir [Développement](/docs/reference/developpement/#bêta--collecte-des-exports)).
 
 ### `DELETE /api/journal`
 
