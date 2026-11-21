@@ -1,0 +1,13 @@
+# Montées de version surveillées par Dependabot.
+# Les actions GitHub sont épinglées au SHA de commit (sécurité de la chaîne
+# d'approvisionnement, issue #38) ; Dependabot propose les mises à jour de ces
+# SHA par une PR, en gardant l'épinglage.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"

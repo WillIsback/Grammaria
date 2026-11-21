@@ -104,23 +104,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable (branche)
         with:
           components: rustfmt
 
       - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: src-tauri
 
@@ -296,7 +296,7 @@ jobs:
 
       - name: Cache du moteur
         id: cache-moteur
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: moteur
           key: moteur-${{ runner.os }}-${{ steps.moteur.outputs.rev }}-${{ hashFiles('scripts/moteur/construire.sh') }}
@@ -479,7 +479,7 @@ jobs:
           exit "$echec"
 
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.artifact }}
           path: dist-desktop/
@@ -684,7 +684,7 @@ jobs:
       # (journal SQLite, réglages) sont dans le même dossier.
       - name: Autotest — publier les résultats
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: autotest-${{ matrix.slug }}
           path: ${{ runner.temp }}/autotest/
