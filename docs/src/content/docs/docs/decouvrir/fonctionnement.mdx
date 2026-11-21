@@ -1,59 +1,85 @@
 ---
-title: "Fonctionnement"
-description: "Correction par le LLM, diff, croisement avec LanguageTool, fiches, journal et note."
+title: "Comment ça marche"
+description: "Le modèle de langage corrige, Grammaria calcule les modifications, le moteur de grammaire les nomme, le journal en garde la trace."
 ---
 
-Grammaria sépare deux tâches que les correcteurs à base de LLM mélangent d'habitude : **corriger** et **expliquer**.
+Grammaria sépare deux tâches que les correcteurs à base de modèle de langage mélangent d'habitude : **corriger** et **expliquer**.
 
-## 1. Le LLM corrige, et rien d'autre
+## Vue d'ensemble
 
-Le modèle reçoit votre texte et renvoie uniquement le texte corrigé. Il ne produit pas la liste de ses corrections : cette liste rallongeait la génération et son contenu variait d'une fois à l'autre.
+```
+Votre texte ──┬──► modèle de langage ──► texte corrigé (affiché en direct)
+              │                                │
+              └──► moteur de grammaire ──┐     │
+                                         ▼     ▼
+                                  comparaison + croisement
+                                         │
+                       ┌─────────────────┼─────────────────┐
+                       ▼                 ▼                 ▼
+                  corrections          note             journal
+                  et fiches           sur 20           des fautes
+```
 
-Le texte s'affiche au fil de la génération. Le bouton **Copier** est utilisable dès les premiers mots.
+## 1. Le modèle de langage corrige, et rien d'autre
 
-## 2. Les modifications sont calculées, pas générées
+Le modèle reçoit votre texte et renvoie seulement le texte corrigé. Il ne fait pas la liste de ses corrections : cette liste rallongeait la réponse et changeait d'une fois à l'autre.
 
-Grammaria compare mot à mot le texte d'origine et le texte corrigé. Chaque différence devient une correction « avant → après ». Ce calcul est déterministe et ne coûte aucun appel au modèle.
+Le texte s'affiche à mesure qu'il est écrit. Le bouton **Copier** est utilisable dès les premiers mots.
 
-## 3. Les règles de LanguageTool classent les fautes
+## 2. Les modifications sont calculées
 
-Pendant que le LLM travaille, le correcteur grammatical intégré à Grammaria (dans le serveur, ou dans l'application de bureau elle-même) analyse le texte d'origine. C'est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), un moteur écrit en Rust qui applique les règles françaises de [LanguageTool](https://languagetool.org), complétées par environ 1 300 règles propres à Grammaria (leur identifiant commence par `GRM_`). Il fournit pour chaque détection un identifiant de règle stable, une catégorie et un message.
+Grammaria compare mot à mot votre texte et le texte corrigé. Chaque différence devient une correction « avant → après ». Ce calcul donne toujours le même résultat et ne demande rien de plus au modèle.
 
-Sept règles de LanguageTool sont coupées parce qu'elles dérangeaient plus qu'elles n'aidaient : virgule réclamée après « De même » (`VIRG_NON_TROUVEE`), synonymes proposés pour un mot répété (`FR_REPEATEDWORDS`), « avec lequel » proposé pour « où » (`OU_LEQUEL`), « quelques » au pluriel réclamé pour « quelque » (`QUELQUE_TRUC`), nombres à écrire en lettres (`NOMBRES_EN_LETTRES_2`), « durant » proposé pour « pendant » (`REP_PENDANT`) et « parce que » proposé pour « car » (`REP_CAR`). Un mot inconnu qui a l'allure d'un nom propre (majuscule en milieu de phrase) ou d'un sigle n'est pas signalé comme faute d'orthographe.
+## 3. Le moteur de grammaire nomme les fautes
 
-Une détection LanguageTool n'est retenue que si le LLM a **réellement modifié** le passage concerné. Ce croisement écarte les faux positifs de LanguageTool, par exemple un nom propre signalé à tort.
+Pendant que le modèle travaille, le [moteur de grammaire](/docs/decouvrir/moteur/) de Grammaria analyse votre texte d'origine. Il tourne dans Grammaria même : dans le serveur, ou dans l'application de bureau. Pour chaque faute qu'il trouve, il donne une règle, une catégorie et un message.
 
-Une modification qui ne change que la terminaison d'un mot (« était → étaient », « aidés → aidé ») est classée comme **accord** et comptée, même si LanguageTool ne l'a pas signalée.
+Grammaria croise ensuite ses détections avec les modifications du modèle :
 
-À l'inverse, une modification du LLM qu'aucune détection n'explique reste affichée, avec la mention « Non classé », et n'est pas comptée.
+- **Une détection n'est retenue que si le modèle a réellement modifié le passage.** Cela écarte les fausses alertes, par exemple un nom propre signalé à tort.
+- **Une modification qui ne change que la fin d'un mot** (« était → étaient », « aidés → aidé ») est classée comme **accord** et comptée, même si le moteur ne l'a pas signalée.
+- **Une modification qu'aucune détection n'explique** reste affichée, avec la mention « Non classé », mais n'est pas comptée. C'est souvent une reformulation.
+- **Une modification qui ne touche que la ponctuation ou les espaces** (virgule ajoutée, point final, guillemets) est une correction silencieuse : elle est appliquée dans le texte corrigé, mais n'est ni listée, ni comptée, ni notée dans le journal. L'apostrophe et le trait d'union n'en font pas partie : ils appartiennent aux mots (« l'équipe », « est-ce »).
 
-Une modification qui ne touche que la ponctuation ou les espaces (virgule ajoutée, point final, guillemets) est une **correction silencieuse** : elle est appliquée dans le texte corrigé, mais n'apparaît pas dans la liste, n'est pas comptée et n'est pas enregistrée dans le journal. L'apostrophe et le trait d'union n'en font pas partie : ils appartiennent aux mots (« l'équipe », « est-ce »).
+### Les règles coupées
+
+Sept règles reprises de LanguageTool sont coupées, parce qu'elles dérangeaient plus qu'elles n'aidaient :
+
+| Règle | Ce qu'elle réclamait |
+|---|---|
+| `VIRG_NON_TROUVEE` | une virgule après « De même » |
+| `FR_REPEATEDWORDS` | un synonyme pour un mot répété |
+| `OU_LEQUEL` | « avec lequel » au lieu de « où » |
+| `QUELQUE_TRUC` | « quelques » au pluriel au lieu de « quelque » |
+| `NOMBRES_EN_LETTRES_2` | les nombres écrits en lettres |
+| `REP_PENDANT` | « durant » au lieu de « pendant » |
+| `REP_CAR` | « parce que » au lieu de « car » |
+
+Un mot inconnu qui a l'allure d'un nom propre (majuscule en milieu de phrase) ou d'un sigle n'est pas signalé comme faute d'orthographe.
 
 ## 4. Les confusions courantes ont leur fiche
 
-Treize confusions sont reconnues directement dans le diff, sans dépendre de LanguageTool : a/à, ou/où, et/est, on/ont, son/sont, ces/ses, ce/se, c'est/s'est, la/là, sa/ça, peu/peut/peux, les terminaisons -er/-é/-ez, et le nom en -ail, -eil ou -euil confondu avec le verbe (travail/travaille, conseil/conseille).
+Treize confusions sont reconnues directement dans la comparaison, sans passer par le moteur : a/à, ou/où, et/est, on/ont, son/sont, ces/ses, ce/se, c'est/s'est, la/là, sa/ça, peu/peut/peux, les terminaisons -er/-é/-ez, et le nom en -ail, -eil ou -euil confondu avec le verbe (travail/travaille, conseil/conseille).
 
-Chacune est accompagnée d'une fiche au format « remplacez par X, car Y ». Voir [Corrections et fiches de règles](/docs/utiliser/corrections/).
+Chacune a une fiche au format « remplacez par X, car Y ». Voir [Corrections et fiches de règles](/docs/utiliser/corrections/).
 
 ## 5. Le journal garde la trace
 
-Chaque faute retenue est enregistrée dans une base SQLite locale : la règle, le mot fautif, la correction et la phrase. C'est ce journal qui permet de repérer les fautes récurrentes (astuce, puis choix entre deux formes sur le bouton Copier) et d'afficher l'écran [Progression](/docs/utiliser/progression/) et les [badges](/docs/utiliser/badges/). Voir [Note et journal des fautes](/docs/utiliser/note-et-journal/).
+Chaque faute retenue est notée dans un journal local : la règle, le mot fautif, la correction et la phrase. Ce journal permet de repérer les fautes qui reviennent, et d'afficher l'écran [Progression](/docs/utiliser/progression/) et les [badges](/docs/utiliser/badges/). Voir [Note et journal des fautes](/docs/utiliser/note-et-journal/).
 
-## Schéma
+## 6. Les fautes qui reviennent : les choix de conception
 
-```
-Votre texte ──┬──► LLM ──────────► texte corrigé (affiché en direct)
-              │                          │
-              └──► LanguageTool ──┐      │
-                                  ▼      ▼
-                           diff + croisement
-                                  │
-                    ┌─────────────┼──────────────┐
-                    ▼             ▼              ▼
-               corrections      note        journal SQLite
-               et fiches       sur 20
-```
+Le but est d'agir sur les fautes **récurrentes** sans ralentir la correction. Une personne pressée ne regarde que le bouton **Copier** : toute intervention se joue donc à cet endroit.
 
-## Si le correcteur grammatical est indisponible
+- **Une progression par étapes.** Une règle passe par quatre états : observée, signalée (une astuce d'une ligne), travaillée (le bouton **Copier** propose les deux formes), puis acquise. Les seuils exacts sont dans [Corriger un texte](/docs/utiliser/corriger/#fautes-récurrentes--ce-qui-saffiche-près-du-bouton-copier).
+- **Un seul clic, toujours.** Quand le bouton propose deux formes, cliquer la bonne copie le texte ; cliquer la mauvaise affiche l'explication, puis copie aussi.
+- **Une règle acquise se mérite.** Il faut 14 jours sans la faute, pendant lesquels vous avez corrigé au moins 5 textes sur au moins 3 jours différents. Une règle ne devient pas acquise parce que l'application est restée fermée.
+- **Un budget de sollicitations.** Au plus trois règles travaillées en même temps, et une sollicitation par règle et par jour. Ces valeurs s'appuient sur des résultats généraux (une mémoire de travail limitée à quelques éléments, l'intérêt du rappel actif et de l'espacement dans le temps), mais aucune étude ne les fixe précisément.
 
-La correction fonctionne quand même. Seules les confusions des fiches et les accords sont alors classés, et le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. » s'affiche.
+:::note
+Ces seuils sont des choix de départ, à régler sur des données réelles.
+:::
+
+## Si le moteur de grammaire est indisponible
+
+La correction fonctionne quand même. Seules les confusions des fiches et les accords sont alors classés, et le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. » s'affiche. Voir la [FAQ](/docs/reference/faq/#le-message--le-correcteur-grammatical-est-indisponible--saffiche).

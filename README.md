@@ -6,83 +6,54 @@ Documentation : [grammaria.fr/docs](https://grammaria.fr/docs/)
 
 ## Pour qui
 
-Pour les **adultes qui écrivent en français tous les jours** (messages, courriels, comptes rendus) et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
+Pour **ceux qui écrivent en français tous les jours** (messages, courriels, comptes rendus) et qui traînent des lacunes à l'écrit sans avoir le temps de les combler.
 
 Grammaria n'est pas un outil scolaire : pas de cours à suivre, pas de série d'exercices. Quand on est pressé, on veut un texte propre, pas une leçon.
 
-## Pourquoi
+## Ce que fait Grammaria
 
-Un correcteur automatique a un effet pervers : on colle son texte, on copie le résultat, et on n'apprend jamais rien. Les mêmes fautes reviennent pendant des mois. Les méthodes d'apprentissage classiques échouent pour la raison inverse : elles demandent du temps au moment précis où l'on n'en a pas.
+Un correcteur automatique a un effet pervers : on colle son texte, on copie le résultat, et on n'apprend jamais rien. Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
 
-Grammaria garde la vitesse du correcteur et y ajoute une couche d'observation :
+- **La correction reste instantanée.** Vous collez un texte, cliquez sur **Corriger** : le texte corrigé s'affiche à mesure que le modèle de langage l'écrit, et se copie aussitôt.
+- **Chaque faute est nommée.** Grammaria compare votre texte au texte corrigé ; son moteur de grammaire nomme chaque faute. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é…) ont une fiche « remplacez par X, car Y ».
+- **Les fautes qui reviennent sont repérées.** Un journal local garde la phrase fautive, jamais le texte entier. Quand une faute revient, une astuce puis un choix entre deux formes s'affichent près du bouton **Copier**, sans retarder la copie.
+- **La progression se voit.** Une note sur 20, un écran **Progression** et des badges sobres montrent le chemin parcouru.
 
-- la correction reste **instantanée**, sans étape imposée ;
-- l'application **repère les fautes qui reviennent**, sur vos vrais textes ;
-- elle explique en une phrase, au format « remplacez par X, car Y ».
+Vos textes ne sont envoyés qu'au modèle de langage que vous avez choisi (Ollama, vLLM, ou toute API compatible OpenAI). L'analyse des fautes et le journal restent chez vous.
 
-## Comment
+Le détail : [Comment ça marche](https://grammaria.fr/docs/decouvrir/fonctionnement/) et [Corriger un texte](https://grammaria.fr/docs/utiliser/corriger/).
 
-1. Vous collez un texte et cliquez sur **Corriger**. Le texte corrigé s'affiche au fil de la génération et se copie aussitôt.
-2. Le modèle de langage ne fait que corriger. Les modifications sont **calculées** par comparaison entre votre texte et le texte corrigé, sans appel supplémentaire au modèle. La ponctuation est corrigée en silence : appliquée dans le texte, elle n'est ni listée ni comptée.
-3. Les règles françaises de [LanguageTool](https://languagetool.org), exécutées par le moteur Rust [grammaria-rc](https://github.com/WillIsback/grammaria-rc) intégré à Grammaria (aucun service à lancer), analysent votre texte en parallèle. Une de ses détections n'est retenue que si le modèle a réellement corrigé le passage, ce qui écarte les faux positifs.
-4. Treize confusions courantes (a/à, on/ont, ces/ses, -er/-é, travail/travaille…) sont reconnues directement et accompagnées d'une **fiche**.
-5. Chaque faute est consignée dans un **journal local**. Seule la phrase concernée est conservée, jamais le texte entier.
-6. Une **note sur 20**, calculée sur la densité de fautes, suit votre progression texte par texte et sur sept jours.
+## Installer
 
-7. Quand une faute **revient**, Grammaria intervient là où vous regardez, près du bouton « Copier » : d'abord une astuce d'une ligne, puis, si la faute persiste, le bouton propose les deux formes sur votre propre phrase. Un seul clic dans tous les cas : la copie n'est jamais retardée.
-8. L'écran **Progression** montre votre évolution : score de maîtrise, note semaine après semaine, règles acquises ou à travailler, mots pièges. Des **badges** sobres constatent les étapes franchies, sans série à ne pas casser.
+### Application de bureau (Windows, Linux)
 
-Le détail est dans [Corriger un texte](https://grammaria.fr/docs/utiliser/corriger/), [Progression](https://grammaria.fr/docs/utiliser/progression/), [Badges](https://grammaria.fr/docs/utiliser/badges/) et la [feuille de route](https://grammaria.fr/docs/decouvrir/feuille-de-route/).
+Téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases) (environ 9 Mo pour le `.deb`, 7 Mo pour l'installeur Windows), lancez Grammaria et indiquez l'adresse de votre modèle dans **Paramètres → IA**. Rien d'autre à installer. Guide : [Application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
 
-## Vos textes restent chez vous
-
-Grammaria s'héberge soi-même. Vos textes ne sont envoyés qu'au modèle que vous avez configuré : l'analyse grammaticale tourne dans le serveur Grammaria. Le journal est un fichier SQLite sur votre serveur.
-
-## Application de bureau
-
-Pour Windows et Linux, sans serveur à installer (paquet `.deb` de 9 Mo environ) : téléchargez le paquet de votre système dans les [Releases](https://github.com/WillIsback/Grammaria/releases), lancez Grammaria et indiquez l'adresse de votre modèle (Ollama ou API compatible OpenAI) dans les réglages. L'application cherche une nouvelle version à chaque démarrage et vous la propose : rien n'est installé sans votre accord (installeur Windows et AppImage ; le paquet `.deb` et le MSI signalent seulement la nouvelle version). La rubrique **Paramètres → Mises à jour** affiche la version installée et indique si les mises à jour automatiques sont actives dans votre version. Voir le guide de l'[application de bureau](https://grammaria.fr/docs/demarrer/application-bureau/).
-
-## Démarrage rapide (serveur)
-
-Il vous faut un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama…), [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) 1.75 ou plus récent et `git` pour compiler le moteur grammatical. `npm run build:moteur` récupère lui-même le moteur ([grammaria-rc](https://github.com/WillIsback/grammaria-rc)) à la version prévue et le compile, en moins d'une minute.
+### Serveur Docker
 
 ```bash
-git clone https://github.com/WillIsback/Grammaria.git
+docker run -d --name grammaria -p 25000:25000 \
+  -v "$(pwd)/data:/app/data" \
+  -e LLM_TARGET=http://votre-serveur-llm:11434 \
+  -e TZ=Europe/Paris \
+  ghcr.io/willisback/grammaria:latest
 ```
 
-```bash
-cd Grammaria
-```
+L'application est sur http://localhost:25000. Guides : [Installer un serveur](https://grammaria.fr/docs/demarrer/installation/) (dont l'installation depuis les sources), [Déploiement Docker](https://grammaria.fr/docs/exploiter/docker/) et [Configuration](https://grammaria.fr/docs/exploiter/configuration/).
 
-```bash
-cp .env.example .env
-```
+## Le moteur de grammaire
 
-Renseignez `LLM_TARGET` dans `.env`, puis :
+Grammaria utilise son propre moteur, [grammaria-rc](https://github.com/WillIsback/grammaria-rc) : un moteur maison écrit en Rust, sans dépendance, léger et rapide. Il porte en Rust la chaîne d'analyse de LanguageTool, dont il lit tels quels les règles et dictionnaires français, et y ajoute 1 320 règles propres. Face à LanguageTool 6.9 dans son portage JavaScript, l'ancien correcteur de Grammaria, sur la même machine :
 
-```bash
-npm install
-```
+- démarrage du moteur : 4,3–4,6 s → **0,5 s** ;
+- mémoire du moteur : 924–937 Mio → **220–250 Mio** ;
+- fautes trouvées sur l'ensemble des bancs d'essai : 76,4 % → **86,4 %**.
 
-```bash
-npm run build
-```
-
-Construisez le moteur grammatical (binaire et données dans `moteur/`) :
-
-```bash
-npm run build:moteur
-```
-
-```bash
-bun run server.ts
-```
-
-L'application est sur http://localhost:25000. Le détail est dans le guide d'[installation](https://grammaria.fr/docs/demarrer/installation/) et de [configuration](https://grammaria.fr/docs/demarrer/configuration/).
+Mesures complètes : [Le moteur de grammaire](https://grammaria.fr/docs/decouvrir/moteur/).
 
 ## Développement
 
-Le projet utilise [Vite+](https://viteplus.dev) : toute la configuration de l'outillage est dans `vite.config.ts`.
+Le projet utilise [Vite+](https://viteplus.dev) : toute la configuration de l'outillage est dans `vite.config.ts`. Il faut [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) 1.75 ou plus récent et `git`.
 
 | Commande               | Rôle                                                            |
 | ---------------------- | --------------------------------------------------------------- |
@@ -95,11 +66,24 @@ Le projet utilise [Vite+](https://viteplus.dev) : toute la configuration de l'ou
 
 Voir la page [Développement](https://grammaria.fr/docs/reference/developpement/) et l'[architecture](https://grammaria.fr/docs/reference/architecture/).
 
-## Origine et licence
+## Remerciements
+
+Grammaria et son moteur doivent beaucoup à des projets libres :
+
+- **[LanguageTool](https://languagetool.org)** (© Daniel Naber et contributeurs, LGPL-2.1-or-later) : le moteur lit tels quels ses fichiers de règles et dictionnaires français (5 343 règles de grammaire, 1 674 de style), et sa chaîne d'analyse (découpage, étiquetage, désambiguïsation, filtres) a été portée de Java vers Rust.
+- **[Grammalecte](https://grammalecte.net) et Dicollecte** (© Olivier R.) : le dictionnaire français dérive des données Dicollecte/Grammalecte ; les phrases de test de Grammalecte ont servi de banc d'essai pour écrire les 1 320 règles propres au moteur, écrites d'après le comportement attendu et non copiées du code de Grammalecte.
+- **[Morfologik](https://github.com/morfologik/morfologik-stemming)** (© Dawid Weiss et Marcin Miłkowski, BSD-3-Clause) : lecteur de dictionnaire et correcteur orthographique portés en Rust.
+- **Numbertext** : programmes d'écriture des nombres en lettres, fournis avec les données de LanguageTool.
+- **`@valueerror/ltjs`** : le portage JavaScript de LanguageTool qui équipait Grammaria jusqu'à la v0.3.0 ; il a servi de référence de comparaison, aucun code n'en provient.
+- **[ai_corrector](https://github.com/WillIsback/ai_corrector)**, dont Grammaria est issu, et la police **[Inter](https://github.com/rsms/inter)**.
+
+La liste complète : [Remerciements](https://grammaria.fr/docs/decouvrir/remerciements/).
+
+## Licences
 
 Grammaria est distribué sous licence [GPL-3.0-or-later](LICENSE).
 
-Le correcteur grammatical intégré est [grammaria-rc](https://github.com/WillIsback/grammaria-rc), moteur Rust distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son propre code et ses règles sous MPL-2.0, les modules traduits de [LanguageTool](https://languagetool.org) et les règles et dictionnaires français de LanguageTool qu'il lit tels quels sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause (détail dans son fichier `THIRD_PARTY_LICENSES.md`). Ces licences sont compatibles avec la GPL-3.0-or-later de Grammaria. Depuis la version 0.4.0, il remplace le portage JavaScript de LanguageTool des versions précédentes ; la comparaison mesurée est dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
+Le moteur [grammaria-rc](https://github.com/WillIsback/grammaria-rc) est distribué sous `MPL-2.0 AND LGPL-2.1-or-later AND BSD-3-Clause` : son propre code et ses règles sous MPL-2.0, les modules portés de LanguageTool et les données de LanguageTool sous LGPL-2.1 ou ultérieure, le portage de Morfologik sous BSD-3-Clause (détail dans son fichier `THIRD_PARTY_LICENSES.md`). Ces licences sont compatibles avec la GPL-3.0-or-later de Grammaria. La comparaison mesurée lors de son intégration est dans [benchmark/moteur-rust/rapport.md](benchmark/moteur-rust/rapport.md).
 
 La police [Inter](https://github.com/rsms/inter), embarquée dans l'application (`src/assets/fonts/`), est distribuée sous licence SIL Open Font License 1.1 ([OFL.txt](src/assets/fonts/OFL.txt)).
 

@@ -1,13 +1,37 @@
 ---
-title: "Installation"
-description: "Installer Grammaria depuis les sources ou avec Docker."
+title: "Installer un serveur"
+description: "Installer Grammaria sur un serveur, avec l'image Docker publiée ou depuis les sources."
 ---
+
+Cette page s'adresse à ceux qui installent Grammaria sur un serveur, pour l'ouvrir dans un navigateur. Pour un seul ordinateur, l'[application de bureau](/docs/demarrer/application-bureau/) est plus simple : rien d'autre à installer.
 
 ## Prérequis
 
-- Un modèle de langage exposé par une API compatible OpenAI.
-- Pour une installation depuis les sources : [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) (1.75 au moins) et `git`, pour compiler le correcteur grammatical. Pour une installation par conteneur : Docker.
-- Environ 300 Mo de mémoire vive pour le serveur et son correcteur grammatical.
+- Un modèle de langage exposé par une API compatible OpenAI (vLLM, SGLang, Ollama, ou un fournisseur en ligne).
+- Docker, ou, pour une installation depuis les sources : [Bun](https://bun.sh), Node.js `^22.18`, `^24.11` ou `>=26`, [Rust](https://rustup.rs) (1.75 au moins) et `git`.
+- Environ 300 Mo de mémoire vive pour le serveur et son moteur de grammaire.
+
+## Avec Docker
+
+Une image prête à l'emploi est publiée à chaque version : `ghcr.io/willisback/grammaria`. Elle contient le serveur et le [moteur de grammaire](/docs/decouvrir/moteur/), sans autre conteneur à lancer.
+
+```bash
+docker run -d --name grammaria -p 25000:25000 \
+  -v "$(pwd)/data:/app/data" \
+  -e LLM_TARGET=http://votre-serveur-llm:11434 \
+  -e TZ=Europe/Paris \
+  ghcr.io/willisback/grammaria:latest
+```
+
+Le fichier Docker Compose, le fuseau horaire, la mémoire et le reverse proxy sont décrits dans [Déploiement Docker](/docs/exploiter/docker/).
+
+Pour construire l'image vous-même à partir du dépôt :
+
+```bash
+docker build -t grammaria .
+```
+
+La construction compile aussi le moteur de grammaire ; elle a besoin d'un accès à GitHub pour récupérer son code (dépôt public).
 
 ## Depuis les sources
 
@@ -23,7 +47,7 @@ cd Grammaria
 cp .env.example .env
 ```
 
-Renseignez au minimum `LLM_TARGET` dans `.env` (voir [Configuration](/docs/demarrer/configuration/)), puis :
+Renseignez au minimum `LLM_TARGET` dans `.env` (voir [Configuration](/docs/exploiter/configuration/)), puis :
 
 ```bash
 npm install
@@ -33,7 +57,7 @@ npm install
 npm run build
 ```
 
-Construisez le correcteur grammatical (moteur Rust grammaria-rc, récupéré à la version prévue et compilé en moins d'une minute ; binaire et données dans `moteur/`) :
+Construisez le moteur de grammaire. La commande récupère [grammaria-rc](https://github.com/WillIsback/grammaria-rc) à la version prévue et le compile en moins d'une minute ; le binaire et ses données vont dans `moteur/`.
 
 ```bash
 npm run build:moteur
@@ -43,26 +67,10 @@ npm run build:moteur
 bun run server.ts
 ```
 
-L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000). Le correcteur grammatical (moteur grammaria-rc, avec les règles françaises de [LanguageTool](https://languagetool.org)) est lancé par le serveur : aucun service supplémentaire n'est à lancer. Ses règles se chargent en arrière-plan au démarrage, en moins d'une seconde.
-
-## Avec Docker
-
-Construisez l'image à partir du dépôt :
-
-```bash
-docker build -t grammaria .
-```
-
-La construction compile aussi le correcteur grammatical ; elle a besoin d'un accès à GitHub pour récupérer son code (dépôt public).
-
-Lancez-la ensuite comme décrit dans [Déploiement Docker](/docs/exploiter/docker/).
-
-:::note
-Une image prête à l'emploi et un script `install.sh` sont publiés automatiquement à chaque version étiquetée du dépôt. Tant qu'aucune version n'est publiée, construisez l'image vous-même.
-:::
+L'application est ensuite accessible sur [http://localhost:25000](http://localhost:25000). Le serveur lance lui-même le moteur de grammaire, qui charge ses règles en arrière-plan en quelques secondes.
 
 ## Vérifier l'installation
 
 1. Ouvrez l'application, puis le menu **Paramètres** (bouton ⚙️ de l'en-tête) : le modèle détecté apparaît dans la rubrique **IA**, section **Modèle LLM**.
 2. Collez une phrase contenant une faute et cliquez sur **Corriger**.
-3. Le détail des corrections s'affiche sans le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. »
+3. Le détail des corrections s'affiche sans le message « Le correcteur grammatical est indisponible : l'analyse des fautes est partielle. » Si ce message apparaît, voir la [FAQ](/docs/reference/faq/#le-message--le-correcteur-grammatical-est-indisponible--saffiche).

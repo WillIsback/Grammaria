@@ -25,7 +25,7 @@ Les autres routes, dont `GET /v1/models`, sont relayées telles quelles au serve
 
 ### `POST /api/check`
 
-Analyse le texte avec le correcteur grammatical intégré (règles françaises de LanguageTool). L'interface l'appelle en parallèle de la correction par le modèle.
+Analyse le texte avec le [moteur de grammaire](/docs/decouvrir/moteur/) intégré (grammaria-rc). L'interface l'appelle en parallèle de la correction par le modèle.
 
 ```json
 { "text": "Les enfants était content." }
@@ -52,7 +52,7 @@ Analyse le texte avec le correcteur grammatical intégré (règles françaises d
 }
 ```
 
-Les détections suivent le format de LanguageTool. Erreurs : 400 si le JSON ou le corps est invalide, 405 pour une autre méthode que `POST`, 503 si le correcteur échoue.
+Les détections suivent le format JSON de LanguageTool, que le moteur reprend. Erreurs : 400 si le JSON ou le corps est invalide, 405 pour une autre méthode que `POST`, 503 si le correcteur échoue.
 
 ## Analyse et journal
 
@@ -68,7 +68,7 @@ Calcule le diff, le croise avec les détections, enregistre le résultat dans le
 }
 ```
 
-`matches` est le tableau renvoyé par `POST /api/check`. Chaque faute indique sa `source` : `fiche`, `lt` (LanguageTool) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
+`matches` est le tableau renvoyé par `POST /api/check`. Chaque faute indique sa `source` : `fiche`, `lt` (moteur de grammaire ; le nom vient de LanguageTool, dont le moteur reprend les règles) ou `accord` (déduit du diff). `original` et `corrected` sont limités à 20 000 caractères.
 
 Réponse :
 
