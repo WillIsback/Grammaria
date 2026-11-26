@@ -1,0 +1,581 @@
+---
+/**
+ * Démo interactive du correcteur, affichée sous le hero de la page d'accueil.
+ * Reproduit fidèlement l'interface de l'application (couleurs « brand » bleues du
+ * `vite.config.ts`) : en-tête, volets « Texte à corriger » / « Résultat corrigé »,
+ * et les événements de progression intégrés à l'UI. Le parcours se déroule en quatre
+ * étapes cliquables — Saisie, Correction, Réviser, Progression — jouables à la main
+ * ou en lecture automatique. Le thème (clair/sombre) suit celui du site (Starlight
+ * pose `data-theme` sur `<html>`). Aucune donnée réelle : scénario d'illustration.
+ */
+---
+
+<div class="gdemo" id="gdemo">
+  <p class="gd-cap">Aperçu de l'application · cliquez une étape, ou lancez la lecture ▶</p>
+
+  <div class="app">
+    <header class="hd">
+      <div class="hd-l">
+        <div class="logo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+        </div>
+        <div style="min-width:0">
+          <div class="brand-n">Grammaria</div>
+          <div class="brand-s">Correcteur intelligent</div>
+        </div>
+      </div>
+      <div class="hd-r">
+        <button class="ib" id="hp" aria-label="Progression" title="Progression">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
+        </button>
+        <button class="ib" aria-label="Paramètres" title="Paramètres" tabindex="-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="body">
+      <section class="pane">
+        <div class="pane-hd">
+          <div style="min-width:0"><h2>Texte à corriger</h2><p>Collez votre texte ci-dessous</p></div>
+          <span class="carcount tnum" id="carcount"></span>
+        </div>
+        <div class="box input"><div class="txt" id="input"></div></div>
+        <button class="corrbtn" id="corrbtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Corriger
+        </button>
+      </section>
+
+      <section class="pane out">
+        <div class="pane-hd">
+          <div style="min-width:0"><h2>Résultat corrigé</h2><p>Texte corrigé selon vos paramètres</p></div>
+          <div id="copyWrap"></div>
+        </div>
+        <div class="choice-slot" id="choiceSlot"></div>
+        <div class="box result" id="resultBox"></div>
+        <div class="analysis" id="analysis"></div>
+      </section>
+    </div>
+
+    <div class="badge-notice" id="badgeNotice">
+      <div class="bi">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="8" height="11" rx="2"/><rect x="13" y="6.5" width="8" height="11" rx="2"/><path d="M15 12.25l1.5 1.5 2.75-3"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="bt">Badge obtenu : Dix bons choix</div>
+        <div class="bd">Dix fois, vous avez choisi la bonne forme.</div>
+      </div>
+      <button class="x" id="badgeX" aria-label="Fermer">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="prog" id="prog">
+      <div class="prog-in">
+        <button class="prog-back" id="progBack">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Retour à la correction
+        </button>
+        <h2>Progression</h2>
+
+        <div class="prow">
+          <div class="card ring-card">
+            <svg width="62" height="62" viewBox="0 0 72 72" aria-hidden="true">
+              <circle cx="36" cy="36" r="29" fill="none" stroke="var(--line)" stroke-width="7"/>
+              <circle cx="36" cy="36" r="29" fill="none" stroke="var(--b500)" stroke-width="7" stroke-linecap="round"
+                stroke-dasharray="182.2" stroke-dashoffset="42" transform="rotate(-90 36 36)"/>
+              <text x="36" y="39" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">15,4</text>
+              <text x="36" y="50" text-anchor="middle" font-size="7.5" fill="var(--faint)">/ 20</text>
+            </svg>
+            <div>
+              <div class="k">Note moyenne · 30 j</div>
+              <div class="n tnum">15,4<span style="font-size:12px;color:var(--faint);font-weight:400">/20</span></div>
+              <div class="t">↓ moins de fautes : vous progressez</div>
+            </div>
+          </div>
+          <div class="card wk">
+            <div class="ct">Note moyenne · 8 dernières semaines</div>
+            <svg width="100%" height="62" viewBox="0 0 300 62" preserveAspectRatio="none" id="wkchart" aria-hidden="true"></svg>
+          </div>
+        </div>
+
+        <div class="cycle">
+          <div class="cy observee"><div class="cy-top"><span class="n tnum">7</span><span class="sym">○</span></div><div class="l">Observées</div><div class="s">faute vue, sans intervention</div></div>
+          <div class="cy signalee"><div class="cy-top"><span class="n tnum">3</span><span class="sym">!</span></div><div class="l">Signalées</div><div class="s">astuce proposée</div></div>
+          <div class="cy travaillee"><div class="cy-top"><span class="n tnum">2</span><span class="sym">●</span></div><div class="l">Travaillées</div><div class="s">choix sur Copier</div></div>
+          <div class="cy acquise"><div class="cy-top"><span class="n tnum">5</span><span class="sym">✓</span></div><div class="l">Acquises</div><div class="s">14 jours sans faute</div></div>
+        </div>
+
+        <p class="bg-title">Badges</p>
+        <div class="badges" id="badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-row">
+      <button class="play" id="play" aria-label="Lecture"><svg id="playicon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="navbtn" id="prev" aria-label="Précédent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="navbtn" id="next" aria-label="Suivant"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      <div class="steps" id="steps"></div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+</div>
+
+<style is:global>
+  /* Démo du correcteur — tout est scopé sous .gdemo ; thème piloté par data-theme du site. */
+  .gdemo {
+    --b50:#eff6ff; --b100:#dbeafe; --b200:#bfdbfe; --b300:#93c5fd; --b400:#60a5fa;
+    --b500:#3b82f6; --b600:#2563eb; --b700:#1d4ed8; --b800:#1e40af; --b900:#1e3a5f;
+    --g50:#f9fafb; --g100:#f3f4f6; --g200:#e5e7eb; --g300:#d1d5db; --g400:#9ca3af;
+    --g500:#6b7280; --g600:#4b5563; --g700:#374151; --g800:#1f2937; --g900:#111827; --g950:#030712;
+    --em50:#ecfdf5; --em100:#d1fae5; --em400:#34d399; --em500:#10b981; --em600:#059669; --em700:#047857; --em900:#064e3b;
+    --am50:#fffbeb; --am100:#fef3c7; --am400:#fbbf24; --am500:#f59e0b; --am700:#b45309; --am800:#92400e;
+    --red:#ef4444;
+
+    --page:#eceff4; --panel:#ffffff; --input:#fcfdfe;
+    --ink:var(--g900); --ink2:var(--g500); --faint:#9aa3b2; --line:#e7eaf0; --line-soft:#eff2f6;
+    --brand-text:var(--b600); --em-text:var(--em700); --red-text:var(--red);
+    --neutral-bg:#eff6ff; --neutral-bd:#dbeafe; --neutral-tx:var(--g700);
+    --success-bg:#ecfdf5; --success-bd:#c7f0dd; --success-tx:var(--em900);
+    --sh-soft:0 1px 2px rgba(16,24,40,.05);
+    --sh-card:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
+    --sh-app:0 10px 30px -14px rgba(16,24,40,.22),0 2px 8px rgba(16,24,40,.06);
+    --sh-pop:0 10px 30px -10px rgba(16,24,40,.3);
+    --head:rgba(255,255,255,.85);
+    color-scheme: light;
+
+    max-width: 860px; margin: 1.5rem auto 0;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 13px; line-height: 1.5; text-align: left;
+  }
+  .gdemo, .gdemo * { box-sizing: border-box; }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) .gdemo {
+      --page:#0b0f16; --panel:#141b26; --input:#0f1621;
+      --ink:#eef2f8; --ink2:#9aa6b8; --faint:#6b7891; --line:#263040; --line-soft:#1d2635;
+      --brand-text:var(--b400); --em-text:var(--em400); --red-text:#f87171;
+      --neutral-bg:rgba(59,130,246,.12); --neutral-bd:rgba(59,130,246,.26); --neutral-tx:#e2e9f4;
+      --success-bg:rgba(16,185,129,.12); --success-bd:rgba(16,185,129,.28); --success-tx:#d6f5e8;
+      --sh-soft:0 1px 2px rgba(0,0,0,.4); --sh-card:0 1px 3px rgba(0,0,0,.4);
+      --sh-app:0 14px 36px -14px rgba(0,0,0,.65); --sh-pop:0 12px 30px -8px rgba(0,0,0,.65);
+      --head:rgba(20,27,38,.85);
+      color-scheme: dark;
+    }
+  }
+  html[data-theme="dark"] .gdemo {
+    --page:#0b0f16; --panel:#141b26; --input:#0f1621;
+    --ink:#eef2f8; --ink2:#9aa6b8; --faint:#6b7891; --line:#263040; --line-soft:#1d2635;
+    --brand-text:var(--b400); --em-text:var(--em400); --red-text:#f87171;
+    --neutral-bg:rgba(59,130,246,.12); --neutral-bd:rgba(59,130,246,.26); --neutral-tx:#e2e9f4;
+    --success-bg:rgba(16,185,129,.12); --success-bd:rgba(16,185,129,.28); --success-tx:#d6f5e8;
+    --sh-soft:0 1px 2px rgba(0,0,0,.4); --sh-card:0 1px 3px rgba(0,0,0,.4);
+    --sh-app:0 14px 36px -14px rgba(0,0,0,.65); --sh-pop:0 12px 30px -8px rgba(0,0,0,.65);
+    --head:rgba(20,27,38,.85);
+    color-scheme: dark;
+  }
+
+  .gdemo button { font: inherit; cursor: pointer; }
+  .gdemo .tnum { font-variant-numeric: tabular-nums; }
+  .gdemo .gd-cap { text-align: center; margin: 0 0 .7rem; font-size: 11.5px; color: var(--faint); }
+
+  .gdemo .app { position: relative; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 15px; overflow: hidden; box-shadow: var(--sh-app); color: var(--ink); }
+
+  .gdemo .hd { display: flex; justify-content: space-between; align-items: center; gap: .6rem;
+    height: 54px; padding: 0 .8rem; background: var(--head); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line); position: relative; z-index: 5; }
+  .gdemo .hd-l { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+  .gdemo .logo { width: 28px; height: 28px; border-radius: 9px; flex: none;
+    background: linear-gradient(135deg, var(--b500), var(--b600));
+    display: grid; place-items: center; box-shadow: 0 2px 7px rgba(59,130,246,.4); color: #fff; }
+  .gdemo .brand-n { font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); }
+  .gdemo .brand-s { font-size: 10px; color: var(--faint); font-weight: 500; }
+  .gdemo .hd-r { display: flex; align-items: center; gap: 2px; }
+  .gdemo .ib { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+    color: var(--ink2); background: transparent; border: 0; transition: all .15s; }
+  .gdemo .ib:hover { background: var(--line-soft); color: var(--ink); }
+  .gdemo .ib.on { background: var(--b50); color: var(--brand-text); }
+  html[data-theme="dark"] .gdemo .ib.on { background: rgba(59,130,246,.16); }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .gdemo .ib.on { background: rgba(59,130,246,.16); } }
+
+  .gdemo .body { display: grid; grid-template-columns: 1fr 1fr; height: 332px; }
+  .gdemo .pane { padding: .8rem .85rem; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .gdemo .pane.out { border-left: 1px solid var(--line); }
+  .gdemo .pane-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; min-height: 2rem; }
+  .gdemo .pane-hd h2 { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); border: 0; padding: 0; }
+  .gdemo .pane-hd p { margin: 1px 0 0; font-size: 10.5px; color: var(--faint); }
+  .gdemo .carcount { font-size: 10.5px; color: var(--faint); white-space: nowrap; }
+
+  .gdemo .box { border-radius: 12px; border: 1px solid var(--line); background: var(--input);
+    box-shadow: var(--sh-soft); padding: .7rem .8rem; font-size: 13px; line-height: 1.65; }
+  .gdemo .box.input { flex: 1; }
+  .gdemo .box.result { flex: none; height: 92px; overflow: hidden; background: var(--panel); }
+  .gdemo .txt { color: var(--ink); white-space: pre-wrap; }
+  .gdemo .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .55rem; text-align: center; }
+  .gdemo .empty .ic { width: 42px; height: 42px; border-radius: 12px; background: var(--b50); color: var(--b400); display: grid; place-items: center; }
+  html[data-theme="dark"] .gdemo .empty .ic { background: rgba(59,130,246,.1); }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .gdemo .empty .ic { background: rgba(59,130,246,.1); } }
+  .gdemo .empty p { margin: 0; font-size: 11.5px; color: var(--faint); }
+  .gdemo .tok { border-radius: 4px; transition: background .4s, color .4s; }
+  .gdemo .tok.hl { background: var(--b100); color: var(--brand-text); padding: 0 2px; }
+  html[data-theme="dark"] .gdemo .tok.hl { background: rgba(59,130,246,.22); }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .gdemo .tok.hl { background: rgba(59,130,246,.22); } }
+  .gdemo .tok.reveal { opacity: 0; }
+  .gdemo .tok.reveal.show { opacity: 1; transition: opacity .16s; }
+
+  .gdemo .copybtn { border: 1px solid var(--line); background: transparent; color: var(--ink2); font-size: 11.5px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .5rem; border-radius: 8px; }
+  .gdemo .copybtn:hover { background: var(--line-soft); color: var(--ink); }
+  .gdemo .copybtn.done { color: var(--em-text); border-color: transparent; background: transparent; }
+
+  .gdemo .corrbtn { margin-top: .6rem; align-self: flex-end; border: 0; border-radius: 10px;
+    background: var(--b600); color: #fff; font-size: 12.5px; font-weight: 600;
+    padding: .5rem .95rem; display: inline-flex; align-items: center; gap: .4rem; box-shadow: 0 2px 7px rgba(37,99,235,.3); transition: all .15s; }
+  .gdemo .corrbtn:hover { background: var(--b700); }
+  .gdemo .spin { width: 13px; height: 13px; animation: gd-spin 1s linear infinite; }
+  @keyframes gd-spin { to { transform: rotate(360deg); } }
+
+  .gdemo .choice-slot { margin-bottom: .55rem; }
+  .gdemo .cb { border: 1px solid var(--neutral-bd); background: var(--neutral-bg); border-radius: 11px; padding: .55rem .65rem; animation: gd-pop .3s ease; }
+  @keyframes gd-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .gdemo .cb .cq { font-size: 11.5px; color: var(--neutral-tx); line-height: 1.45; margin-bottom: .45rem; }
+  .gdemo .cb .cq b { color: var(--ink); font-weight: 600; }
+  .gdemo .cb .cq .ctx { color: var(--ink2); }
+  .gdemo .cbtns { display: flex; gap: .4rem; }
+  .gdemo .cbtn { flex: 1; border: 1px solid var(--b200); background: var(--panel); color: var(--brand-text);
+    font-size: 16px; font-weight: 600; padding: .38rem; border-radius: 9px; transition: all .15s; }
+  .gdemo .cbtn:hover { border-color: var(--b500); background: var(--b50); }
+  html[data-theme="dark"] .gdemo .cbtn:hover { background: rgba(59,130,246,.14); }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .gdemo .cbtn:hover { background: rgba(59,130,246,.14); } }
+  .gdemo .cbtn.right { background: var(--b600); color: #fff; border-color: var(--b600); }
+  .gdemo .cbtn.wrong { opacity: .4; }
+  .gdemo .cb.resolved { border-color: var(--success-bd); background: var(--success-bg); }
+  .gdemo .cb.resolved .cq { color: var(--success-tx); }
+  .gdemo .cb.resolved .cq b { color: var(--em-text); }
+
+  .gdemo .analysis { flex: 1; overflow-y: auto; overscroll-behavior: contain; margin-top: .6rem; padding-right: 2px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .gdemo .analysis::-webkit-scrollbar { width: 6px; }
+  .gdemo .analysis::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+  .gdemo .analyse-line { display: flex; align-items: center; gap: .45rem; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); }
+
+  .gdemo .stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .gdemo .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: .5rem .6rem; box-shadow: var(--sh-soft); }
+  .gdemo .stat .lab { display: flex; align-items: center; gap: .3rem; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin-bottom: .15rem; }
+  .gdemo .stat .val { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .gdemo .stat .val.brand { color: var(--brand-text); }
+  .gdemo .stat .val .u { font-size: 11px; font-weight: 400; color: var(--faint); margin-left: 2px; }
+
+  .gdemo .corr { margin-top: .6rem; }
+  .gdemo .corr-h { display: flex; align-items: center; gap: .4rem; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin-bottom: .4rem; }
+  .gdemo .corr-list { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: var(--panel); box-shadow: var(--sh-soft); }
+  .gdemo .corr-row { padding: .45rem .6rem; border-top: 1px solid var(--line-soft); }
+  .gdemo .corr-row:first-child { border-top: 0; }
+  .gdemo .corr-grid { display: grid; grid-template-columns: auto auto auto 1fr; align-items: baseline; gap: .4rem; font-size: 11.5px; }
+  .gdemo .corr-grid .av { color: var(--red-text); text-decoration: line-through; font-family: ui-monospace, Menlo, monospace; }
+  .gdemo .corr-grid .arr { color: var(--faint); }
+  .gdemo .corr-grid .ap { color: var(--em-text); font-family: ui-monospace, Menlo, monospace; }
+  .gdemo .corr-grid .rg { font-size: 10px; color: var(--faint); font-style: italic; text-align: right; }
+  .gdemo .corr-tip { margin-top: .25rem; font-size: 10.5px; color: var(--ink2); line-height: 1.4; }
+
+  .gdemo .score-line { margin-top: .6rem; font-size: 10.5px; color: var(--ink2); }
+  .gdemo .score-line b { color: var(--ink); font-weight: 600; }
+
+  .gdemo .iv-success { margin-top: .55rem; padding: .5rem .6rem; border-radius: 10px; font-size: 11px; line-height: 1.45;
+    background: var(--success-bg); border: 1px solid var(--success-bd); color: var(--success-tx); }
+  .gdemo .iv-success b { color: var(--em-text); font-weight: 600; }
+
+  .gdemo .badge-notice { position: absolute; left: .8rem; bottom: .8rem; width: 19rem; max-width: calc(100% - 1.6rem); z-index: 30;
+    display: flex; gap: .55rem; align-items: flex-start; padding: .6rem .65rem; border-radius: 13px;
+    background: var(--panel); border: 1px solid var(--neutral-bd); box-shadow: var(--sh-pop);
+    opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .3s, transform .3s; }
+  .gdemo .badge-notice.show { opacity: 1; transform: none; pointer-events: auto; }
+  .gdemo .badge-notice .bi { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--b600); color: #fff; display: grid; place-items: center; }
+  .gdemo .badge-notice .bt { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .gdemo .badge-notice .bd { margin-top: 1px; font-size: 10.5px; color: var(--ink2); line-height: 1.45; }
+  .gdemo .badge-notice .x { margin-left: auto; width: 20px; height: 20px; border-radius: 6px; border: 0; background: transparent; color: var(--faint); display: grid; place-items: center; }
+  .gdemo .badge-notice .x:hover { background: var(--line-soft); color: var(--ink); }
+
+  .gdemo .prog { position: absolute; inset: 54px 0 0; background: var(--page); z-index: 20; overflow-y: auto;
+    opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .gdemo .prog.show { opacity: 1; pointer-events: auto; }
+  .gdemo .prog-in { padding: .65rem 1rem .8rem; }
+  .gdemo .prog-back { display: inline-flex; align-items: center; gap: .35rem; font-size: 11.5px; font-weight: 500; color: var(--ink2); background: transparent; border: 0; margin-bottom: .5rem; }
+  .gdemo .prog-back:hover { color: var(--ink); }
+  .gdemo .prog h2 { margin: 0 0 .55rem; font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); border: 0; padding: 0; }
+  .gdemo .prow { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: stretch; margin-bottom: .5rem; }
+  .gdemo .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh-card); padding: .6rem .7rem; }
+  .gdemo .ring-card { display: flex; align-items: center; gap: .7rem; }
+  .gdemo .ring-card .k { font-size: 9.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+  .gdemo .ring-card .n { font-size: 19px; font-weight: 700; color: var(--ink); }
+  .gdemo .ring-card .t { font-size: 10.5px; margin-top: .15rem; color: var(--em-text); font-weight: 600; }
+  .gdemo .wk .ct { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin-bottom: .5rem; }
+
+  .gdemo .cycle { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin-bottom: .55rem; }
+  .gdemo .cy { border-radius: 11px; padding: .55rem .6rem; border: 1px solid var(--line); background: var(--panel); }
+  .gdemo .cy-top { display: flex; align-items: center; justify-content: space-between; }
+  .gdemo .cy .sym { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .gdemo .cy .n { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .gdemo .cy .l { font-size: 11px; font-weight: 600; color: var(--ink); margin-top: .2rem; }
+  .gdemo .cy .s { font-size: 9.5px; color: var(--ink2); margin-top: .1rem; line-height: 1.35; }
+  .gdemo .cy.observee .sym { background: var(--g100); color: var(--g600); }
+  .gdemo .cy.signalee .sym { background: var(--am100); color: var(--am700); }
+  .gdemo .cy.travaillee .sym { background: var(--b100); color: var(--b700); }
+  .gdemo .cy.acquise .sym { background: var(--em100); color: var(--em700); }
+  html[data-theme="dark"] .gdemo .cy.observee .sym { background: rgba(255,255,255,.08); color: var(--g300); }
+  html[data-theme="dark"] .gdemo .cy.signalee .sym { background: rgba(245,158,11,.18); color: var(--am400); }
+  html[data-theme="dark"] .gdemo .cy.travaillee .sym { background: rgba(59,130,246,.2); color: var(--b400); }
+  html[data-theme="dark"] .gdemo .cy.acquise .sym { background: rgba(16,185,129,.2); color: var(--em400); }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) .gdemo .cy.observee .sym { background: rgba(255,255,255,.08); color: var(--g300); }
+    html:not([data-theme="light"]) .gdemo .cy.signalee .sym { background: rgba(245,158,11,.18); color: var(--am400); }
+    html:not([data-theme="light"]) .gdemo .cy.travaillee .sym { background: rgba(59,130,246,.2); color: var(--b400); }
+    html:not([data-theme="light"]) .gdemo .cy.acquise .sym { background: rgba(16,185,129,.2); color: var(--em400); }
+  }
+
+  .gdemo .bg-title { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin: 0 0 .5rem; }
+  .gdemo .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: .45rem; }
+  .gdemo .bchip { display: flex; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: 11px; padding: .45rem .55rem; background: var(--panel); }
+  .gdemo .bchip .ic { width: 28px; height: 28px; flex: none; border-radius: 8px; display: grid; place-items: center; }
+  .gdemo .bchip.got .ic { background: var(--b600); color: #fff; }
+  .gdemo .bchip.todo .ic { background: var(--line-soft); color: var(--faint); }
+  .gdemo .bchip .bn { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+  .gdemo .bchip .bs { font-size: 9.5px; color: var(--faint); }
+  .gdemo .bchip.just { border-color: var(--b400); box-shadow: 0 0 0 2px rgba(59,130,246,.14); }
+
+  .gdemo .ctrl { margin-top: .75rem; }
+  .gdemo .ctrl-row { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+  .gdemo .steps { display: flex; gap: .35rem; flex: 1; min-width: 0; flex-wrap: wrap; }
+  .gdemo .step { display: flex; align-items: center; gap: .35rem; padding: .3rem .55rem; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink2); font-size: 11.5px; font-weight: 500; transition: all .15s; }
+  .gdemo .step:hover { border-color: var(--b300); color: var(--ink); }
+  .gdemo .step .num { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; background: var(--line-soft); color: var(--ink2); transition: all .15s; }
+  .gdemo .step.active { border-color: var(--b500); background: var(--b50); color: var(--brand-text); }
+  html[data-theme="dark"] .gdemo .step.active { background: rgba(59,130,246,.12); }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) .gdemo .step.active { background: rgba(59,130,246,.12); } }
+  .gdemo .step.active .num, .gdemo .step.done .num { background: var(--b600); color: #fff; }
+  .gdemo .play { width: 34px; height: 34px; flex: none; border-radius: 9px; border: 0; background: var(--b600); color: #fff; display: grid; place-items: center; box-shadow: 0 2px 7px rgba(37,99,235,.3); }
+  .gdemo .play:hover { background: var(--b700); }
+  .gdemo .navbtn { width: 30px; height: 30px; flex: none; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink2); display: grid; place-items: center; }
+  .gdemo .navbtn:hover { border-color: var(--b300); color: var(--ink); }
+  .gdemo .hint { margin-top: .5rem; font-size: 10.5px; color: var(--faint); min-height: 1.3em; }
+
+  @media (max-width: 680px) {
+    .gdemo .body { grid-template-columns: 1fr; height: auto; }
+    .gdemo .pane { height: 300px; }
+    .gdemo .pane.out { border-top: 1px solid var(--line); border-left: 0; }
+  }
+  @media (max-width: 560px) {
+    .gdemo .prow { grid-template-columns: 1fr; }
+    .gdemo .cycle { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gdemo *, .gdemo *::before, .gdemo *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+
+<script>
+  function initGrammariaDemo() {
+    const root = document.getElementById("gdemo");
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = "1";
+
+    const SRC = "Il faut que tu sache que ces erreurs, on les refais tout le temps a l'écrit.";
+    const OUT = [
+      {w:"Il"},{w:" "},{w:"faut"},{w:" "},{w:"que"},{w:" "},{w:"tu"},{w:" "},
+      {w:"saches",c:1},{w:" "},{w:"que"},{w:" "},{w:"ses",c:1},{w:" "},{w:"erreurs,"},{w:" "},
+      {w:"on"},{w:" "},{w:"les"},{w:" "},{w:"refait",c:1},{w:" "},{w:"tout"},{w:" "},
+      {w:"le"},{w:" "},{w:"temps"},{w:" "},{w:"à",c:1},{w:" "},{w:"l'écrit."}
+    ];
+    const CORRECTIONS = [
+      {av:"sache", ap:"saches", rg:"Subjonctif présent", tip:"Après « il faut que », le verbe passe au subjonctif : « que tu saches »."},
+      {av:"ces", ap:"ses", rg:"Confusion ces / ses", tip:null},
+      {av:"refais", ap:"refait", rg:"Accord avec « on »", tip:null},
+      {av:"a", ap:"à", rg:"Confusion a / à", tip:"« à » (préposition) ≠ « a » (verbe avoir). Test : « avait » ne marche pas ici."}
+    ];
+    const STATS = { ms: 487, count: 4 };
+    const SCORE = { text: 13, week: "15,4", texts: 28 };
+    const CHOIX = { avant: "on les refait tout le temps", apres: "l'écrit", bonne: "à", mauvaise: "a" };
+    const WEEKS = [12.0, 11.4, 13.1, 12.8, 14.0, 14.6, 15.0, 15.4];
+
+    const STEPS = [
+      {id:"saisie",     label:"Saisie",      hint:"Vous collez votre texte, puis « Corriger » lance le modèle de langage que vous avez choisi."},
+      {id:"correction", label:"Correction",  hint:"Le texte corrigé s'écrit à mesure et se copie ; le moteur nomme chaque faute, les compte et donne une note sur 20."},
+      {id:"reviser",    label:"Réviser",     hint:"Une faute qui revient (a/à) : un choix entre deux formes au-dessus du résultat ; la bonne réponse fait progresser la règle vers « acquise »."},
+      {id:"progression",label:"Progression", hint:"Un badge salue le progrès, et l'écran Progression montre note moyenne, tendance, cycle des règles et badges."}
+    ];
+    const S = { SAISIE:0, CORRECTION:1, REVISER:2, PROG:3 };
+
+    const $ = (s) => root.querySelector(s);
+    const el = { input:$("#input"), carcount:$("#carcount"), result:$("#resultBox"),
+      choiceSlot:$("#choiceSlot"), analysis:$("#analysis"), copyWrap:$("#copyWrap"),
+      corrbtn:$("#corrbtn"), badge:$("#badgeNotice"), prog:$("#prog"), hp:$("#hp"),
+      steps:$("#steps"), hint:$("#hint"), play:$("#play"), playicon:$("#playicon") };
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let stage = 0, playing = false, timers = [], resolved = false;
+    const after = (ms, fn) => timers.push(setTimeout(fn, ms));
+    const clearT = () => { timers.forEach(clearTimeout); timers = []; };
+    const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+    function outputHTML(revealCount) {
+      return OUT.map((t,i) => {
+        const shown = revealCount === null || i < revealCount;
+        const cls = "tok" + (revealCount===null ? "" : " reveal") + (shown ? " show" : "") + (t.c && shown ? " hl" : "");
+        return `<span class="${cls}">${esc(t.w)}</span>`;
+      }).join("");
+    }
+    const emptyResult = `<div class="empty"><div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><p>Le texte corrigé apparaîtra ici</p></div>`;
+
+    function copyHTML(done) {
+      return done
+        ? `<span class="copybtn done"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Copié</span>`
+        : `<button class="copybtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copier</button>`;
+    }
+
+    function choiceBannerHTML(state) {
+      if (state === "ask") {
+        return `<div class="cb"><div class="cq"><b>Cette faute revient.</b> Laquelle écrire ? <span class="ctx">« …tout le temps ___ ${esc(CHOIX.apres)} »</span></div>
+          <div class="cbtns"><button class="cbtn" data-f="a">${CHOIX.mauvaise}</button><button class="cbtn" data-f="à">${CHOIX.bonne}</button></div></div>`;
+      }
+      return `<div class="cb resolved"><div class="cq"><b>« à » — c'est juste.</b> Préposition, pas le verbe avoir. Texte copié.</div>
+        <div class="cbtns"><button class="cbtn wrong" disabled>${CHOIX.mauvaise}</button><button class="cbtn right" disabled>${CHOIX.bonne} ✓</button></div></div>`;
+    }
+
+    function analysisHTML(opts) {
+      opts = opts || {};
+      const stats = `<div class="stats">
+        <div class="stat"><div class="lab"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Temps</div><div class="val tnum">${STATS.ms}<span class="u">ms</span></div></div>
+        <div class="stat"><div class="lab" style="color:var(--brand-text)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Corrections</div><div class="val brand tnum">${STATS.count}</div></div>
+      </div>`;
+      const rows = CORRECTIONS.map((c) => `<div class="corr-row"><div class="corr-grid">
+          <span class="av">${esc(c.av)}</span><span class="arr">→</span><span class="ap">${esc(c.ap)}</span><span class="rg">${esc(c.rg)}</span>
+        </div>${c.tip?`<p class="corr-tip">${esc(c.tip)}</p>`:""}</div>`).join("");
+      const corr = `<div class="corr"><div class="corr-h">Corrections (${CORRECTIONS.length})</div><div class="corr-list">${rows}</div></div>`;
+      const score = `<p class="score-line tnum">Note de ce texte : <b>${SCORE.text}/20</b> · Moyenne 7 j : <b>${SCORE.week}/20</b> (${SCORE.texts} textes)</p>`;
+      const success = opts.success ? `<div class="iv-success"><b>Règle acquise : « a / à ».</b> Plus aucune faute depuis 14 jours, bravo !</div>` : "";
+      return success + stats + corr + score;
+    }
+
+    function render(s, opts) {
+      opts = opts || {};
+      const animate = !!opts.animate && !reduce;
+      el.prog.classList.toggle("show", s === S.PROG);
+      el.hp.classList.toggle("on", s === S.PROG);
+      el.badge.classList.toggle("show", s === S.PROG);
+      el.corrbtn.style.visibility = (s === S.SAISIE) ? "visible" : "hidden";
+
+      if (s === S.SAISIE) {
+        el.result.innerHTML = emptyResult;
+        el.choiceSlot.innerHTML = "";
+        el.analysis.innerHTML = "";
+        el.copyWrap.innerHTML = "";
+        return;
+      }
+
+      if (s === S.CORRECTION && animate) {
+        streamOutput();
+        el.copyWrap.innerHTML = "";
+        el.analysis.innerHTML = `<div class="analyse-line"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="var(--b500)" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"/></svg>Analyse…</div>`;
+        after(OUT.length*85 + 500, () => { if (stage===S.CORRECTION) { el.copyWrap.innerHTML = copyHTML(true); el.analysis.innerHTML = analysisHTML(); } });
+      } else {
+        el.result.innerHTML = outputHTML(null);
+        el.copyWrap.innerHTML = copyHTML(true);
+      }
+
+      if (s === S.CORRECTION) {
+        el.choiceSlot.innerHTML = "";
+        if (!animate) el.analysis.innerHTML = analysisHTML();
+      } else if (s === S.REVISER) {
+        el.choiceSlot.innerHTML = choiceBannerHTML(resolved ? "resolved" : "ask");
+        el.analysis.innerHTML = analysisHTML({success: resolved});
+        if (!resolved) wireForms();
+      } else if (s === S.PROG) {
+        el.choiceSlot.innerHTML = choiceBannerHTML("resolved");
+        el.analysis.innerHTML = analysisHTML({success:true});
+      }
+      el.analysis.scrollTop = 0;
+    }
+
+    function streamOutput() {
+      el.result.innerHTML = outputHTML(0);
+      const spans = Array.prototype.slice.call(el.result.querySelectorAll(".tok"));
+      spans.forEach((sp,i) => after(100 + i*85, () => { sp.classList.add("show"); if (OUT[i].c) sp.classList.add("hl"); }));
+    }
+    function wireForms() {
+      el.choiceSlot.querySelectorAll(".cbtn").forEach((b) =>
+        b.addEventListener("click", () => { if (stage===S.REVISER && !resolved) resolveReviser(); }));
+    }
+    function resolveReviser() { resolved = true; render(S.REVISER); syncSteps(); }
+
+    function buildSteps() {
+      el.steps.innerHTML = STEPS.map((st,i) => `<button class="step" data-s="${i}"><span class="num">${i+1}</span>${st.label}</button>`).join("");
+      el.steps.querySelectorAll(".step").forEach((b) => b.addEventListener("click", () => { stop(); go(+b.dataset.s,{animate:true}); }));
+    }
+    function syncSteps() {
+      el.steps.querySelectorAll(".step").forEach((b,i) => { b.classList.toggle("active", i===stage); b.classList.toggle("done", i<stage); });
+      el.hint.textContent = STEPS[stage].hint;
+    }
+    function go(s, opts) { clearT(); stage = Math.max(0, Math.min(STEPS.length-1, s)); if (stage===S.REVISER) resolved=false; render(stage, opts); syncSteps(); }
+
+    const DWELL = [2200, 4200, 4200, 3600];
+    function scheduleNext() {
+      if (!playing) return;
+      if (stage === S.REVISER && !resolved) after(1800, () => { if (playing && stage===S.REVISER && !resolved) resolveReviser(); });
+      after(DWELL[stage], () => {
+        if (!playing) return;
+        if (stage >= STEPS.length-1) { stop(); return; }
+        stage += 1; if (stage===S.REVISER) resolved=false; render(stage,{animate:true}); syncSteps(); scheduleNext();
+      });
+    }
+    function setPlayIcon() { el.playicon.innerHTML = playing ? `<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>` : `<path d="M8 5v14l11-7z"/>`; }
+    function start() { playing = true; setPlayIcon(); const from = (stage>=STEPS.length-1)?0:stage; go(from,{animate:true}); scheduleNext(); }
+    function stop() { playing = false; clearT(); setPlayIcon(); }
+
+    el.play.addEventListener("click", () => playing ? stop() : start());
+    $("#prev").addEventListener("click", () => { stop(); go(stage-1,{animate:true}); });
+    $("#next").addEventListener("click", () => { stop(); go(stage+1,{animate:true}); });
+    el.corrbtn.addEventListener("click", () => { stop(); go(S.CORRECTION,{animate:true}); });
+    el.hp.addEventListener("click", () => { stop(); go(stage===S.PROG ? S.CORRECTION : S.PROG, {animate:true}); });
+    $("#progBack").addEventListener("click", () => { stop(); go(S.CORRECTION,{animate:true}); });
+    $("#badgeX").addEventListener("click", () => el.badge.classList.remove("show"));
+
+    el.input.textContent = SRC;
+    el.carcount.textContent = SRC.length + " car.";
+    (function weekly(){
+      const svg = $("#wkchart"), W=300, H=62, n=WEEKS.length, bw=24, gap=(W-n*bw)/(n+1), min=10, max=20;
+      svg.innerHTML = WEEKS.map((v,i) => {
+        const x = gap + i*(bw+gap), h = (v-min)/(max-min)*(H-10), y = H-h, last = i===n-1;
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="4" fill="${last?'var(--b600)':'var(--b300)'}"/>`;
+      }).join("");
+    })();
+    const GAL = [
+      {got:true, m:"textes", n:"Premier texte", s:"obtenu"},
+      {got:true, m:"jours", n:"Dix textes", s:"obtenu"},
+      {got:true, just:true, m:"reponsesJustes", n:"Dix bons choix", s:"à l'instant"},
+      {got:false, m:"noteMoyenne", n:"Plume sûre", s:"moy. ≥ 18"}
+    ];
+    const BICON = {
+      textes:`<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5"/>`,
+      jours:`<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9.5 15l1.75 1.75L14.5 13.5"/>`,
+      reponsesJustes:`<rect x="3" y="6.5" width="8" height="11" rx="2"/><rect x="13" y="6.5" width="8" height="11" rx="2"/><path d="M15 12.25l1.5 1.5 2.75-3"/>`,
+      noteMoyenne:`<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l3.5-4.5"/><path d="M6.5 17h.01M17.5 17h.01"/>`
+    };
+    $("#badges").innerHTML = GAL.map((g) => `<div class="bchip ${g.got?'got':'todo'} ${g.just?'just':''}">
+      <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${BICON[g.m]}</svg></div>
+      <div style="min-width:0"><div class="bn">${g.n}</div><div class="bs">${g.s}</div></div></div>`).join("");
+
+    buildSteps();
+    go(0); // figé sur Saisie
+  }
+
+  if (document.readyState !== "loading") initGrammariaDemo();
+  else document.addEventListener("DOMContentLoaded", initGrammariaDemo);
+  // Navigation interne Starlight (vues sans rechargement) : ré-initialise si besoin.
+  document.addEventListener("astro:page-load", initGrammariaDemo);
+</script>
