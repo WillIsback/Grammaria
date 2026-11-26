@@ -152,6 +152,10 @@
     font-size: 13px; line-height: 1.5; text-align: left;
   }
   .gdemo, .gdemo * { box-sizing: border-box; }
+  /* Neutralise la rythmique verticale de Starlight qui s'infiltre dans le composant
+     (sinon un faux espacement se glisse entre les éléments, ex. le sous-titre de l'en-tête). */
+  .gdemo p, .gdemo div, .gdemo h2, .gdemo h3, .gdemo span,
+  .gdemo section, .gdemo header, .gdemo ul, .gdemo li, .gdemo button { margin: 0; }
 
   @media (prefers-color-scheme: dark) {
     html:not([data-theme="light"]) .gdemo {
