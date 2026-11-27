@@ -22,6 +22,30 @@ import GrammariaDemo from "../components/GrammariaDemo.astro";
 >
   <GrammariaDemo />
 
+  <section class="bench" aria-label="Performance du moteur">
+    <ul class="bench-grid">
+      <li class="bench-stat">
+        <span class="bench-n">0,5 s</span>
+        <span class="bench-k">Démarrage du moteur</span>
+        <span class="bench-vs">LanguageTool&nbsp;6.9 : 4,3&nbsp;s</span>
+      </li>
+      <li class="bench-stat">
+        <span class="bench-n">86,4 %</span>
+        <span class="bench-k">Fautes trouvées</span>
+        <span class="bench-vs">LanguageTool&nbsp;6.9 : 76,4&nbsp;%</span>
+      </li>
+      <li class="bench-stat">
+        <span class="bench-n">~235 Mio</span>
+        <span class="bench-k">Mémoire du moteur</span>
+        <span class="bench-vs">LanguageTool&nbsp;6.9 : ~930&nbsp;Mio</span>
+      </li>
+    </ul>
+    <p class="bench-link">
+      Moteur maison <strong>grammaria-rc</strong> (Rust), mesuré sur la même machine.
+      <a href="/docs/decouvrir/moteur/">Mesures complètes et méthode →</a>
+    </p>
+  </section>
+
   <div class="hero-badges">
     <a class="badge badge-beta" href="/docs/decouvrir/beta/">Version bêta</a>
     <span class="badge">Open source · GPL-3.0</span>
@@ -184,6 +208,72 @@ import GrammariaDemo from "../components/GrammariaDemo.astro";
     max-width: 40rem;
   }
   .beta-note a {
+    white-space: nowrap;
+  }
+
+  /* ── Benchmark moteur ─────────────────────────────────────── */
+  .bench {
+    margin: 1.75rem auto 0;
+    max-width: 860px;
+  }
+  .bench-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  @media (max-width: 560px) {
+    .bench-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .bench-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 0.85rem 1rem;
+  }
+  :global([data-theme="dark"]) .bench-stat {
+    background: #1e1e2e;
+    border-color: #2d2d3f;
+  }
+  .bench-n {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #4f46e5;
+    font-variant-numeric: tabular-nums;
+  }
+  :global([data-theme="dark"]) .bench-n {
+    color: #a5b4fc;
+  }
+  .bench-k {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--sl-color-white);
+    margin-top: 0.15rem;
+  }
+  .bench-vs {
+    font-size: 0.72rem;
+    color: var(--sl-color-gray-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .bench-link {
+    margin: 0.7rem 0 0;
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-3);
+    text-align: center;
+  }
+  .bench-link strong {
+    color: var(--sl-color-white);
+    font-weight: 600;
+  }
+  .bench-link a {
     white-space: nowrap;
   }
 
