@@ -29,6 +29,7 @@ export default defineConfig({
               badge: { text: "Nouveau", variant: "caution" },
             },
             { label: "Comment ça marche", link: "/docs/decouvrir/fonctionnement/" },
+            { label: "Démarche pédagogique", link: "/docs/decouvrir/pedagogie/" },
             { label: "Le moteur de grammaire", link: "/docs/decouvrir/moteur/" },
             { label: "Versions", link: "/docs/decouvrir/versions/" },
             { label: "Sécurité", link: "/docs/decouvrir/securite/" },
