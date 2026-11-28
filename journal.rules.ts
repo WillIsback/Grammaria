@@ -62,6 +62,11 @@ export interface FollowOptions {
    * « choix » ne garde que la règle et la date).
    */
   original?: string;
+  /**
+   * Texte corrigé, pour situer le mot à masquer pendant le choix (issue #59).
+   * Comme `original`, il ne sert que pendant la requête : rien n'en est journalisé.
+   */
+  corrected?: string;
   /** Tirage de l'ordre des deux formes ; injectable pour les tests. */
   random?: () => number;
 }
@@ -437,6 +442,8 @@ export function planifierSuivi(
     options.original ?? "",
     now,
     options.random,
+    undefined,
+    options.corrected,
   );
   let intervention: Intervention | null = null;
   let rangChoix: number | null = null;

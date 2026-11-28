@@ -229,7 +229,7 @@ export function creerGestionnaire(
         const analysis = analyze(original, corrected, validMatches);
         // L'état des règles est mis à jour ici ; le serveur décide de ce qui
         // s'affiche près du bouton Copier (astuce, choix à deux formes, réussite).
-        const suivi = await journal.record(analysis, horloge(), { original });
+        const suivi = await journal.record(analysis, horloge(), { original, corrected });
         // Badges : une erreur de calcul n'empêche jamais l'analyse.
         const nouveauxBadges = await awardBadgesSafely(journal);
         return json(

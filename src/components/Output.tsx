@@ -126,6 +126,15 @@ export function Output({
         }
       : intervention;
 
+  // Mot masqué pendant le choix (issue #59) : sans cela, la bonne forme se
+  // lirait dans le texte corrigé affiché. La position n'est utilisée que si
+  // elle désigne bien la bonne forme dans le texte affiché.
+  const bonneForme = choix?.formes.find((f) => f.correcte)?.texte;
+  const masque =
+    choix?.masque && outputText.slice(choix.masque.start, choix.masque.end) === bonneForme
+      ? choix.masque
+      : null;
+
   const copy = () => {
     setCopie(true);
     onCopy(outputText);
@@ -266,8 +275,32 @@ export function Output({
               border border-gray-200/60 dark:border-gray-700/60 shadow-subtle"
           >
             {outputText ? (
-              <p className="text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                {outputText}
+              <p
+                className="text-[15px] leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap"
+                data-testid="texte-corrige"
+              >
+                {masque ? (
+                  <>
+                    {outputText.slice(0, masque.start)}
+                    {choixEnAttente ? (
+                      <span
+                        role="img"
+                        aria-label="mot masqué"
+                        className="inline-block w-10 border-b-2 border-brand-500 align-baseline"
+                      />
+                    ) : (
+                      <mark
+                        className="rounded px-0.5 bg-brand-100 text-brand-800
+                          dark:bg-brand-500/25 dark:text-brand-100"
+                      >
+                        {outputText.slice(masque.start, masque.end)}
+                      </mark>
+                    )}
+                    {outputText.slice(masque.end)}
+                  </>
+                ) : (
+                  outputText
+                )}
               </p>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">

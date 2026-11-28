@@ -91,7 +91,11 @@ export function corriger(
   now: number,
   random = () => 0,
 ) {
-  return journal.record(analyze(original, corrige, []), now, { original, random });
+  return journal.record(analyze(original, corrige, []), now, {
+    original,
+    corrected: corrige,
+    random,
+  });
 }
 
 /** Lance `test` avec le chemin d'une base dans un dossier temporaire, effacé ensuite. */
