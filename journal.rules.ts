@@ -20,6 +20,7 @@ import {
 } from "./src/analysis/regles/intervention.ts";
 import { JOUR_MS, SEUILS } from "./src/analysis/regles/seuils.ts";
 import { detecteEmplois, reglesEmployees } from "./src/analysis/regles/emplois.ts";
+import { choisirRevision, type QuestionRevision } from "./src/analysis/regles/revision.ts";
 import { REGLES_PAR_MOT, regleParMot } from "./src/analysis/analyze.ts";
 
 /** Une règle telle que l'expose `GET /api/rules`. */
@@ -44,7 +45,11 @@ export type RuleHistoryType =
   | "reponse_juste"
   | "reponse_fausse"
   /** La règle a été employée correctement dans un texte (issue #60). */
-  | "emploi";
+  | "emploi"
+  /** Question de révision posée pendant l'attente, et sa réponse (issue #62). */
+  | "revision"
+  | "revision_juste"
+  | "revision_fausse";
 
 /** Une ligne datée de l'historique d'une règle (`GET /api/rules/events`). */
 export interface RuleHistoryEntry {
@@ -77,6 +82,11 @@ export interface FollowOptions {
   corrected?: string;
   /** Tirage de l'ordre des deux formes ; injectable pour les tests. */
   random?: () => number;
+  /**
+   * Une question de révision a déjà été posée pendant l'attente de ce texte :
+   * il ne reçoit ni astuce ni choix (une seule sollicitation par texte, issue #62).
+   */
+  sansIntervention?: boolean;
 }
 
 /**
@@ -481,14 +491,17 @@ export function planifierSuivi(
     titre: libelle(ruleKey, dernieres.get(ruleKey)).label,
   }));
 
-  const proposee = choisirIntervention(
-    [...candidats.values()],
-    options.original ?? "",
-    now,
-    options.random,
-    undefined,
-    options.corrected,
-  );
+  const proposee = options.sansIntervention
+    ? null
+    : choisirIntervention(
+        [...candidats.values()],
+        options.original ?? "",
+        now,
+        options.random,
+        undefined,
+        options.corrected,
+      );
+
   let intervention: Intervention | null = null;
   let rangChoix: number | null = null;
   if (proposee) {
@@ -734,6 +747,66 @@ export class RuleStore {
       if (estConflit(error)) return "conflict";
       throw error;
     }
+    return "recorded";
+  }
+
+  /**
+   * Question de révision à poser à `now` (issue #62), ou null si aucune règle
+   * n'est due. La question est journalisée (événement « revision ») et compte
+   * comme la sollicitation du jour pour la règle. Elle porte sur une phrase
+   * d'exemple : rien du texte de l'utilisateur n'est lu ni écrit.
+   */
+  async revision(
+    now: number,
+    random: () => number = Math.random,
+  ): Promise<QuestionRevision | null> {
+    const [states, justes] = (await this.driver.readMany([
+      { sql: `SELECT ${SELECT_ETAT} FROM rule_states WHERE state IN ('signalee', 'travaillee')` },
+      {
+        sql: `SELECT e.rule_key AS ruleKey, COUNT(*) AS n FROM rule_events e
+              JOIN rule_states s ON s.rule_key = e.rule_key
+              WHERE e.type = 'revision_juste' AND e.created_at > s.last_fault_at
+              GROUP BY e.rule_key`,
+      },
+    ])) as [RuleState[], { ruleKey: string; n: number }[]];
+    const parRegle = new Map(justes.map((j) => [j.ruleKey, j.n]));
+    const proposee = choisirRevision(states, (k) => parRegle.get(k) ?? 0, now, random);
+    if (!proposee) return null;
+
+    const etats = new EtatsEnMemoire(states);
+    etats.apply(proposee.ruleKey, { type: "revision" }, {}, now);
+    const rang = etats.log(proposee.ruleKey, now, "revision");
+    const { statements, nombreEtats } = etats.statements();
+    const resultats = await this.driver.batch(statements);
+    return { ...proposee, reviewId: Number(resultats[nombreEtats + rang].lastInsertRowid) };
+  }
+
+  /**
+   * Enregistre la réponse à une question de révision précise, une seule fois.
+   * « unknown » : aucune question ne porte cet identifiant. « conflict » : elle
+   * a déjà reçu sa réponse.
+   */
+  async answerRevision(reviewId: number, correct: boolean, now: number): Promise<AnswerResult> {
+    const [[question], [{ n }]] = (await this.driver.readMany([
+      {
+        sql: "SELECT rule_key AS ruleKey FROM rule_events WHERE id = ? AND type = 'revision'",
+        params: [reviewId],
+      },
+      {
+        sql: `SELECT COUNT(*) AS n FROM rule_events
+              WHERE rule_key = (SELECT rule_key FROM rule_events WHERE id = ?1 AND type = 'revision')
+                AND id > ?1 AND type IN ('revision', 'revision_juste', 'revision_fausse')`,
+        params: [reviewId],
+      },
+    ])) as [{ ruleKey: string }[], { n: number }[]];
+    if (!question) return "unknown";
+    if (n > 0) return "conflict";
+    await this.driver.batch([
+      {
+        sql: SQL_JOURNALISER,
+        params: [question.ruleKey, now, correct ? "revision_juste" : "revision_fausse", null, null],
+      },
+    ]);
     return "recorded";
   }
 

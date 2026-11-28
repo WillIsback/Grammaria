@@ -6,11 +6,13 @@ import type {
   Reussite,
 } from "../analysis/regles/intervention";
 import type { TendanceRegle } from "../analysis/progression/tendance";
+import type { QuestionRevision } from "../analysis/regles/revision";
 import type { CorrectionEntry, WeekSummary } from "../types";
 import { nombre } from "../utils/format";
 import { visibleText } from "../utils/visibleText";
 import { Icon, Spinner } from "./Icon";
 import { InterventionMessage } from "./InterventionMessage";
+import { RevisionQuestion } from "./RevisionQuestion";
 
 interface Props {
   outputText: string;
@@ -40,6 +42,12 @@ interface Props {
   reussites?: Reussite[];
   /** Forme cliquée lors du choix à deux formes (le texte est déjà copié). */
   onChoiceAnswer?: (choiceId: number, correct: boolean) => void;
+  /**
+   * Question de révision posée pendant que le modèle écrit (issue #62). Sans
+   * réponse, elle disparaît dès que le texte corrigé est prêt.
+   */
+  revision?: QuestionRevision | null;
+  onRevisionAnswer?: (correct: boolean) => void;
 }
 
 const COPY_ICON = (
@@ -91,7 +99,15 @@ export function Output({
   intervention = null,
   reussites = [],
   onChoiceAnswer,
+  revision = null,
+  onRevisionAnswer,
 }: Props) {
+  // Question de révision : visible pendant l'attente ; après une réponse, son
+  // retour reste affiché. L'état de réponse est lié à la question posée.
+  const [revisionRepondue, setRevisionRepondue] = useState<number | null>(null);
+  const revisionVisible =
+    revision !== null && (isLoading || revisionRepondue === revision.reviewId);
+
   const [correctionsOpen, setCorrectionsOpen] = useState(true);
 
   // Choix à deux formes : la réponse est liée à l'intervention du texte
@@ -274,6 +290,17 @@ export function Output({
               </div>
             )}
           </div>
+
+          {revision && revisionVisible && (
+            <RevisionQuestion
+              key={revision.reviewId}
+              question={revision}
+              onAnswer={(correct) => {
+                setRevisionRepondue(revision.reviewId);
+                onRevisionAnswer?.(correct);
+              }}
+            />
+          )}
 
           {actionsInHeader && outputText && message}
 

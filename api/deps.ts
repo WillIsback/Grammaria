@@ -2,6 +2,7 @@ import type { Analysis } from "../src/analysis/analyze.ts";
 import type { BadgeAnnonce } from "../src/analysis/badges/vue.ts";
 import type { TendanceRegle } from "../src/analysis/progression/tendance.ts";
 import type { EtatCycle } from "../src/analysis/regles/cycle.ts";
+import type { QuestionRevision } from "../src/analysis/regles/revision.ts";
 import type { LTMatch } from "../src/types.ts";
 import type { ServerSettings, SettingsUpdate } from "./reglages.ts";
 
@@ -31,7 +32,7 @@ export interface JournalDeps {
   record(
     analysis: Analysis,
     now: number,
-    options: { original?: string; corrected?: string },
+    options: { original?: string; corrected?: string; sansIntervention?: boolean },
   ): MaybePromise<object>;
   /** Bilan d'une période (note moyenne affichée près du bouton Copier). */
   period(days: number): MaybePromise<unknown>;
@@ -57,6 +58,9 @@ export interface JournalDeps {
   rules(): MaybePromise<readonly { state: EtatCycle }[]>;
   ruleEvents(options: { limit?: number; ruleKey?: string }): MaybePromise<unknown[]>;
   answerChoice(choiceId: number, correct: boolean): MaybePromise<AnswerResult>;
+  /** Question de révision à poser pendant l'attente de la correction ; null si aucune (issue #62). */
+  revision(): MaybePromise<QuestionRevision | null>;
+  answerRevision(reviewId: number, correct: boolean): MaybePromise<AnswerResult>;
   purge(): MaybePromise<void>;
   badges: {
     /** Attribue les badges nouvellement obtenus. */

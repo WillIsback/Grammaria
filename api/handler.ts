@@ -45,6 +45,8 @@ const JOURNAL_PATHS = new Set([
   "/api/rules",
   "/api/rules/events",
   "/api/rules/answer",
+  "/api/revision",
+  "/api/revision/answer",
 ]);
 /** Fenêtre de la note moyenne affichée près du bouton copier (jours). */
 const SCORE_WINDOW_DAYS = 7;
@@ -220,7 +222,7 @@ export function creerGestionnaire(
       if (path === "/api/analyze" && req.method === "POST") {
         const body = await readJson(req);
         if (body === undefined) return json({ error: "Invalid JSON" }, headers, 400);
-        const { original, corrected, matches } = body ?? {};
+        const { original, corrected, matches, revisionPosee } = body ?? {};
         if (
           typeof original !== "string" ||
           typeof corrected !== "string" ||
@@ -240,7 +242,15 @@ export function creerGestionnaire(
         const analysis = analyze(original, corrected, validMatches);
         // L'état des règles est mis à jour ici ; le serveur décide de ce qui
         // s'affiche près du bouton Copier (astuce, choix à deux formes, réussite).
-        const suivi = await journal.record(analysis, horloge(), { original, corrected });
+        // Une question de révision déjà posée pendant l'attente tient lieu de
+        // sollicitation pour ce texte : ni astuce ni choix (issue #62).
+        const suivi = await journal.record(
+          analysis,
+          horloge(),
+          revisionPosee === true
+            ? { original, corrected, sansIntervention: true }
+            : { original, corrected },
+        );
         // Badges : une erreur de calcul n'empêche jamais l'analyse.
         const nouveauxBadges = await awardBadgesSafely(journal);
         // Progression de l'une des règles fautives du texte, si elle est favorable.
@@ -282,6 +292,30 @@ export function creerGestionnaire(
           ruleKey: url.searchParams.get("ruleKey") ?? undefined,
         });
         return json({ events }, headers);
+      }
+
+      // Question de révision posée pendant l'attente de la correction. Une panne
+      // ne doit jamais gêner la correction : elle donne « aucune question ».
+      if (path === "/api/revision" && req.method === "GET") {
+        try {
+          return json({ question: await journal.revision() }, headers);
+        } catch (error) {
+          console.error("[Révision] Question impossible :", error);
+          return json({ question: null }, headers);
+        }
+      }
+
+      if (path === "/api/revision/answer" && req.method === "POST") {
+        const body = await readJson(req);
+        if (body === undefined) return json({ error: "Invalid JSON" }, headers, 400);
+        if (!Number.isSafeInteger(body?.reviewId) || typeof body?.correct !== "boolean") {
+          return json({ error: "Invalid payload" }, headers, 400);
+        }
+        const result = await journal.answerRevision(body.reviewId, body.correct);
+        if (result === "unknown") return json({ error: "Unknown question" }, headers, 404);
+        if (result === "conflict")
+          return json({ error: "Question already answered" }, headers, 409);
+        return json({ recorded: true }, headers);
       }
 
       // Réponse au choix à deux formes du bouton Copier.

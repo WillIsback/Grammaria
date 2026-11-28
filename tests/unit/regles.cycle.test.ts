@@ -488,3 +488,18 @@ describe("acquisition sur emplois corrects (issue #60)", () => {
     expect(SEUILS.acquisitionEmploisMin).toBeGreaterThanOrEqual(SEUILS.acquisitionJoursActifsMin);
   });
 });
+
+describe("question de révision (issue #62)", () => {
+  it("compte comme la sollicitation du jour, sans toucher aux astuces ni à l'état", () => {
+    const avant = signalee();
+    const { state, transitions } = appliquer(avant, { type: "revision" }, jour(5));
+    expect(transitions).toEqual([]);
+    expect(state).toMatchObject({
+      state: "signalee",
+      tipsShown: avant.tipsShown,
+      lastSolicitedAt: jour(5),
+      solicitationsThatDay: 1,
+    });
+    expect(peutSolliciter(state, jour(5) + 1000)).toBe(false);
+  });
+});

@@ -200,6 +200,33 @@ Historique daté, du plus récent au plus ancien. `limit` va de 1 à 1000 (200 p
 
 `type` vaut `observee`, `signalee`, `travaillee`, `acquise` ou `rechute` pour un changement d'état (`from` et `to` sont alors renseignés ; `from` est `null` à la première faute), et `astuce`, `choix`, `reponse_juste` ou `reponse_fausse` pour une sollicitation. Il vaut `emploi` quand une règle suivie a été employée correctement dans un texte (confusions de mots seulement) : l'événement ne porte que la règle et la date.
 
+### `GET /api/revision`
+
+Question de révision à poser pendant l'attente de la correction. Répond toujours 200 : `{ "question": null }` quand aucune règle n'est due (ou en cas de panne), sinon :
+
+```json
+{
+  "question": {
+    "reviewId": 87,
+    "ruleKey": "PAIRE:on/ont",
+    "titre": "on / ont",
+    "explication": "Remplacez par « avaient »…",
+    "avant": "Les clients ",
+    "apres": " confirmé leur venue.",
+    "formes": [
+      { "texte": "ont", "correcte": true },
+      { "texte": "on", "correcte": false }
+    ]
+  }
+}
+```
+
+L'appel journalise la question (événement `revision`) : elle compte comme la sollicitation du jour pour la règle. La phrase est un exemple fixe, pas un texte de l'utilisateur. Le client qui l'affiche ajoute `"revisionPosee": true` au corps de `POST /api/analyze` : le texte ne reçoit alors ni astuce ni choix.
+
+### `POST /api/revision/answer`
+
+Corps : `{ "reviewId": 87, "correct": true }`. Réponses : 200 `{ "recorded": true }`, 400 (corps invalide), 404 (question inconnue), 409 (déjà répondue). L'historique reçoit `revision_juste` ou `revision_fausse`.
+
 ### `POST /api/rules/answer`
 
 Enregistre la forme cliquée lors d'un choix à deux formes. `choiceId` est celui reçu dans l'intervention. L'interface appelle cette route après avoir copié le texte ; un échec n'empêche pas la copie.

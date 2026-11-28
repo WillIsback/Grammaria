@@ -15,7 +15,7 @@ import { useBadgeNotices } from "./hooks/useBadgeNotices";
 import { useCorrector } from "./hooks/useCorrector";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { useServerSettings } from "./hooks/useServerSettings";
-import { answerChoice } from "./services/journal";
+import { answerChoice, answerRevision } from "./services/journal";
 import type { ServerSettings } from "./services/settings";
 import { initModel, setCurrentModel } from "./utils/models";
 
@@ -35,6 +35,7 @@ function App() {
     corrections,
     analysis,
     analysisNotice,
+    revision,
     settings,
     setSettings,
     isLoading,
@@ -265,6 +266,10 @@ function App() {
               intervention={analysis?.intervention}
               reussites={analysis?.reussites}
               onChoiceAnswer={recordChoiceAnswer}
+              revision={revision}
+              onRevisionAnswer={(correct) => {
+                if (revision) void answerRevision(revision.reviewId, correct);
+              }}
               analysisNotice={analysisNotice}
               actionsInHeader={actionsInHeader}
             />
