@@ -243,6 +243,38 @@ describe.each([
     });
   });
 
+  describe("tendance de la règle avant la note (issue #63)", () => {
+    const TENDANCE = {
+      ruleKey: "PAIRE:on/ont",
+      titre: "on / ont",
+      avant: 5,
+      depuis: 2,
+      motsParTaux: 1000,
+    };
+    const WEEK = { texts: 12, words: 900, faults: 9, score: 15.4 };
+
+    it("affiche la progression de la règle, formulée comme un progrès", () => {
+      render(<Output {...props({ actionsInHeader, tendance: TENDANCE, score: 13, week: WEEK })} />);
+      const ligne = screen.getByTestId("tendance-line");
+      expect(ligne.textContent).toContain("on / ont");
+      expect(ligne.textContent).toMatch(/5.*2.*fautes pour 1[\s\u202f\u00a0]000 mots/);
+      expect(ligne.textContent).toMatch(/progress/i);
+    });
+
+    it("place la tendance avant la note sur 20", () => {
+      render(<Output {...props({ actionsInHeader, tendance: TENDANCE, score: 13, week: WEEK })} />);
+      const ligne = screen.getByTestId("tendance-line");
+      const note = screen.getByTestId("score-line");
+      expect(ligne.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("n'affiche rien sans tendance, et garde la note", () => {
+      render(<Output {...props({ actionsInHeader, score: 13, week: WEEK })} />);
+      expect(screen.queryByTestId("tendance-line")).toBeNull();
+      expect(screen.getByTestId("score-line")).toBeTruthy();
+    });
+  });
+
   it("affiche l'astuce d'une règle signalée sans toucher au bouton Copier", () => {
     const p = props({ actionsInHeader, intervention: ASTUCE });
     render(<Output {...p} />);

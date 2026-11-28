@@ -58,6 +58,7 @@ import {
   type EntreeMesure,
   type Mesure,
 } from "./src/analysis/progression/mesure.ts";
+import { choisirTendance, type TendanceRegle } from "./src/analysis/progression/tendance.ts";
 import type { RuleState } from "./src/analysis/regles/cycle.ts";
 import { JOUR_MS } from "./src/analysis/regles/seuils.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
@@ -443,6 +444,26 @@ export class Journal {
     const period = { ...periode, score: noteSur20(periode.faults, periode.words) };
     const rules = lignes.map((r) => ({ ...r, label: libelleRegle(r.ruleKey, r) }));
     return { days, period, unclassified: unclassified.n, rules };
+  }
+
+  /**
+   * Tendance favorable de l'une des règles `ruleKeys`, à afficher avant la
+   * note (issue #63) ; null si aucune ne progresse de façon mesurable. Même
+   * calcul que la section « Ce que changent les astuces » de l'écran Progression.
+   */
+  async trend(ruleKeys: string[]): Promise<TendanceRegle | null> {
+    if (ruleKeys.length === 0) return null;
+    const [texts, states, dernieres, emplois, ...mesure] = await this.driver.readMany([
+      REQUETE_TEXTES,
+      ...REQUETES_LISTE,
+      ...REQUETES_MESURE,
+    ]);
+    const rules = vueRegles(
+      states as RuleState[],
+      dernieres as Parameters<typeof vueRegles>[1],
+      emplois as Parameters<typeof vueRegles>[2],
+    );
+    return choisirTendance(calculerMesure(entreeMesure(texts, mesure, rules)), ruleKeys);
   }
 
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */

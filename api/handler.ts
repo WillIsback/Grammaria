@@ -92,6 +92,17 @@ async function awardBadgesSafely(journal: JournalDeps) {
   }
 }
 
+/** Tendance : une erreur de calcul n'empêche jamais l'analyse ni la réponse. */
+async function trendSafely(journal: JournalDeps, ruleKeys: string[]) {
+  if (ruleKeys.length === 0) return null;
+  try {
+    return await journal.trend(ruleKeys);
+  } catch (error) {
+    console.error("[Tendance] Calcul impossible :", error);
+    return null;
+  }
+}
+
 /**
  * Crée le gestionnaire. Il renvoie null quand la requête ne relève pas de
  * l'API : l'appelant sert alors les fichiers statiques.
@@ -232,11 +243,21 @@ export function creerGestionnaire(
         const suivi = await journal.record(analysis, horloge(), { original, corrected });
         // Badges : une erreur de calcul n'empêche jamais l'analyse.
         const nouveauxBadges = await awardBadgesSafely(journal);
+        // Progression de l'une des règles fautives du texte, si elle est favorable.
+        const reglesDuTexte = [
+          ...new Set(
+            analysis.corrections.flatMap((c) =>
+              c.faults.filter((f) => f.counted).map((f) => f.ruleKey),
+            ),
+          ),
+        ];
+        const tendance = await trendSafely(journal, reglesDuTexte);
         return json(
           {
             ...analysis,
             week: await journal.period(SCORE_WINDOW_DAYS),
             ...suivi,
+            tendance,
             nouveauxBadges,
           },
           headers,

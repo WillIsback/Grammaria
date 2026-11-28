@@ -125,6 +125,8 @@ Réponse :
 }
 ```
 
+La réponse de `POST /api/analyze` porte aussi `tendance` : `null`, ou `{ ruleKey, titre, avant, depuis, motsParTaux }` quand l'une des règles fautives du texte revient moins souvent depuis sa première intervention (taux en fautes pour `motsParTaux` mots).
+
 `masque` donne la position de la bonne forme dans le texte corrigé (fin exclue) : l'écran la masque tant que le choix attend une réponse. Le champ est absent quand la forme n'a pas pu être située.
 
 `choiceId` identifie ce choix précis (c'est l'`id` de l'événement `choix` dans l'historique) : il est à renvoyer à `POST /api/rules/answer`. `avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
