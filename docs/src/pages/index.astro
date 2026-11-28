@@ -125,6 +125,89 @@ import GrammariaDemo from "../components/GrammariaDemo.astro";
     </li>
   </ul>
   <div class="section-header">
+    <h2 class="section-title">Face aux autres outils</h2>
+    <p class="section-sub">Les correcteurs n'entraînent pas, les outils d'entraînement demandent du temps à part</p>
+  </div>
+  <div class="cmp-wrap">
+    <table class="cmp">
+      <thead>
+        <tr>
+          <th scope="col"><span class="cmp-sr">Fonction</span></th>
+          <th scope="col" class="cmp-nous">Grammaria</th>
+          <th scope="col">Antidote</th>
+          <th scope="col">LanguageTool</th>
+          <th scope="col">MerciApp</th>
+          <th scope="col">Projet Voltaire</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Corrige vos propres textes</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Suit chaque faute d'un texte à l'autre, règle par règle</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Fait retrouver la bonne forme en un clic, sur votre phrase</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Mesure son effet sur vos fautes et publie ses limites</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Sans séance d'entraînement à part</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Peut corriger sans envoyer vos textes à un service en ligne</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-s" aria-label="sans objet">—</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Libre, code ouvert</th>
+          <td class="cmp-nous"><span class="cmp-o" aria-label="oui">✓</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-p">partiel</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+          <td><span class="cmp-n" aria-label="non">✗</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cmp-note">
+    <span class="cmp-o">✓</span> oui · <span class="cmp-n">✗</span> non · <span class="cmp-p">partiel</span> : en partie · — sans objet.
+    D'après la documentation publique de chaque éditeur, consultée en novembre 2026. Ces outils font mieux que Grammaria
+    sur d'autres plans : intégration, étendue des règles, guides.
+    <a href="/docs/decouvrir/pedagogie/">Le détail et les sources →</a>
+  </p>
+
+  <div class="section-header">
     <h2 class="section-title">Comment</h2>
     <p class="section-sub">Pour l'utiliser chez vous</p>
   </div>
@@ -277,6 +360,107 @@ import GrammariaDemo from "../components/GrammariaDemo.astro";
   }
   .bench-link a {
     white-space: nowrap;
+  }
+
+  /* ── Tableau comparatif ───────────────────────────────────── */
+  .cmp-wrap {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+  }
+  :global([data-theme="dark"]) .cmp-wrap {
+    background: #1e1e2e;
+    border-color: #2d2d3f;
+  }
+  .cmp {
+    width: 100%;
+    min-width: 40rem;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 0;
+    display: table;
+  }
+  .cmp th,
+  .cmp td {
+    padding: 0.55rem 0.7rem;
+    border: 0;
+    border-bottom: 1px solid #eef0f3;
+    text-align: center;
+    background: transparent;
+  }
+  :global([data-theme="dark"]) .cmp th,
+  :global([data-theme="dark"]) .cmp td {
+    border-bottom-color: #2d2d3f;
+  }
+  .cmp tbody tr:last-child th,
+  .cmp tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .cmp thead th {
+    font-weight: 600;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+  }
+  .cmp tbody th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--sl-color-white);
+  }
+  .cmp .cmp-nous {
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 700;
+  }
+  :global([data-theme="dark"]) .cmp .cmp-nous {
+    background: #1e1b4b;
+    color: #c7d2fe;
+  }
+  .cmp-o,
+  .cmp-n,
+  .cmp-p,
+  .cmp-s {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .cmp-o {
+    color: #15803d;
+  }
+  .cmp-n {
+    color: #dc2626;
+  }
+  .cmp-p {
+    color: #b45309;
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+  .cmp-s {
+    color: var(--sl-color-gray-3);
+  }
+  :global([data-theme="dark"]) .cmp-o {
+    color: #4ade80;
+  }
+  :global([data-theme="dark"]) .cmp-n {
+    color: #f87171;
+  }
+  :global([data-theme="dark"]) .cmp-p {
+    color: #fbbf24;
+  }
+  .cmp-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cmp-note {
+    margin: 0.6rem 0 0;
+    font-size: 0.76rem;
+    color: var(--sl-color-gray-3);
+  }
+  .cmp-note .cmp-o,
+  .cmp-note .cmp-n {
+    font-size: 0.85rem;
   }
 
   /* ── Feature strip ────────────────────────────────────────── */
