@@ -1,0 +1,93 @@
+---
+title: "Démarche pédagogique"
+description: "Pourquoi Grammaria intervient si peu, ce que dit la recherche sur l'apprentissage par la correction, et ce qui distingue l'approche des autres outils."
+---
+
+Grammaria part d'un constat : la personne qui colle son texte veut cliquer sur **Copier**, pas suivre une leçon. Cette page explique comment l'application essaie de faire apprendre quand même, sur quels résultats de recherche elle s'appuie, et où elle se situe par rapport aux autres outils.
+
+:::caution[Ce qui est prouvé, ce qui ne l'est pas]
+Les principes ci-dessous viennent de travaux publiés. Leur combinaison dans Grammaria, elle, n'a jamais été évaluée : aucune étude trouvée ne teste ce dispositif sur des adultes francophones. C'est l'objet de la [bêta](/docs/decouvrir/beta/).
+:::
+
+## Le problème : corriger n'est pas apprendre
+
+Un texte corrigé puis copié ne prouve aucun apprentissage. La recherche sur la correction des écrits l'a montré : des étudiants corrigés font moins d'erreurs quand ils révisent leur texte, mais pas davantage que les autres dans le texte suivant ([Truscott et Hsu, 2008](https://doi.org/10.1016/j.jslw.2008.05.003)).
+
+Avec les modèles de langage, l'écart peut même se creuser. Dans un essai sur environ mille lycéens, ceux qui avaient travaillé avec un assistant sans garde-fous ont obtenu 17 % de moins à l'examen passé sans lui ([Bastani et al., 2025](https://doi.org/10.1073/pnas.2422633122)).
+
+Grammaria en tire sa première règle : ce qui compte n'est pas que la correction soit acceptée, c'est que **la faute revienne moins souvent dans les textes suivants**.
+
+## Cinq principes, et ce qui les fonde
+
+### 1. Mesurer la récidive
+
+Le journal suit chaque règle d'un texte à l'autre, et l'écran [Progression](/docs/utiliser/progression/) compare le retour de chaque faute avant et depuis la première intervention, avec un groupe de comparaison. Une règle n'est dite « acquise » qu'après une période d'usage réel.
+
+### 2. Faire retrouver plutôt que faire relire
+
+Retrouver une réponse de mémoire la consolide mieux que la relire. C'est l'un des résultats les plus solides de la psychologie de l'apprentissage ([Rowland, 2014](https://pubmed.ncbi.nlm.nih.gov/25150680/) ; [Dunlosky et al., 2013](https://pubmed.ncbi.nlm.nih.gov/26173288/)), tout comme l'intérêt d'espacer ces rappels dans le temps ([Cepeda et al., 2006](https://pubmed.ncbi.nlm.nih.gov/16719566/)).
+
+D'où le **choix entre deux formes** sur le bouton **Copier** : une question, un clic, le même que pour copier.
+
+### 3. Peu, rarement, une règle à la fois
+
+Une alerte qui revient à l'identique finit par ne plus être vue. En médecine, les alertes des logiciels de prescription sont ignorées dans 49 à 96 % des cas ([van der Sijs et al., 2006](https://pmc.ncbi.nlm.nih.gov/articles/PMC1447540)). Pour la correction des écrits, la question reste débattue, mais plusieurs travaux jugent une correction ciblée sur quelques types de fautes plus utile qu'une correction exhaustive.
+
+D'où le **budget de sollicitations** : une seule intervention par texte, une par règle et par jour, trois règles travaillées au plus.
+
+### 4. Des fautes d'attention plus que d'ignorance
+
+Des adultes très instruits accordent le verbe avec le mauvais nom dès que leur attention est prise ailleurs : « le chien des voisins arrivent » ([Fayol, Largy et Lemaire, 1994](https://link.springer.com/doi/10.1007/BF01758183)). Beaucoup de fautes récurrentes ne viennent donc pas d'une règle inconnue, et la réexpliquer à chaque fois aide peu. Une aide utile au débutant devient même gênante pour celui qui sait déjà ([Kalyuga et al., 2003](https://en.wikipedia.org/wiki/Expertise_reversal_effect)).
+
+D'où des astuces **d'une ligne**, qui cessent de s'afficher quand la règle est acquise.
+
+### 5. Ni jugement, ni série à préserver
+
+Un retour qui porte sur la personne plutôt que sur la tâche dégrade la performance dans plus d'un tiers des cas ([Kluger et DeNisi, 1996](https://doi.org/10.1037/0033-2909.119.2.254)). Une série de jours consécutifs motive tant qu'elle tient, et décourage dès qu'elle casse ([Silverman et Barasch, 2023](https://doi.org/10.1093/jcr/ucac029)).
+
+D'où des [badges](/docs/utiliser/badges/) **cumulatifs** : une pause ne fait rien perdre, et rien ne vous compare à quelqu'un d'autre.
+
+## Ce que font les autres outils
+
+Les descriptions ci-dessous viennent de la documentation publique de chaque éditeur et de tests publiés, consultés en novembre 2026. Si l'une d'elles est inexacte ou dépassée, [signalez-le](https://github.com/WillIsback/Grammaria/issues).
+
+| Outil | Ce qu'il fait pour l'apprentissage | Ce qui manque à une personne pressée |
+|---|---|---|
+| **Antidote** | Explications reliées à des guides très complets, filtres par type de faute. | L'explication se lit à la demande ; nous n'avons pas trouvé de suivi d'une même faute d'un texte à l'autre. |
+| **Grammarly** | Cartes d'explication, bilan hebdomadaire par courriel. | Le bilan mesure surtout le volume écrit ; « tout accepter » se fait en un clic. |
+| **LanguageTool** | Explications, statistiques personnelles par type d'erreur (offre payante). | Des compteurs à consulter, sans intervention au moment d'écrire. |
+| **MerciApp** | Tableau des fautes les plus fréquentes. | Un constat, sans rappel. |
+| **Projet Voltaire**, **Orthodidacte** | Entraînement adaptatif : les règles ratées reviennent jusqu'à la maîtrise. | Des séances à part, sur des phrases d'exercice et non sur vos textes. |
+| **Frantastique** | Une courte leçon quotidienne, adaptée aux erreurs précédentes. | Un rendez-vous de plus dans la journée. |
+
+Ces outils font mieux que Grammaria sur d'autres plans : intégration dans le traitement de texte et le navigateur, étendue des règles, richesse des guides. Les produits d'entraînement ont aussi des résultats publiés, par exemple une évaluation du Projet Voltaire auprès de 849 étudiants ([L'Horty et al., 2016](https://conf-tepp2016.sciencesconf.org/99813/99813.pdf)).
+
+Le constat est ailleurs : **les correcteurs partent de vos textes mais n'entraînent pas ; les outils d'entraînement entraînent mais demandent du temps à part.**
+
+## Ce qui distingue Grammaria
+
+- **Le travail part de vos vrais textes.** Aucune phrase d'exercice : la question porte sur la phrase que vous venez d'écrire.
+- **Chaque faute est suivie d'un texte à l'autre.** Le journal relie la faute d'aujourd'hui à celle de la semaine dernière, règle par règle.
+- **L'intervention tient dans le geste de copier.** Une ligne à lire ou un clic, jamais d'étape imposée.
+- **L'application sait se taire.** Une règle acquise ne déclenche plus rien.
+- **L'effet est mesuré, limites comprises.** La section « Ce que changent les astuces » montre les chiffres et dit ce qu'ils ne prouvent pas.
+- **Tout reste chez vous.** Le journal est local, sans compte ni serveur central, et ne garde aucun de vos textes.
+
+## Évolutions décidées
+
+Cinq changements ont été retenus après cette étude. Ils ne sont pas encore livrés ; cette page sera mise à jour à leur sortie.
+
+| Évolution | Pourquoi |
+|---|---|
+| Masquer le mot dans le résultat tant que le choix entre deux formes attend une réponse | Aujourd'hui la réponse est lisible à l'écran, ce qui annule l'intérêt de la question. |
+| Compter les emplois corrects d'une règle, et la dire acquise sur des réussites espacées | Quatorze jours sans faute peuvent seulement signifier que la règle n'a pas servi. |
+| Une seule astuce avant le choix, au lieu de trois | Relire trois fois la même ligne apporte peu. |
+| Poser une question de révision pendant que le modèle écrit | Ce temps d'attente est libre, et aucun rappel n'existe aujourd'hui en l'absence de faute. |
+| Montrer la tendance de chaque règle avant la note sur 20 | « a/à : 4 fautes puis 1 pour 1 000 mots » informe mieux qu'une note globale. |
+
+## Limites connues
+
+- **Aucune preuve d'efficacité à ce jour.** La bêta donnera une indication, pas une preuve.
+- **Les tests de substitution sont discutés.** Des didacticiens déconseillent, chez l'enfant, l'enseignement des homophones par « trucs » comme « remplacez par avait » ([Nadeau et Fisher, cités ici](https://scolagram.u-cergy.fr/attachments/article/280/Strategies_homophones_Giguere_Aldama.pdf)). Nous n'avons trouvé aucune évaluation chez l'adulte ; la mesure règle par règle permettra d'en juger.
+- **Treize fiches seulement.** Pour les autres règles, l'astuce se limite à rappeler la forme correcte.
+- **Les études citées portent surtout sur des élèves et des étudiants**, souvent en langue étrangère, pas sur des adultes qui écrivent dans leur langue au travail.
