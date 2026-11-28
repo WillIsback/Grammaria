@@ -30,6 +30,22 @@ Vos textes ne sont envoyés qu'au modèle de langage que vous avez choisi (Ollam
 
 Le détail : [Comment ça marche](https://grammaria.fr/docs/decouvrir/fonctionnement/) et [Corriger un texte](https://grammaria.fr/docs/utiliser/corriger/).
 
+## Face aux autres outils
+
+Les correcteurs partent de vos textes mais n'entraînent pas ; les outils d'entraînement entraînent mais demandent du temps à part. Grammaria fait les deux dans le geste de copier.
+
+|                                                             | **Grammaria** | Antidote | LanguageTool | MerciApp | Projet Voltaire |
+| ----------------------------------------------------------- | :-----------: | :------: | :----------: | :------: | :-------------: |
+| Corrige vos propres textes                                  |      ✅       |    ✅    |      ✅      |    ✅    |       ❌        |
+| Suit chaque faute d'un texte à l'autre, règle par règle     |      ✅       |    🟡    |      🟡      |    🟡    |       ❌        |
+| Fait retrouver la bonne forme en un clic, sur votre phrase  |      ✅       |    ❌    |      ❌      |    ❌    |       ❌        |
+| Mesure son effet sur vos fautes et publie ses limites       |      ✅       |    ❌    |      ❌      |    ❌    |       🟡        |
+| Sans séance d'entraînement à part                           |      ✅       |    ✅    |      ✅      |    ✅    |       ❌        |
+| Peut corriger sans envoyer vos textes à un service en ligne |      ✅       |    ✅    |      🟡      |    ❌    |        —        |
+| Libre, code ouvert                                          |      ✅       |    ❌    |      🟡      |    ❌    |       ❌        |
+
+✅ oui · ❌ non · 🟡 en partie · — sans objet. D'après la documentation publique de chaque éditeur et des tests publiés, consultés en novembre 2026 : Antidote et MerciApp affichent des statistiques de fautes sans suivre une règle d'un texte à l'autre ; LanguageTool propose des statistiques personnelles dans son offre payante, un cœur libre et un serveur que l'on peut héberger soi-même ; le Projet Voltaire a fait l'objet d'une évaluation publiée en 2016. Ces outils font mieux que Grammaria sur d'autres plans (intégration dans le traitement de texte et le navigateur, étendue des règles, guides). Le détail et les sources : [Démarche pédagogique](https://grammaria.fr/docs/decouvrir/pedagogie/). Une erreur ? [Signalez-la](https://github.com/WillIsback/Grammaria/issues).
+
 ## Installer
 
 ### Application de bureau (Windows, Linux)
