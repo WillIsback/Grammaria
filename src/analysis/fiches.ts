@@ -120,6 +120,13 @@ function decouper(mot: string): { radical: string; terminaison: string } | null 
   return null;
 }
 
+/** Clé de la fiche de type paire dont `mot` est l'une des formes ; null sinon. */
+export function paireDuMot(mot: string): string | null {
+  const m = normaliser(mot);
+  const groupe = GROUPES.find((g) => g.includes(m));
+  return groupe ? `PAIRE:${groupe.join("/")}` : null;
+}
+
 /** Noms en -ail, -eil, -euil dont le verbe double le l : travail / travaille. */
 const NOM_EN_IL = /^[\p{L}]{2,}(ail|eil|euil|ueil)$/u;
 const FINALES_VERBE = new Set(["e", "es", "ent", "er", "é", "és", "ée", "ées", "ez", "ons"]);

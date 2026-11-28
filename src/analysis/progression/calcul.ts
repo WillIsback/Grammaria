@@ -42,6 +42,8 @@ export interface RegleSuivie {
   occurrences: number;
   lastFaultAt: number;
   acquiredAt: number | null;
+  /** Emplois corrects depuis la dernière faute ; null ou absent si non reconnus (issue #60). */
+  correctUses?: number | null;
 }
 
 interface EntreeProgression {
@@ -234,6 +236,7 @@ function resumer(r: RegleSuivie): RegleResumee {
     occurrences: r.occurrences,
     lastFaultAt: r.lastFaultAt,
     acquiredAt: r.acquiredAt,
+    correctUses: r.correctUses ?? null,
   };
 }
 

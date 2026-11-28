@@ -7,6 +7,7 @@
  * la base ni à l'horloge du système : le journal fournit les faits, les tests
  * et les écrans de synthèse peuvent rejouer la même logique.
  */
+import { detecteEmplois } from "./emplois";
 import { JOUR_MS, REGLES_HORS_CYCLE, SEUILS, type Seuils } from "./seuils";
 
 export const ETATS_CYCLE = ["observee", "signalee", "travaillee", "acquise"] as const;
@@ -59,6 +60,14 @@ export interface RuleContext {
   otherWorkedRules?: number;
   /** Dates des textes corrigés depuis la dernière faute, texte courant compris. */
   textTimesSinceLastFault?: number[];
+  /**
+   * Dates des textes où la règle a été employée correctement (voir
+   * `emplois.ts`), texte courant compris. Pour une règle dont on sait
+   * reconnaître l'emploi, ce sont eux qui comptent pour l'acquisition. Absent
+   * (rejeu d'un ancien journal, qui n'a pas cette information) : le critère
+   * reste celui des textes corrigés.
+   */
+  correctUseTimes?: number[];
 }
 
 /** Type d'une transition : l'état atteint, ou « rechute » (acquise → signalée). */
@@ -202,14 +211,13 @@ export function appliquerEvenement(
     case "usage": {
       if (state.state !== "signalee" && state.state !== "travaillee") break;
       if (now - state.lastFaultAt < seuils.acquisitionJoursSansFaute * JOUR_MS) break;
-      const textes = (context.textTimesSinceLastFault ?? []).filter(
-        (t) => t > state.lastFaultAt && t <= now,
-      );
+      // Une paire se mérite sur des emplois corrects, pas sur une absence de faute.
+      const surEmplois = detecteEmplois(ruleKey) && context.correctUseTimes !== undefined;
+      const dates = surEmplois ? context.correctUseTimes : context.textTimesSinceLastFault;
+      const minimum = surEmplois ? seuils.acquisitionEmploisMin : seuils.acquisitionTextesMin;
+      const textes = (dates ?? []).filter((t) => t > state.lastFaultAt && t <= now);
       const jours = new Set(textes.map(jourLocal));
-      if (
-        textes.length >= seuils.acquisitionTextesMin &&
-        jours.size >= seuils.acquisitionJoursActifsMin
-      ) {
+      if (textes.length >= minimum && jours.size >= seuils.acquisitionJoursActifsMin) {
         return { state: { ...passer(state, "acquise"), acquiredAt: now }, transitions };
       }
       break;

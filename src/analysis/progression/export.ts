@@ -251,6 +251,8 @@ type Schema =
   | { type: "booleen" }
   | { type: "chaine"; forme: (s: string) => boolean }
   | { type: "ou-nul"; schema: Schema }
+  /** Champ d'objet qui peut manquer (ajouté au format après sa première version). */
+  | { type: "optionnel"; schema: Schema }
   | { type: "objet"; champs: Record<string, Schema> }
   | { type: "liste"; element: Schema; max: number };
 
@@ -259,8 +261,21 @@ const booleen: Schema = { type: "booleen" };
 const chaine = (forme: (s: string) => boolean): Schema => ({ type: "chaine", forme });
 const parmi = (valeurs: readonly string[]) => chaine((s) => valeurs.includes(s));
 const objet = (champs: Record<string, Schema>): Schema => ({ type: "objet", champs });
-const entiers = (cles: readonly string[]) =>
-  objet(Object.fromEntries(cles.map((cle) => [cle, entier])));
+const entiers = (cles: readonly string[], optionnelles: readonly string[] = []) =>
+  objet(
+    Object.fromEntries(
+      cles.map((cle): [string, Schema] => [
+        cle,
+        optionnelles.includes(cle) ? { type: "optionnel", schema: entier } : entier,
+      ]),
+    ),
+  );
+
+/**
+ * Seuils du cycle ajoutés après la version 0.5 : un export produit par une
+ * version antérieure ne les contient pas, et reste valide.
+ */
+const SEUILS_CYCLE_AJOUTES: readonly string[] = ["acquisitionEmploisMin"];
 
 const VOLUME = entiers(["textes", "mots", "fautes"]);
 const SYNTHESE = objet({
@@ -276,7 +291,10 @@ const SCHEMA_EXPORT: Schema = objet({
   application: chaine((s) => RE_APPLICATION.test(s)),
   plateforme: parmi(["bureau", "serveur"]),
   participant: chaine((s) => RE_PARTICIPANT.test(s)),
-  seuils: objet({ cycle: entiers(Object.keys(SEUILS)), mesure: entiers(Object.keys(MESURE)) }),
+  seuils: objet({
+    cycle: entiers(Object.keys(SEUILS), SEUILS_CYCLE_AJOUTES),
+    mesure: entiers(Object.keys(MESURE)),
+  }),
   semaines: {
     type: "liste",
     max: LIMITES_EXPORT.semaines,
@@ -334,6 +352,8 @@ function verifier(valeur: unknown, schema: Schema, chemin: string): string | nul
         : `${chemin} : valeur non autorisée`;
     case "ou-nul":
       return valeur === null ? null : verifier(valeur, schema.schema, chemin);
+    case "optionnel":
+      return verifier(valeur, schema.schema, chemin);
     case "liste": {
       if (!Array.isArray(valeur)) return `${chemin} : liste attendue`;
       if (valeur.length > schema.max) return `${chemin} : trop d'éléments`;
@@ -353,7 +373,10 @@ function verifier(valeur: unknown, schema: Schema, chemin: string): string | nul
         return `${chemin} : champ inconnu`;
       }
       for (const [cle, sous] of Object.entries(schema.champs)) {
-        if (!Object.hasOwn(valeur, cle)) return `${chemin}.${cle} : champ manquant`;
+        if (!Object.hasOwn(valeur, cle)) {
+          if (sous.type === "optionnel") continue;
+          return `${chemin}.${cle} : champ manquant`;
+        }
         const erreur = verifier((valeur as Record<string, unknown>)[cle], sous, `${chemin}.${cle}`);
         if (erreur) return erreur;
       }

@@ -19,6 +19,7 @@ import {
   type Reussite,
 } from "./src/analysis/regles/intervention.ts";
 import { JOUR_MS, SEUILS } from "./src/analysis/regles/seuils.ts";
+import { detecteEmplois, reglesEmployees } from "./src/analysis/regles/emplois.ts";
 import { REGLES_PAR_MOT, regleParMot } from "./src/analysis/analyze.ts";
 
 /** Une règle telle que l'expose `GET /api/rules`. */
@@ -28,6 +29,11 @@ export interface RuleView extends RuleState {
   categoryName: string;
   /** Fiche de règle (titre, astuce) quand la règle en possède une. */
   fiche: Fiche | null;
+  /**
+   * Textes où la règle a été employée correctement depuis sa dernière faute
+   * (issue #60) ; null quand on ne sait pas reconnaître ses emplois.
+   */
+  correctUses: number | null;
 }
 
 /** Type d'une ligne de l'historique : transition du cycle ou sollicitation. */
@@ -36,7 +42,9 @@ export type RuleHistoryType =
   | "astuce"
   | "choix"
   | "reponse_juste"
-  | "reponse_fausse";
+  | "reponse_fausse"
+  /** La règle a été employée correctement dans un texte (issue #60). */
+  | "emploi";
 
 /** Une ligne datée de l'historique d'une règle (`GET /api/rules/events`). */
 export interface RuleHistoryEntry {
@@ -256,7 +264,11 @@ class EtatsEnMemoire {
    * `textes` donne les dates des textes corrigés après une date (texte courant
    * compris) ; il peut en donner davantage, la logique filtre elle-même.
    */
-  checkAcquisitions(now: number, textes: (depuis: number) => number[]): string[] {
+  checkAcquisitions(
+    now: number,
+    textes: (depuis: number) => number[],
+    emplois?: (ruleKey: string) => number[],
+  ): string[] {
     const limite = now - SEUILS.acquisitionJoursSansFaute * JOUR_MS;
     const states = [...this.etats.values()]
       .filter(
@@ -270,7 +282,7 @@ class EtatsEnMemoire {
       const result = this.apply(
         state.ruleKey,
         { type: "usage" },
-        { textTimesSinceLastFault: texts },
+        { textTimesSinceLastFault: texts, correctUseTimes: emplois?.(state.ruleKey) },
         now,
         state,
       );
@@ -341,6 +353,8 @@ export interface InstantaneSuivi {
   textes: { at: number }[];
   /** Dernière faute de chaque règle en attente d'usage, pour son libellé. */
   dernieresFautes: DerniereFaute[];
+  /** Emplois corrects journalisés des règles en attente d'usage (issue #60). */
+  emplois: { ruleKey: string; at: number }[];
 }
 
 /**
@@ -380,12 +394,19 @@ export function requetesSuivi(analysis: Analysis, now: number): Query[] {
                          GROUP BY rule_key)`,
       params: [limite],
     },
+    {
+      sql: `SELECT rule_key AS ruleKey, created_at AS at FROM rule_events
+            WHERE type = 'emploi'
+              AND rule_key IN (SELECT rule_key FROM rule_states WHERE ${EN_ATTENTE_D_USAGE})
+            ORDER BY created_at, id`,
+      params: [limite],
+    },
   ];
 }
 
 export function lireInstantaneSuivi(lignes: unknown[][]): InstantaneSuivi {
-  const [etats, fautesRecentes, textes, dernieresFautes] = lignes;
-  return { etats, fautesRecentes, textes, dernieresFautes } as InstantaneSuivi;
+  const [etats, fautesRecentes, textes, dernieresFautes, emplois] = lignes;
+  return { etats, fautesRecentes, textes, dernieresFautes, emplois } as InstantaneSuivi;
 }
 
 /** Résultat pur du suivi d'un texte : ce qu'il faut écrire et ce qu'il faut afficher. */
@@ -425,7 +446,30 @@ export function planifierSuivi(
 
   // Le texte courant compte parmi les textes de l'usage.
   const textes = [...instantane.textes.map((t) => t.at), now];
-  const acquises = etats.checkAcquisitions(now, () => textes);
+
+  // Emplois corrects (issue #60) : une règle suivie, employée sans faute dans ce
+  // texte, reçoit un événement daté « emploi » (ni mot ni phrase). Sans le
+  // texte d'origine, on ne sait rien des emplois : le critère reste celui des textes.
+  let emploisDe: ((ruleKey: string) => number[]) | undefined;
+  if (options.original !== undefined) {
+    const emplois = new Map<string, number[]>();
+    for (const e of instantane.emplois ?? []) {
+      const liste = emplois.get(e.ruleKey);
+      if (liste) liste.push(e.at);
+      else emplois.set(e.ruleKey, [e.at]);
+    }
+    for (const ruleKey of reglesEmployees(options.original, analysis.corrections)) {
+      if (candidats.has(ruleKey)) continue;
+      const etat = etats.get(ruleKey)?.state;
+      if (etat !== "signalee" && etat !== "travaillee") continue;
+      etats.log(ruleKey, now, "emploi");
+      const liste = emplois.get(ruleKey);
+      if (liste) liste.push(now);
+      else emplois.set(ruleKey, [now]);
+    }
+    emploisDe = (ruleKey) => emplois.get(ruleKey) ?? [];
+  }
+  const acquises = etats.checkAcquisitions(now, () => textes, emploisDe);
 
   // Libellé : la dernière faute journalisée sur la règle, texte courant compris.
   const dernieres = new Map(instantane.dernieresFautes.map((f) => [f.ruleKey, f]));
@@ -695,8 +739,12 @@ export class RuleStore {
 
   /** Toutes les règles suivies, de la plus récemment fautive à la plus ancienne. */
   async list(): Promise<RuleView[]> {
-    const [states, dernieres] = await this.driver.readMany(REQUETES_LISTE);
-    return vueRegles(states as RuleState[], dernieres as DerniereFaute[]);
+    const [states, dernieres, emplois] = await this.driver.readMany(REQUETES_LISTE);
+    return vueRegles(
+      states as RuleState[],
+      dernieres as DerniereFaute[],
+      emplois as { ruleKey: string; n: number }[],
+    );
   }
 
   /** Historique daté, du plus récent au plus ancien ; toutes les règles sans `ruleKey`. */
@@ -719,13 +767,25 @@ export const REQUETES_LISTE: readonly Query[] = [
           WHERE id IN (SELECT MAX(id) FROM faults
                        WHERE rule_key IN (SELECT rule_key FROM rule_states) GROUP BY rule_key)`,
   },
+  {
+    sql: `SELECT e.rule_key AS ruleKey, COUNT(*) AS n FROM rule_events e
+          JOIN rule_states s ON s.rule_key = e.rule_key
+          WHERE e.type = 'emploi' AND e.created_at > s.last_fault_at
+          GROUP BY e.rule_key`,
+  },
 ];
 
-export function vueRegles(states: RuleState[], dernieres: DerniereFaute[]): RuleView[] {
+export function vueRegles(
+  states: RuleState[],
+  dernieres: DerniereFaute[],
+  emplois: { ruleKey: string; n: number }[] = [],
+): RuleView[] {
   const parRegle = new Map(dernieres.map((f) => [f.ruleKey, f]));
+  const emploisParRegle = new Map(emplois.map((e) => [e.ruleKey, e.n]));
   return states.map((state) => ({
     ...state,
     ...libelle(state.ruleKey, parRegle.get(state.ruleKey)),
     fiche: FICHES[state.ruleKey] ?? null,
+    correctUses: detecteEmplois(state.ruleKey) ? (emploisParRegle.get(state.ruleKey) ?? 0) : null,
   }));
 }

@@ -492,7 +492,11 @@ function Regles({ data }: { data: Progression }) {
           vide="Aucune faute ne revient souvent en ce moment."
           regles={active}
           detail={(r) =>
-            `${ETATS[r.state].singulier} · ${pluriel(r.occurrences, "faute")} · dernière le ${dateLongue(r.lastFaultAt, false)}`
+            `${ETATS[r.state].singulier} · ${pluriel(r.occurrences, "faute")} · dernière le ${dateLongue(r.lastFaultAt, false)}${
+              typeof r.correctUses === "number"
+                ? ` · ${pluriel(r.correctUses, "emploi correct", "emplois corrects")} sur ${SEUILS.acquisitionEmploisMin} depuis`
+                : ""
+            }`
           }
         />
         <ListeRegles
