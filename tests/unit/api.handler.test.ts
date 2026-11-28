@@ -34,6 +34,10 @@ function journalAsynchrone() {
       return plusTard({ intervention: null, reussites: [] });
     },
     period: (days) => plusTard({ days, average: 15 }),
+    trend: (ruleKeys) => {
+      appels.push(`trend:${ruleKeys.join(",")}`);
+      return plusTard(null);
+    },
     summary: (days) => plusTard({ days, rules: [] }),
     progress: () => plusTard({ empty: true }),
     exportBeta: (options) => plusTard({ format: "grammaria-beta", ...options }),
@@ -198,7 +202,54 @@ describe("creerGestionnaire — journal asynchrone", () => {
     expect(body.week).toEqual({ days: 7, average: 15 });
     expect(body.intervention).toBeNull();
     expect(body.nouveauxBadges).toEqual([{ id: "premier-texte", titre: "Premier texte" }]);
-    expect(appels).toEqual(["record:1010:Ils on vu le film."]);
+    expect(appels).toEqual(["record:1010:Ils on vu le film.", "trend:PAIRE:on/ont"]);
+    expect(body.tendance).toBeNull();
+  });
+
+  it("POST /api/analyze joint la tendance de la règle quand le journal en donne une (issue #63)", async () => {
+    const { journal } = journalAsynchrone();
+    const tendance = {
+      ruleKey: "PAIRE:on/ont",
+      titre: "on / ont",
+      avant: 5,
+      depuis: 2,
+      motsParTaux: 1000,
+    };
+    journal.trend = () => plusTard(tendance);
+    const { traiter } = creer({ journal });
+    const response = (await traiter(
+      post("/api/analyze", {
+        original: "Ils on vu le film.",
+        corrected: "Ils ont vu le film.",
+        matches: [],
+      }),
+    )) as Response;
+    expect((await response.json()).tendance).toEqual(tendance);
+  });
+
+  it("ne demande pas de tendance pour un texte sans faute comptée", async () => {
+    const { traiter, appels } = creer();
+    await traiter(
+      post("/api/analyze", { original: "Tout va bien.", corrected: "Tout va bien.", matches: [] }),
+    );
+    expect(appels.some((a) => a.startsWith("trend"))).toBe(false);
+  });
+
+  it("une erreur de la tendance n'empêche pas l'analyse", async () => {
+    const { journal } = journalAsynchrone();
+    journal.trend = () => Promise.reject(new Error("panne"));
+    const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { traiter } = creer({ journal });
+    const response = (await traiter(
+      post("/api/analyze", {
+        original: "Ils on vu le film.",
+        corrected: "Ils ont vu le film.",
+        matches: [],
+      }),
+    )) as Response;
+    expect(response.status).toBe(200);
+    expect((await response.json()).tendance).toBeNull();
+    erreur.mockRestore();
   });
 
   it("une erreur des badges n'empêche pas l'analyse (même asynchrone)", async () => {

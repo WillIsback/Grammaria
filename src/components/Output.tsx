@@ -5,6 +5,7 @@ import type {
   InterventionChoix,
   Reussite,
 } from "../analysis/regles/intervention";
+import type { TendanceRegle } from "../analysis/progression/tendance";
 import type { CorrectionEntry, WeekSummary } from "../types";
 import { nombre } from "../utils/format";
 import { visibleText } from "../utils/visibleText";
@@ -25,6 +26,11 @@ interface Props {
   /** Note sur 20 du texte courant (null tant que l'analyse n'est pas faite). */
   score?: number | null;
   week?: WeekSummary | null;
+  /**
+   * Progression de l'une des règles du texte, affichée avant la note : le
+   * serveur ne l'envoie que si elle est favorable (issue #63).
+   */
+  tendance?: TendanceRegle | null;
   analysisNotice?: string | null;
   /** Boutons Copier / Réinitialiser dans l'en-tête (écrans larges) plutôt qu'en bas. */
   actionsInHeader?: boolean;
@@ -79,6 +85,7 @@ export function Output({
   isLoadingCorrections,
   score,
   week,
+  tendance = null,
   analysisNotice,
   actionsInHeader = false,
   intervention = null,
@@ -435,9 +442,20 @@ export function Output({
                 <p className="mt-4 text-xs text-amber-700 dark:text-amber-400">{analysisNotice}</p>
               )}
 
+              {tendance && (
+                <p
+                  className="mt-5 text-[13px] text-emerald-800 dark:text-emerald-300 tabular-nums"
+                  data-testid="tendance-line"
+                >
+                  <span className="font-semibold">Vous progressez sur « {tendance.titre} » :</span>{" "}
+                  {nombre(tendance.avant)} puis {nombre(tendance.depuis)} fautes pour{" "}
+                  {tendance.motsParTaux.toLocaleString("fr-FR")} mots depuis la première astuce.
+                </p>
+              )}
+
               {typeof score === "number" && (
                 <p
-                  className="mt-5 text-xs text-gray-500 dark:text-gray-400 tabular-nums"
+                  className={`${tendance ? "mt-1.5" : "mt-5"} text-xs text-gray-500 dark:text-gray-400 tabular-nums`}
                   data-testid="score-line"
                 >
                   Note de ce texte :{" "}

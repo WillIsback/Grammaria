@@ -261,6 +261,7 @@ function App() {
               isLoadingCorrections={isLoadingCorrections}
               score={analysis?.score}
               week={analysis?.week}
+              tendance={analysis?.tendance}
               intervention={analysis?.intervention}
               reussites={analysis?.reussites}
               onChoiceAnswer={recordChoiceAnswer}

@@ -715,3 +715,39 @@ describe("Journal — emplois corrects (issue #60)", () => {
     expect(await regle(journal)).toMatchObject({ state: "acquise", acquiredAt: dernier });
   });
 });
+
+describe("Journal — tendance d'une règle (issue #63)", () => {
+  const REMPLISSAGE =
+    "Le rapport avance bien et toute cette équipe reste contente du travail accompli. ".repeat(14);
+  const LONG_FAUTE: [string, string] = [
+    `${REMPLISSAGE}Hier, ils on mangé tous les gâteaux.`,
+    `${REMPLISSAGE}Hier, ils ont mangé tous les gâteaux.`,
+  ];
+  const LONG_SANS: [string, string] = [REMPLISSAGE, REMPLISSAGE];
+
+  it("ne donne rien tant que le volume est insuffisant, ni sans règle", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    for (let i = 0; i < 3; i++) await corriger(journal, LONG_FAUTE, jour(0) + i * 1000);
+    expect(await journal.trend([ON])).toBeNull();
+    expect(await journal.trend([])).toBeNull();
+  });
+
+  it("donne la tendance quand la faute revient moins souvent depuis la première astuce", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    for (let i = 0; i < 3; i++) await corriger(journal, LONG_FAUTE, jour(0) + i * 1000);
+    for (let n = 1; n <= 6; n++) await corriger(journal, LONG_SANS, jour(n));
+    await corriger(journal, LONG_FAUTE, jour(7));
+    const tendance = await journal.trend([ON]);
+    expect(tendance).toMatchObject({ ruleKey: ON, titre: "on / ont", motsParTaux: 1000 });
+    expect(tendance?.depuis).toBeLessThan(tendance?.avant ?? 0);
+    // Une autre règle du texte, sans mesure, ne donne rien.
+    expect(await journal.trend(["PAIRE:a/à"])).toBeNull();
+  });
+
+  it("ne donne rien quand la faute ne revient pas moins souvent", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    for (let i = 0; i < 3; i++) await corriger(journal, LONG_FAUTE, jour(0) + i * 1000);
+    for (let n = 1; n <= 7; n++) await corriger(journal, LONG_FAUTE, jour(n));
+    expect(await journal.trend([ON])).toBeNull();
+  });
+});

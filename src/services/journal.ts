@@ -1,5 +1,6 @@
 import type { Analysis } from "../analysis/analyze";
 import type { BadgeAnnonce } from "../analysis/badges/vue";
+import type { TendanceRegle } from "../analysis/progression/tendance";
 import type { Intervention, Reussite } from "../analysis/regles/intervention";
 import type { LTMatch, WeekSummary } from "../types";
 
@@ -9,6 +10,8 @@ export interface AnalysisResponse extends Analysis {
   intervention?: Intervention | null;
   /** Règles devenues « acquises » avec ce texte. */
   reussites?: Reussite[];
+  /** Progression favorable de l'une des règles du texte, affichée avant la note (issue #63). */
+  tendance?: TendanceRegle | null;
   /** Badges obtenus grâce à ce texte (notification discrète). */
   nouveauxBadges?: BadgeAnnonce[];
 }

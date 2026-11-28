@@ -1,5 +1,6 @@
 import type { Analysis } from "../src/analysis/analyze.ts";
 import type { BadgeAnnonce } from "../src/analysis/badges/vue.ts";
+import type { TendanceRegle } from "../src/analysis/progression/tendance.ts";
 import type { EtatCycle } from "../src/analysis/regles/cycle.ts";
 import type { LTMatch } from "../src/types.ts";
 import type { ServerSettings, SettingsUpdate } from "./reglages.ts";
@@ -34,6 +35,12 @@ export interface JournalDeps {
   ): MaybePromise<object>;
   /** Bilan d'une période (note moyenne affichée près du bouton Copier). */
   period(days: number): MaybePromise<unknown>;
+  /**
+   * Tendance favorable de l'une des règles `ruleKeys` (les règles fautives du
+   * texte), affichée avant la note ; null si aucune ne progresse de façon
+   * mesurable (issue #63).
+   */
+  trend(ruleKeys: string[]): MaybePromise<TendanceRegle | null>;
   /** Bilan du journal (`GET /api/journal`). */
   summary(days: number): MaybePromise<unknown>;
   /** Écran « Progression » (`GET /api/progress`). */
