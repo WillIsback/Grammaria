@@ -275,7 +275,12 @@ const entiers = (cles: readonly string[], optionnelles: readonly string[] = []) 
  * Seuils du cycle ajoutés après la version 0.5 : un export produit par une
  * version antérieure ne les contient pas, et reste valide.
  */
-const SEUILS_CYCLE_AJOUTES: readonly string[] = ["acquisitionEmploisMin"];
+const SEUILS_CYCLE_AJOUTES: readonly string[] = [
+  "acquisitionEmploisMin",
+  "revisionIntervalleJours",
+  "revisionFacteur",
+  "revisionIntervalleMaxJours",
+];
 
 const VOLUME = entiers(["textes", "mots", "fautes"]);
 const SYNTHESE = objet({

@@ -60,6 +60,7 @@ import {
 } from "./src/analysis/progression/mesure.ts";
 import { choisirTendance, type TendanceRegle } from "./src/analysis/progression/tendance.ts";
 import type { RuleState } from "./src/analysis/regles/cycle.ts";
+import type { QuestionRevision } from "./src/analysis/regles/revision.ts";
 import { JOUR_MS } from "./src/analysis/regles/seuils.ts";
 import { noteSur20 } from "./src/analysis/score.ts";
 import type { WeekSummary } from "./src/types.ts";
@@ -411,6 +412,20 @@ export class Journal {
       if (result === "recorded") this.badges.invalider();
       return result;
     });
+  }
+
+  /** Question de révision à poser pendant l'attente de la correction (issue #62). */
+  revision(now: number = Date.now(), random?: () => number): Promise<QuestionRevision | null> {
+    return this.serie(() => this.ruleStore.revision(now, random));
+  }
+
+  /** Réponse de l'utilisateur à une question de révision précise (`reviewId`). */
+  answerRevision(
+    reviewId: number,
+    correct: boolean,
+    now: number = Date.now(),
+  ): Promise<AnswerResult> {
+    return this.serie(() => this.ruleStore.answerRevision(reviewId, correct, now));
   }
 
   async period(days: number, now: number = Date.now()): Promise<WeekSummary> {

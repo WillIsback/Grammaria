@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AnalyzedCorrection } from "../analysis/analyze";
-import { type AnalysisResponse, analyzeCorrection } from "../services/journal";
+import type { QuestionRevision } from "../analysis/regles/revision";
+import { type AnalysisResponse, analyzeCorrection, fetchRevision } from "../services/journal";
 import { runLanguageTool } from "../services/languagetool";
 import type { CorrectionEntry, CorrectionSettings, CorrectionStats, LTMatch } from "../types";
 import { ErreurCorrection, MESSAGE_ECHEC_CORRECTION } from "../utils/erreursModele";
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: CorrectionSettings = {
   fixSpelling: true,
   fixSyntax: true,
   fixStyle: true,
+  revisionQuestion: true,
 };
 
 /**
@@ -51,6 +53,9 @@ export function useCorrector() {
   const [isLoadingCorrections, setIsLoadingCorrections] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
+  /** Question de révision posée pendant l'attente de la correction en cours. */
+  const [revision, setRevision] = useState<QuestionRevision | null>(null);
+  const revisionPoseeRef = useRef(false);
   const [settings, setSettings] = useState<CorrectionSettings>(DEFAULT_SETTINGS);
   const [error, setError] = useState<string | null>(null);
   /** Détail technique de l'erreur, affiché replié sous « Détails ». */
@@ -102,6 +107,8 @@ export function useCorrector() {
     setCorrections([]);
     setAnalysis(null);
     setAnalysisNotice(null);
+    setRevision(null);
+    revisionPoseeRef.current = false;
     setStats({ processingTime: 0, modificationCount: 0 });
     setError(null);
     setErrorDetails(null);
@@ -121,6 +128,17 @@ export function useCorrector() {
     clearResult();
 
     abortControllerRef.current = new AbortController();
+
+    // Question de révision (issue #62) : demandée en parallèle, jamais attendue.
+    // Si elle arrive, elle tient lieu de sollicitation pour ce texte.
+    if (settings.revisionQuestion !== false) {
+      const controleur = abortControllerRef.current;
+      void fetchRevision(controleur.signal).then((question) => {
+        if (!question || abortControllerRef.current !== controleur) return;
+        revisionPoseeRef.current = true;
+        setRevision(question);
+      });
+    }
 
     try {
       // Le LLM ne renvoie que le texte corrigé. Le correcteur grammatical
@@ -176,7 +194,13 @@ export function useCorrector() {
             "Le correcteur grammatical est indisponible : l'analyse des fautes est partielle.",
           );
         }
-        const result = await analyzeCorrection(input.text, finalText, matches ?? [], signal);
+        const result = await analyzeCorrection(
+          input.text,
+          finalText,
+          matches ?? [],
+          signal,
+          revisionPoseeRef.current,
+        );
         // L'astuce d'une règle n'est affichée qu'à sa première occurrence.
         const seenTips = new Set<string>();
         const entries = result.corrections.map((c) => {
@@ -221,6 +245,7 @@ export function useCorrector() {
     corrections,
     analysis,
     analysisNotice,
+    revision,
     settings,
     setSettings,
     isLoading: isLoadingText,

@@ -201,6 +201,28 @@ export function Sidebar({ settings, setSettings, open, onClose, onPurged, hidden
           </div>
         </div>
 
+        <div className="mb-6">
+          <h2 className={sectionTitle}>Apprentissage</h2>
+          <label
+            className="flex items-start gap-2.5 px-3 py-2 rounded-xl cursor-pointer
+              hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          >
+            <input
+              type="checkbox"
+              checked={settings.revisionQuestion !== false}
+              onChange={(e) => handleSettingChange("revisionQuestion", e.target.checked)}
+              className="peer sr-only"
+            />
+            {checkbox(settings.revisionQuestion !== false)}
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Question de révision
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Une question courte sur une faute récurrente, pendant que le texte se corrige.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <div className="mt-5 pt-5 border-t border-gray-200/70 dark:border-gray-800/70">
           <h2 className={sectionTitle}>Journal des fautes</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">

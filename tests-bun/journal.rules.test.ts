@@ -751,3 +751,91 @@ describe("Journal — tendance d'une règle (issue #63)", () => {
     expect(await journal.trend([ON])).toBeNull();
   });
 });
+
+describe("Journal — question de révision (issue #62)", () => {
+  const signaler = async (journal: Journal) => {
+    for (let i = 0; i < SEUILS.signalementOccurrences; i++) {
+      await corriger(journal, FAUTE_ON, jour(0) + i * 1000);
+    }
+  };
+  // Une heure de marge : la troisième faute a reçu son astuce quelques secondes après jour(0).
+  const du = jour(SEUILS.revisionIntervalleJours) + 3_600_000;
+
+  it("ne pose rien sans règle suivie, ni avant la fin de l'intervalle", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    expect(await journal.revision(du)).toBeNull();
+    await signaler(journal);
+    expect(await journal.revision(jour(1))).toBeNull();
+  });
+
+  it("pose une question sur une règle due et la journalise comme sollicitation du jour", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    const question = await journal.revision(du, () => 0);
+    expect(question).toMatchObject({
+      reviewId: expect.any(Number),
+      ruleKey: ON,
+      titre: "on / ont",
+      formes: [
+        { texte: "ont", correcte: true },
+        { texte: "on", correcte: false },
+      ],
+    });
+    expect((await journal.ruleEvents({ limit: 1 }))[0]).toMatchObject({
+      id: question?.reviewId,
+      ruleKey: ON,
+      type: "revision",
+      at: du,
+    });
+    expect(await regle(journal)).toMatchObject({ lastSolicitedAt: du, state: "signalee" });
+    // Une seule sollicitation par règle et par jour.
+    expect(await journal.revision(du + 1000)).toBeNull();
+  });
+
+  it("enregistre la réponse une seule fois", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    expect(await journal.answerRevision(1, true, du)).toBe("unknown");
+    const question = await journal.revision(du);
+    const id = question?.reviewId ?? 0;
+    expect(await journal.answerRevision(id, true, du + 500)).toBe("recorded");
+    expect(await journal.answerRevision(id, false, du + 600)).toBe("conflict");
+    expect((await journal.ruleEvents({ limit: 1 }))[0]).toMatchObject({
+      ruleKey: ON,
+      type: "revision_juste",
+      at: du + 500,
+    });
+  });
+
+  it("espace la révision suivante après une bonne réponse, pas après une mauvaise", async () => {
+    const base = SEUILS.revisionIntervalleJours;
+    const juste = await ouvrirJournal(":memory:");
+    await signaler(juste);
+    const q1 = await juste.revision(du);
+    await juste.answerRevision(q1?.reviewId ?? 0, true, du + 500);
+    expect(await juste.revision(du + base * DAY)).toBeNull();
+    expect(await juste.revision(du + base * SEUILS.revisionFacteur * DAY)).not.toBeNull();
+
+    const faux = await ouvrirJournal(":memory:");
+    await signaler(faux);
+    const q2 = await faux.revision(du);
+    await faux.answerRevision(q2?.reviewId ?? 0, false, du + 500);
+    expect(await faux.revision(du + base * DAY)).not.toBeNull();
+  });
+
+  it("le texte en cours ne reçoit ni astuce ni choix quand une question a été posée", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    const [original, corrige] = FAUTE_ON;
+    const suivi = await journal.record(analyze(original, corrige, []), jour(3), {
+      original,
+      corrected: corrige,
+      sansIntervention: true,
+    });
+    expect(suivi.intervention).toBeNull();
+    // La faute est comptée quand même.
+    expect(await regle(journal)).toMatchObject({
+      occurrences: SEUILS.signalementOccurrences + 1,
+    });
+  });
+});

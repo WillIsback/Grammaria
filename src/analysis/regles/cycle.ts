@@ -49,6 +49,8 @@ export type RuleEvent =
   | { type: "astuce" }
   /** Le choix à deux formes a été proposé sur le bouton Copier. */
   | { type: "choix" }
+  /** Une question de révision a été posée pendant l'attente (issue #62). */
+  | { type: "revision" }
   /** L'utilisateur a cliqué l'une des deux formes. */
   | { type: "reponse"; correct: boolean };
 
@@ -232,6 +234,8 @@ export function appliquerEvenement(
         state: { ...solliciter(state, now), choicesShown: state.choicesShown + 1 },
         transitions,
       };
+    case "revision":
+      return { state: solliciter(state, now), transitions };
     case "reponse":
       return {
         state: event.correct

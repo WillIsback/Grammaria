@@ -18,6 +18,7 @@ export function mockerApp(surcharges: () => Partial<Correcteur> = () => ({})) {
       corrections: [],
       analysis: null,
       analysisNotice: null,
+      revision: null,
       settings: {
         mode: "formel",
         fixGrammar: true,

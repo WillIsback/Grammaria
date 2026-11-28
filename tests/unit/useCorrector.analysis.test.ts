@@ -193,4 +193,85 @@ describe("useCorrector — texte préparé et troncature", () => {
     expect(sentToLt).toBe(text);
     expect(analyzed.original).toBe(text);
   });
+
+  describe("question de révision (issue #62)", () => {
+    const QUESTION = {
+      reviewId: 12,
+      ruleKey: "PAIRE:on/ont",
+      titre: "on / ont",
+      explication: "Remplacez par « avaient ».",
+      avant: "Les clients ",
+      apres: " confirmé leur venue.",
+      formes: [
+        { texte: "on", correcte: false },
+        { texte: "ont", correcte: true },
+      ],
+    };
+    const ANALYSE = {
+      corrections: [],
+      wordCount: 5,
+      faultCount: 0,
+      unclassifiedCount: 0,
+      score: 20,
+    };
+    const serveur = (question: unknown) =>
+      vi.fn((url: string, _init?: RequestInit) => {
+        if (url === "/api/check") return json({ matches: [] });
+        if (url === "/api/revision") return json({ question });
+        return json(ANALYSE);
+      });
+    const corpsAnalyse = (fetchMock: ReturnType<typeof vi.fn>) => {
+      const appel = fetchMock.mock.calls.find(([url]) => url === "/api/analyze");
+      if (!appel) throw new Error("l'analyse n'a pas été appelée");
+      return JSON.parse((appel[1] as RequestInit).body as string);
+    };
+
+    it("demande une question au lancement et la rend disponible à l'écran", async () => {
+      const fetchMock = serveur(QUESTION);
+      const result = await runCorrection(fetchMock);
+      expect(fetchMock.mock.calls.some(([url]) => url === "/api/revision")).toBe(true);
+      await waitFor(() => expect(result.current.revision).toEqual(QUESTION));
+    });
+
+    it("prévient l'analyse qu'une question a été posée pour ce texte", async () => {
+      const fetchMock = serveur(QUESTION);
+      await runCorrection(fetchMock);
+      expect(corpsAnalyse(fetchMock).revisionPosee).toBe(true);
+    });
+
+    it("ne signale rien à l'analyse quand aucune question n'était due", async () => {
+      const fetchMock = serveur(null);
+      const result = await runCorrection(fetchMock);
+      expect(result.current.revision).toBeNull();
+      expect(corpsAnalyse(fetchMock).revisionPosee).toBeUndefined();
+    });
+
+    it("ne demande rien quand le réglage est désactivé", async () => {
+      const fetchMock = serveur(QUESTION);
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const { correctText } = await import("../../src/utils/llm");
+      vi.mocked(correctText).mockResolvedValue({ text: CORRECTED, duration: 42 });
+      const { result } = renderHook(() => useCorrector());
+      await act(async () => {
+        result.current.setTextContent(ORIGINAL);
+        result.current.setSettings({ ...result.current.settings, revisionQuestion: false });
+      });
+      await act(async () => {
+        await result.current.handleCorrect();
+      });
+      expect(fetchMock.mock.calls.some(([url]) => url === "/api/revision")).toBe(false);
+      expect(result.current.revision).toBeNull();
+    });
+
+    it("une panne de la question ne gêne pas la correction", async () => {
+      const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
+        if (url === "/api/check") return json({ matches: [] });
+        if (url === "/api/revision") return Promise.reject(new Error("panne"));
+        return json(ANALYSE);
+      });
+      const result = await runCorrection(fetchMock);
+      expect(result.current.outputText).toBe(CORRECTED);
+      expect(result.current.revision).toBeNull();
+    });
+  });
 });

@@ -6,6 +6,11 @@ export interface CorrectionSettings {
   fixSpelling: boolean;
   fixSyntax: boolean;
   fixStyle: boolean;
+  /**
+   * Poser une question de révision pendant que le modèle écrit (issue #62).
+   * Activé par défaut : seul `false` la coupe.
+   */
+  revisionQuestion?: boolean;
 }
 
 export interface CorrectionStats {

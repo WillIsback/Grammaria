@@ -275,6 +275,57 @@ describe.each([
     });
   });
 
+  describe("question de révision pendant l'attente (issue #62)", () => {
+    const QUESTION = {
+      reviewId: 12,
+      ruleKey: "PAIRE:on/ont",
+      titre: "on / ont",
+      explication: "Remplacez par « avaient ».",
+      avant: "Les clients ",
+      apres: " confirmé leur venue.",
+      formes: [
+        { texte: "on", correcte: false },
+        { texte: "ont", correcte: true },
+      ] as [{ texte: string; correcte: boolean }, { texte: string; correcte: boolean }],
+    };
+    const question = () => screen.queryByRole("group", { name: /Question de révision/ });
+
+    it("s'affiche pendant que le texte se corrige", () => {
+      render(
+        <Output
+          {...props({ actionsInHeader, outputText: "", isLoading: true, revision: QUESTION })}
+        />,
+      );
+      expect(question()).not.toBeNull();
+    });
+
+    it("disparaît d'elle-même, sans réponse, dès que le texte est prêt", () => {
+      const { rerender } = render(
+        <Output
+          {...props({ actionsInHeader, outputText: "", isLoading: true, revision: QUESTION })}
+        />,
+      );
+      rerender(<Output {...props({ actionsInHeader, isLoading: false, revision: QUESTION })} />);
+      expect(question()).toBeNull();
+      expect(screen.queryByTestId("revision-retour")).toBeNull();
+    });
+
+    it("garde le retour affiché si l'utilisateur a répondu, et prévient l'appelant", () => {
+      const onRevisionAnswer = vi.fn();
+      const p = { actionsInHeader, revision: QUESTION, onRevisionAnswer };
+      const { rerender } = render(<Output {...props({ ...p, outputText: "", isLoading: true })} />);
+      fireEvent.click(screen.getByRole("button", { name: "ont" }));
+      expect(onRevisionAnswer).toHaveBeenCalledWith(true);
+      rerender(<Output {...props({ ...p, isLoading: false })} />);
+      expect(screen.getByTestId("revision-retour").textContent).toContain("Bonne réponse");
+    });
+
+    it("n'affiche rien sans question", () => {
+      render(<Output {...props({ actionsInHeader, outputText: "", isLoading: true })} />);
+      expect(question()).toBeNull();
+    });
+  });
+
   it("affiche l'astuce d'une règle signalée sans toucher au bouton Copier", () => {
     const p = props({ actionsInHeader, intervention: ASTUCE });
     render(<Output {...p} />);

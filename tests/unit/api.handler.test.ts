@@ -43,6 +43,14 @@ function journalAsynchrone() {
     exportBeta: (options) => plusTard({ format: "grammaria-beta", ...options }),
     rules: () => plusTard([{ state: "observee" as const }, { state: "acquise" as const }]),
     ruleEvents: (options) => plusTard([{ id: 1, ...options }]),
+    revision: () => {
+      appels.push("revision");
+      return plusTard(null);
+    },
+    answerRevision: (reviewId, correct) => {
+      appels.push(`answerRevision:${reviewId}:${correct}`);
+      return plusTard(choix);
+    },
     answerChoice: (choiceId, correct) => {
       appels.push(`answer:${choiceId}:${correct}`);
       return plusTard(choix);
@@ -286,6 +294,84 @@ describe("creerGestionnaire — journal asynchrone", () => {
     const ok = (await traiter(post("/api/rules/answer", { choiceId: 3, correct: false })))!;
     expect(await ok.json()).toMatchObject({ recorded: true });
     expect(appels).toContain("answer:3:false");
+  });
+
+  describe("question de révision (issue #62)", () => {
+    const QUESTION = {
+      reviewId: 12,
+      ruleKey: "PAIRE:on/ont",
+      titre: "on / ont",
+      explication: "Remplacez par « avaient ».",
+      avant: "Les clients ",
+      apres: " confirmé leur venue.",
+      formes: [
+        { texte: "ont", correcte: true },
+        { texte: "on", correcte: false },
+      ],
+    };
+
+    it("GET /api/revision renvoie la question du journal, ou null", async () => {
+      const { journal } = journalAsynchrone();
+      const { traiter } = creer({ journal });
+      const vide = (await traiter(requete("/api/revision")))!;
+      expect(vide.status).toBe(200);
+      expect(await vide.json()).toEqual({ question: null });
+
+      journal.revision = () => plusTard(QUESTION as never);
+      const reponse = (await traiter(requete("/api/revision")))!;
+      expect(await reponse.json()).toEqual({ question: QUESTION });
+    });
+
+    it("GET /api/revision ne fait jamais échouer la correction : une panne donne null", async () => {
+      const { journal } = journalAsynchrone();
+      journal.revision = () => Promise.reject(new Error("panne"));
+      const erreur = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { traiter } = creer({ journal });
+      const reponse = (await traiter(requete("/api/revision")))!;
+      expect(reponse.status).toBe(200);
+      expect(await reponse.json()).toEqual({ question: null });
+      erreur.mockRestore();
+    });
+
+    it("POST /api/revision/answer : 400, 404, 409 puis réponse enregistrée", async () => {
+      const { traiter, setChoix, appels } = creer();
+      expect(
+        (await traiter(post("/api/revision/answer", { reviewId: "x", correct: true })))?.status,
+      ).toBe(400);
+      setChoix("unknown");
+      expect(
+        (await traiter(post("/api/revision/answer", { reviewId: 3, correct: true })))?.status,
+      ).toBe(404);
+      setChoix("conflict");
+      expect(
+        (await traiter(post("/api/revision/answer", { reviewId: 3, correct: true })))?.status,
+      ).toBe(409);
+      setChoix("recorded");
+      const ok = (await traiter(post("/api/revision/answer", { reviewId: 3, correct: false })))!;
+      expect(await ok.json()).toEqual({ recorded: true });
+      expect(appels).toContain("answerRevision:3:false");
+    });
+
+    it("POST /api/analyze transmet qu'une question a déjà été posée pour ce texte", async () => {
+      const { journal } = journalAsynchrone();
+      const options: unknown[] = [];
+      journal.record = async (_a, _now, o) => {
+        options.push(o);
+        return { intervention: null, reussites: [] };
+      };
+      const { traiter } = creer({ journal });
+      const corps = {
+        original: "Ils on vu le film.",
+        corrected: "Ils ont vu le film.",
+        matches: [],
+      };
+      await traiter(post("/api/analyze", corps));
+      await traiter(post("/api/analyze", { ...corps, revisionPosee: true }));
+      expect(options).toEqual([
+        { original: corps.original, corrected: corps.corrected },
+        { original: corps.original, corrected: corps.corrected, sansIntervention: true },
+      ]);
+    });
   });
 
   it("DELETE /api/journal attend l'effacement", async () => {

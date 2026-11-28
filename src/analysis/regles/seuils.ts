@@ -48,6 +48,17 @@ export const SEUILS = {
   sollicitationsParRegleEtParJour: 1,
 
   /**
+   * Question de révision posée pendant l'attente de la correction (issue #62).
+   * Une règle suivie est due quand elle n'a eu ni faute ni sollicitation depuis
+   * ce nombre de jours…
+   */
+  revisionIntervalleJours: 2,
+  /** … multiplié par ce facteur à chaque bonne réponse (rappel espacé)… */
+  revisionFacteur: 2,
+  /** … sans dépasser ce nombre de jours. */
+  revisionIntervalleMaxJours: 16,
+
+  /**
    * Longueur maximale d'une forme proposée sur le bouton Copier. Au-delà, le
    * choix ne tient pas sur un bouton : la règle reçoit une astuce à la place.
    */
