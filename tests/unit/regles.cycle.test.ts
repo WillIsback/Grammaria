@@ -56,7 +56,7 @@ describe("seuils du cycle de vie", () => {
     expect(SEUILS).toMatchObject({
       signalementOccurrences: 3,
       signalementFenetreJours: 7,
-      astucesAvantTravail: 3,
+      astucesAvantTravail: 1,
       acquisitionJoursSansFaute: 14,
       travailleesMax: 3,
       sollicitationsParRegleEtParJour: 1,
@@ -203,6 +203,12 @@ describe("signalée → travaillée", () => {
     expect(transitions).toEqual([
       { ruleKey: REGLE, at: now, type: "travaillee", from: "signalee", to: "travaillee" },
     ]);
+  });
+
+  it("une seule astuce suffit : la faute suivante fait passer en travaillée (issue #61)", () => {
+    const apresUneAstuce = appliquer(signalee(), { type: "astuce" }, jour(0)).state;
+    const suite = appliquer(apresUneAstuce, { type: "faute", count: 1 }, jour(1));
+    expect(suite.state.state).toBe("travaillee");
   });
 
   it("les astuces seules ne font pas passer en travaillée", () => {

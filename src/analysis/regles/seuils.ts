@@ -15,9 +15,11 @@ export const SEUILS = {
 
   /**
    * Signalée → travaillée : la faute revient alors que ce nombre d'astuces a
-   * déjà été affiché pour la règle (« la faute persiste après plusieurs astuces »).
+   * déjà été affiché pour la règle. Une seule : ces fautes viennent plus souvent
+   * d'un défaut d'attention que d'une règle inconnue, et relire plusieurs fois
+   * la même ligne apporte peu (issue #61). La question active arrive donc tôt.
    */
-  astucesAvantTravail: 3,
+  astucesAvantTravail: 1,
 
   /** → Acquise : jours écoulés depuis la dernière faute sur la règle… */
   acquisitionJoursSansFaute: 14,

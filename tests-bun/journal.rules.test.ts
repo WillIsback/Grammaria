@@ -65,7 +65,9 @@ describe("Journal — cycle de vie des règles", () => {
     expect((await corriger(journal, FAUTE_ON, jour(0) + 2000)).intervention?.type).toBe("astuce");
     expect((await corriger(journal, FAUTE_ON, jour(0) + 3000)).intervention).toBeNull();
     expect(await regle(journal)).toMatchObject({ tipsShown: 1, occurrences: 4 });
-    expect((await corriger(journal, FAUTE_ON, jour(1))).intervention?.type).toBe("astuce");
+    // Le lendemain, le budget est de nouveau disponible. La règle a déjà reçu
+    // son astuce : la faute la fait passer en « travaillée » (issue #61).
+    expect((await corriger(journal, FAUTE_ON, jour(1))).intervention?.type).toBe("choix");
   });
 
   it("propose les deux formes quand la faute persiste après les astuces", async () => {
@@ -75,9 +77,12 @@ describe("Journal — cycle de vie des règles", () => {
     for (let i = 0; i < SEUILS.astucesAvantTravail; i++) {
       expect((await corriger(journal, FAUTE_ON, jour(i) + 2000)).intervention?.type).toBe("astuce");
     }
-    expect(await regle(journal)).toMatchObject({ state: "signalee", tipsShown: 3 });
+    expect(await regle(journal)).toMatchObject({
+      state: "signalee",
+      tipsShown: SEUILS.astucesAvantTravail,
+    });
 
-    const choix = await corriger(journal, FAUTE_ON, jour(3), () => 0.9);
+    const choix = await corriger(journal, FAUTE_ON, jour(SEUILS.astucesAvantTravail), () => 0.9);
     expect(choix.intervention).toEqual({
       type: "choix",
       choiceId: expect.any(Number),
@@ -94,8 +99,9 @@ describe("Journal — cycle de vie des règles", () => {
     expect(await regle(journal)).toMatchObject({ state: "travaillee", choicesShown: 1 });
 
     // Une seule sollicitation par jour : bouton Copier normal ensuite.
-    expect((await corriger(journal, FAUTE_ON, jour(3) + 1000)).intervention).toBeNull();
-    expect((await corriger(journal, FAUTE_ON, jour(4))).intervention?.type).toBe("choix");
+    const jourDuChoix = jour(SEUILS.astucesAvantTravail);
+    expect((await corriger(journal, FAUTE_ON, jourDuChoix + 1000)).intervention).toBeNull();
+    expect((await corriger(journal, FAUTE_ON, jourDuChoix + DAY)).intervention?.type).toBe("choix");
   });
 
   it("rattache la réponse à un choix précis, une seule fois", async () => {
@@ -584,8 +590,10 @@ describe("Journal — migration du schéma", () => {
         ["PAIRE:a/à", "observee", 1],
       ]);
       expect((await journal.badges.obtained()).get("premier-texte")).toBe(jour(0));
-      for (const n of [3, 4, 5]) {
-        expect((await corriger(journal, FAUTE_ON, jour(n))).intervention?.type).toBe("astuce");
+      // Une astuce, puis le choix à deux formes dès la faute suivante (issue #61).
+      expect((await corriger(journal, FAUTE_ON, jour(3))).intervention?.type).toBe("astuce");
+      for (const n of [4, 5]) {
+        expect((await corriger(journal, FAUTE_ON, jour(n))).intervention?.type).toBe("choix");
       }
       const choix = (await corriger(journal, FAUTE_ON, jour(6))).intervention;
       if (choix?.type !== "choix") throw new Error("choix attendu");
@@ -597,7 +605,7 @@ describe("Journal — migration du schéma", () => {
       await journal.close();
 
       const reouvert = await ouvrirJournal(path);
-      expect(await regle(reouvert)).toMatchObject({ choicesShown: 1, choicesCorrect: 1 });
+      expect(await regle(reouvert)).toMatchObject({ choicesShown: 3, choicesCorrect: 1 });
       await reouvert.purge();
       expect(await reouvert.rules()).toEqual([]);
       expect((await reouvert.badges.obtained()).size).toBe(0);
