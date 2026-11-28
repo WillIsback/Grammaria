@@ -95,6 +95,8 @@ describe("Journal — cycle de vie des règles", () => {
         { texte: "on", correcte: false },
         { texte: "ont", correcte: true },
       ],
+      // Position de « ont » dans le texte corrigé, à masquer à l'écran (issue #59).
+      masque: { start: 10, end: 13 },
     });
     expect(await regle(journal)).toMatchObject({ state: "travaillee", choicesShown: 1 });
 

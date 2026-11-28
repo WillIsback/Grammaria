@@ -188,6 +188,61 @@ describe.each([
     expect(screen.getByRole("status").textContent).toContain("Astuce · on / ont");
   });
 
+  describe("mot masqué pendant le choix (issue #59)", () => {
+    const MASQUE = { start: TEXTE.indexOf("ont"), end: TEXTE.indexOf("ont") + 3 };
+    const CHOIX_MASQUE: InterventionChoix = { ...CHOIX, masque: MASQUE };
+    const resultat = () => screen.getByTestId("texte-corrige");
+
+    it("remplace le mot par un blanc tant que le choix attend une réponse", () => {
+      render(<Output {...props({ actionsInHeader, intervention: CHOIX_MASQUE })} />);
+      expect(resultat().textContent).not.toContain("ont");
+      expect(resultat().textContent).toContain("Hier, ils ");
+      expect(resultat().textContent).toContain(" mangé tous les gâteaux.");
+      expect(within(resultat()).getByLabelText("mot masqué")).toBeTruthy();
+    });
+
+    it("révèle le mot, mis en évidence, après une bonne réponse", () => {
+      render(<Output {...props({ actionsInHeader, intervention: CHOIX_MASQUE })} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copier avec « ont »" }));
+      expect(resultat().textContent).toBe(TEXTE);
+      expect(resultat().querySelector("mark")?.textContent).toBe("ont");
+    });
+
+    it("révèle aussi le mot après une mauvaise réponse", () => {
+      render(<Output {...props({ actionsInHeader, intervention: CHOIX_MASQUE })} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copier avec « on »" }));
+      expect(resultat().textContent).toBe(TEXTE);
+      expect(resultat().querySelector("mark")?.textContent).toBe("ont");
+    });
+
+    it("copie toujours le texte complet", () => {
+      const p = props({ actionsInHeader, intervention: CHOIX_MASQUE });
+      render(<Output {...p} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copier avec « on »" }));
+      expect(p.onCopy).toHaveBeenCalledWith(TEXTE);
+    });
+
+    it("ne masque rien quand le choix n'est pas proposé (texte déjà copié)", () => {
+      const p = props({ actionsInHeader });
+      const { rerender } = render(<Output {...p} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copier" }));
+      rerender(<Output {...p} intervention={CHOIX_MASQUE} />);
+      expect(resultat().textContent).toBe(TEXTE);
+      expect(resultat().querySelector("mark")).toBeNull();
+    });
+
+    it("ne masque rien si la position ne désigne pas la bonne forme", () => {
+      const faux: InterventionChoix = { ...CHOIX, masque: { start: 0, end: 3 } };
+      render(<Output {...props({ actionsInHeader, intervention: faux })} />);
+      expect(resultat().textContent).toBe(TEXTE);
+    });
+
+    it("ne masque rien sans position (ancien serveur)", () => {
+      render(<Output {...props({ actionsInHeader, intervention: CHOIX })} />);
+      expect(resultat().textContent).toBe(TEXTE);
+    });
+  });
+
   it("affiche l'astuce d'une règle signalée sans toucher au bouton Copier", () => {
     const p = props({ actionsInHeader, intervention: ASTUCE });
     render(<Output {...p} />);

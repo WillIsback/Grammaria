@@ -5,6 +5,7 @@
  * retient au plus une intervention (un choix à deux formes pour une règle
  * « travaillée », sinon une astuce), dans le respect du budget de friction.
  */
+import { diffHunks } from "../diff";
 import { peutSolliciter, type RuleState } from "./cycle";
 import { SEUILS, type Seuils } from "./seuils";
 
@@ -38,6 +39,13 @@ export interface InterventionChoix {
   apres: string;
   /** Les deux formes, déjà dans l'ordre d'affichage (aléatoire). */
   formes: [FormeChoix, FormeChoix];
+  /**
+   * Position de la bonne forme dans le texte corrigé (fin exclue) : l'écran la
+   * masque tant que le choix attend une réponse, sinon la réponse se lirait
+   * dans le résultat affiché (issue #59). Absente si elle n'a pas pu être
+   * située ; rien n'est alors masqué.
+   */
+  masque?: { start: number; end: number };
 }
 
 export type Intervention = InterventionAstuce | InterventionChoix;
@@ -88,6 +96,36 @@ function couperFin(texte: string, max: number): string {
 }
 
 /**
+ * Position, dans le texte corrigé, de la forme `forme` qui remplace le passage
+ * `[debut, fin[` du texte d'origine. Null si le passage n'a pas été corrigé en
+ * cette forme. Les corrections précédentes décalent le texte : la position est
+ * recalculée à partir de la comparaison mot à mot des deux textes.
+ */
+export function positionDansCorrige(
+  original: string,
+  corrected: string,
+  debut: number,
+  fin: number,
+  forme: string,
+): { start: number; end: number } | null {
+  if (!forme) return null;
+  let decalage = 0;
+  for (const hunk of diffHunks(original, corrected)) {
+    if (hunk.end <= debut) {
+      decalage += hunk.after.length - hunk.before.length;
+      continue;
+    }
+    if (hunk.start >= fin) break;
+    const index = hunk.after.indexOf(forme);
+    if (index < 0) return null;
+    const start = hunk.start + decalage + index;
+    const end = start + forme.length;
+    return corrected.slice(start, end) === forme ? { start, end } : null;
+  }
+  return null;
+}
+
+/**
  * Construit le choix à deux formes sur la phrase de l'utilisateur, ou null si
  * le passage ne s'y prête pas (ajout ou suppression pure, forme trop longue).
  * `random` (valeur dans [0, 1[) tire l'ordre des deux formes.
@@ -97,7 +135,8 @@ export function construireChoix(
   passage: PassageCorrige,
   random: () => number = Math.random,
   seuils: Seuils = SEUILS,
-): Pick<InterventionChoix, "avant" | "apres" | "formes"> | null {
+  corrected?: string,
+): Pick<InterventionChoix, "avant" | "apres" | "formes" | "masque"> | null {
   const fautive = passage.avant.trim();
   const corrigee = passage.apres.trim();
   if (!fautive || !corrigee || fautive === corrigee) return null;
@@ -124,7 +163,10 @@ export function construireChoix(
   );
   const bonne: FormeChoix = { texte: corrigee, correcte: true };
   const mauvaise: FormeChoix = { texte: fautive, correcte: false };
-  return { avant, apres, formes: random() < 0.5 ? [bonne, mauvaise] : [mauvaise, bonne] };
+  const formes: [FormeChoix, FormeChoix] = random() < 0.5 ? [bonne, mauvaise] : [mauvaise, bonne];
+  const masque =
+    corrected === undefined ? null : positionDansCorrige(original, corrected, debut, fin, corrigee);
+  return masque ? { avant, apres, formes, masque } : { avant, apres, formes };
 }
 
 /** Astuce d'une règle sans fiche : la correction faite sur le texte lui-même. */
@@ -148,6 +190,7 @@ export function choisirIntervention(
   now: number,
   random: () => number = Math.random,
   seuils: Seuils = SEUILS,
+  corrected?: string,
 ): InterventionAstuce | ChoixPropose | null {
   const rang = (c: Candidat) => (c.state.state === "travaillee" ? 0 : 1);
   const eligibles = candidats
@@ -165,7 +208,7 @@ export function choisirIntervention(
   for (const c of eligibles) {
     if (c.state.state !== "travaillee") continue;
     for (const passage of c.passages) {
-      const choix = construireChoix(original, passage, random, seuils);
+      const choix = construireChoix(original, passage, random, seuils, corrected);
       if (!choix) continue;
       return {
         type: "choix",

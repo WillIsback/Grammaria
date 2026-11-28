@@ -120,9 +120,12 @@ Réponse :
   "formes": [
     { "texte": "on", "correcte": false },
     { "texte": "ont", "correcte": true }
-  ]
+  ],
+  "masque": { "start": 4, "end": 7 }
 }
 ```
+
+`masque` donne la position de la bonne forme dans le texte corrigé (fin exclue) : l'écran la masque tant que le choix attend une réponse. Le champ est absent quand la forme n'a pas pu être située.
 
 `choiceId` identifie ce choix précis (c'est l'`id` de l'événement `choix` dans l'historique) : il est à renvoyer à `POST /api/rules/answer`. `avant` et `apres` sont l'extrait de la phrase de part et d'autre de la forme. `formes` est déjà dans l'ordre d'affichage, tiré au hasard par le serveur.
 

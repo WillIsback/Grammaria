@@ -27,7 +27,11 @@ export type AnswerResult = "recorded" | "unknown" | "conflict";
  */
 export interface JournalDeps {
   /** Enregistre une analyse ; renvoie ce qu'il faut afficher près du bouton Copier. */
-  record(analysis: Analysis, now: number, options: { original?: string }): MaybePromise<object>;
+  record(
+    analysis: Analysis,
+    now: number,
+    options: { original?: string; corrected?: string },
+  ): MaybePromise<object>;
   /** Bilan d'une période (note moyenne affichée près du bouton Copier). */
   period(days: number): MaybePromise<unknown>;
   /** Bilan du journal (`GET /api/journal`). */

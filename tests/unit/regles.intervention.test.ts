@@ -6,6 +6,7 @@ import {
   choisirIntervention,
   construireChoix,
   type PassageCorrige,
+  positionDansCorrige,
 } from "../../src/analysis/regles/intervention";
 import { JOUR_MS, SEUILS } from "../../src/analysis/regles/seuils";
 
@@ -218,5 +219,54 @@ describe("choisirIntervention", () => {
       type: "astuce",
       texte: "Vous avez écrit « on » ; la forme correcte ici est « ont ».",
     });
+  });
+});
+
+describe("positionDansCorrige (issue #59)", () => {
+  it("retrouve la forme corrigée dans le texte corrigé", () => {
+    const debut = ORIGINAL.indexOf(" on ") + 1;
+    const position = positionDansCorrige(ORIGINAL, CORRIGE, debut, debut + 2, "ont");
+    expect(position).toEqual({ start: debut, end: debut + 3 });
+    expect(CORRIGE.slice(position?.start, position?.end)).toBe("ont");
+  });
+
+  it("tient compte des corrections précédentes, qui décalent le texte", () => {
+    const original = "Les enfant on mangé, puis ils on dormi.";
+    const corrige = "Les enfants ont mangé, puis ils ont dormi.";
+    const debut = original.lastIndexOf(" on ") + 1;
+    const position = positionDansCorrige(original, corrige, debut, debut + 2, "ont");
+    expect(position).toEqual({
+      start: corrige.lastIndexOf("ont"),
+      end: corrige.lastIndexOf("ont") + 3,
+    });
+  });
+
+  it("renvoie null si le passage n'a pas été corrigé en cette forme", () => {
+    expect(positionDansCorrige(ORIGINAL, ORIGINAL, 19, 21, "ont")).toBeNull();
+    expect(positionDansCorrige(ORIGINAL, "Tout autre chose.", 19, 21, "ont")).toBeNull();
+  });
+});
+
+describe("construireChoix — position du mot à masquer (issue #59)", () => {
+  it("donne la position de la bonne forme quand le texte corrigé est fourni", () => {
+    const choix = construireChoix(ORIGINAL, passage(), () => 0, SEUILS, CORRIGE);
+    const debut = CORRIGE.indexOf("ont");
+    expect(choix?.masque).toEqual({ start: debut, end: debut + 3 });
+  });
+
+  it("n'en donne pas sans texte corrigé", () => {
+    expect(construireChoix(ORIGINAL, passage(), () => 0)?.masque).toBeUndefined();
+  });
+
+  it("choisirIntervention transmet le texte corrigé", () => {
+    const proposee = choisirIntervention(
+      [candidat("PAIRE:on/ont", "travaillee")],
+      ORIGINAL,
+      NOW,
+      () => 0,
+      SEUILS,
+      CORRIGE,
+    );
+    expect(proposee).toMatchObject({ type: "choix", masque: { start: CORRIGE.indexOf("ont") } });
   });
 });
