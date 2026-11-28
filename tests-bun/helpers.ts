@@ -22,6 +22,8 @@ export const FAUTE_ON: [string, string] = [
   "Hier, ils on mangé tous les gâteaux.",
   "Hier, ils ont mangé tous les gâteaux.",
 ];
+/** Texte sans faute où « on / ont » est employé correctement (issue #60). */
+export const EMPLOI_ON: [string, string] = ["Ils ont bien travaillé.", "Ils ont bien travaillé."];
 export const SANS_FAUTE: [string, string] = [
   "Tout va bien aujourd'hui.",
   "Tout va bien aujourd'hui.",

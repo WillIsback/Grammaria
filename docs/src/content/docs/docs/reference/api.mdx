@@ -149,12 +149,13 @@ Toutes les règles suivies, de la plus récemment fautive à la plus ancienne.
       "label": "on / ont",
       "categoryName": "Confusion de mots",
       "fiche": { "titre": "on / ont", "astuce": "Remplacez par « avaient »…" },
+      "correctUses": 2,
       "state": "travaillee",
       "stateSince": 1795000000000,
       "occurrences": 9,
       "firstFaultAt": 1794000000000,
       "lastFaultAt": 1795000000000,
-      "tipsShown": 3,
+      "tipsShown": 1,
       "choicesShown": 2,
       "choicesCorrect": 1,
       "choicesWrong": 1,
@@ -195,7 +196,7 @@ Historique daté, du plus récent au plus ancien. `limit` va de 1 à 1000 (200 p
 }
 ```
 
-`type` vaut `observee`, `signalee`, `travaillee`, `acquise` ou `rechute` pour un changement d'état (`from` et `to` sont alors renseignés ; `from` est `null` à la première faute), et `astuce`, `choix`, `reponse_juste` ou `reponse_fausse` pour une sollicitation.
+`type` vaut `observee`, `signalee`, `travaillee`, `acquise` ou `rechute` pour un changement d'état (`from` et `to` sont alors renseignés ; `from` est `null` à la première faute), et `astuce`, `choix`, `reponse_juste` ou `reponse_fausse` pour une sollicitation. Il vaut `emploi` quand une règle suivie a été employée correctement dans un texte (confusions de mots seulement) : l'événement ne porte que la règle et la date.
 
 ### `POST /api/rules/answer`
 
@@ -340,7 +341,7 @@ Export anonyme de la bêta, au format `grammaria-beta` version 1 (`src/analysis/
   "plateforme": "bureau",
   "participant": "c0ffee12d34e5f6a7b8c9d0e1f2a3b4c",
   "seuils": {
-    "cycle": { "signalementOccurrences": 3, "signalementFenetreJours": 7, "astucesAvantTravail": 1, "acquisitionJoursSansFaute": 14, "acquisitionTextesMin": 5, "acquisitionJoursActifsMin": 3, "travailleesMax": 3, "sollicitationsParRegleEtParJour": 1, "choixLongueurMaxForme": 24, "choixContexteMax": 60 },
+    "cycle": { "signalementOccurrences": 3, "signalementFenetreJours": 7, "astucesAvantTravail": 1, "acquisitionJoursSansFaute": 14, "acquisitionTextesMin": 5, "acquisitionJoursActifsMin": 3, "acquisitionEmploisMin": 5, "travailleesMax": 3, "sollicitationsParRegleEtParJour": 1, "choixLongueurMaxForme": 24, "choixContexteMax": 60 },
     "mesure": { "motsParTaux": 1000, "avantMinimumTextes": 3, "avantMinimumMots": 400, "depuisMinimumTextes": 5, "depuisMinimumMots": 1000 }
   },
   "semaines": [

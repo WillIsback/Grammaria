@@ -31,6 +31,13 @@ export const SEUILS = {
    * restée fermée.
    */
   acquisitionJoursActifsMin: 3,
+  /**
+   * Pour les règles dont on sait reconnaître l'emploi correct (les paires :
+   * a / à, on / ont…), l'acquisition ne compte plus les textes corrigés mais
+   * ceux où la règle a été employée sans faute : au moins ce nombre, sur
+   * `acquisitionJoursActifsMin` jours distincts (issue #60).
+   */
+  acquisitionEmploisMin: 5,
 
   /** Budget de friction : règles « travaillées » en même temps, au plus. */
   travailleesMax: 3,

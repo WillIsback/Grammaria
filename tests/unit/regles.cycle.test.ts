@@ -431,3 +431,60 @@ describe("réponses au choix à deux formes", () => {
     expect(result.transitions).toEqual([]);
   });
 });
+
+describe("acquisition sur emplois corrects (issue #60)", () => {
+  const PAIRE = "PAIRE:on/ont";
+  const signaleePaire = (): RuleState =>
+    appliquerEvenement(PAIRE, null, { type: "faute", count: 3 }, {}, J0)?.state as RuleState;
+  const apres = jour(SEUILS.acquisitionJoursSansFaute + 1);
+  const textes = textesQuotidiens(J0, SEUILS.acquisitionJoursSansFaute);
+  const usage = (state: RuleState, context: Parameters<typeof appliquerEvenement>[3]) =>
+    appliquerEvenement(state.ruleKey, state, { type: "usage" }, context, apres)?.state.state;
+
+  it("une paire jamais employée ne devient pas acquise, même après le délai", () => {
+    expect(usage(signaleePaire(), { textTimesSinceLastFault: textes, correctUseTimes: [] })).toBe(
+      "signalee",
+    );
+  });
+
+  it("devient acquise avec assez d'emplois corrects sur assez de jours", () => {
+    const emplois = textesQuotidiens(J0, SEUILS.acquisitionEmploisMin);
+    expect(
+      usage(signaleePaire(), { textTimesSinceLastFault: textes, correctUseTimes: emplois }),
+    ).toBe("acquise");
+  });
+
+  it("exige des emplois répartis sur plusieurs jours", () => {
+    const memeJour = Array.from(
+      { length: SEUILS.acquisitionEmploisMin },
+      (_, i) => jour(2) + i * 1000,
+    );
+    expect(
+      usage(signaleePaire(), { textTimesSinceLastFault: textes, correctUseTimes: memeJour }),
+    ).toBe("signalee");
+  });
+
+  it("ignore les emplois antérieurs à la dernière faute", () => {
+    const anciens = Array.from(
+      { length: SEUILS.acquisitionEmploisMin },
+      (_, i) => J0 - (i + 1) * JOUR_MS,
+    );
+    expect(
+      usage(signaleePaire(), { textTimesSinceLastFault: textes, correctUseTimes: anciens }),
+    ).toBe("signalee");
+  });
+
+  it("sans information d'emploi (rejeu d'un ancien journal), garde le critère sur les textes", () => {
+    expect(usage(signaleePaire(), { textTimesSinceLastFault: textes })).toBe("acquise");
+  });
+
+  it("une règle sans détection d'emploi garde le critère sur les textes", () => {
+    const accord = appliquerEvenement("ACCORD", null, { type: "faute", count: 3 }, {}, J0)
+      ?.state as RuleState;
+    expect(usage(accord, { textTimesSinceLastFault: textes, correctUseTimes: [] })).toBe("acquise");
+  });
+
+  it("le seuil d'emplois est au moins celui des jours actifs", () => {
+    expect(SEUILS.acquisitionEmploisMin).toBeGreaterThanOrEqual(SEUILS.acquisitionJoursActifsMin);
+  });
+});

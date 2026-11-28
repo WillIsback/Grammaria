@@ -6,6 +6,7 @@ import { BADGES } from "../src/analysis/badges/catalogue.ts";
 import {
   avecBase,
   corriger as journaliser,
+  EMPLOI_ON,
   FAUTE_ON,
   jour,
   ouvrirJournal,
@@ -49,9 +50,9 @@ describe("Journal — badges", () => {
     const journal = await ouvrirJournal(":memory:");
     for (const n of [0, 1, 2]) await corriger(journal, FAUTE_ON, jour(n));
     for (const n of [3, 4, 5, 6])
-      expect(ids(await corriger(journal, SANS_FAUTE, jour(n)))).not.toContain("premiere-regle");
-    // 14 jours après la dernière faute, sur 5 textes et plus de 3 jours d'utilisation.
-    expect(ids(await corriger(journal, SANS_FAUTE, jour(16)))).toContain("premiere-regle");
+      expect(ids(await corriger(journal, EMPLOI_ON, jour(n)))).not.toContain("premiere-regle");
+    // 14 jours après la dernière faute, sur 5 textes où la règle est employée sans faute, répartis sur plus de 3 jours.
+    expect(ids(await corriger(journal, EMPLOI_ON, jour(16)))).toContain("premiere-regle");
     expect((await journal.rules())[0].state).toBe("acquise");
     expect((await journal.badges.obtained()).get("premiere-regle")).toBe(jour(16));
   });

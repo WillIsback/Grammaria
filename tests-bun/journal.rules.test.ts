@@ -3,7 +3,16 @@ import { describe, expect, it } from "bun:test";
 import { type Journal, SCHEMA_VERSION } from "../journal.ts";
 import { analyze } from "../src/analysis/analyze.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
-import { avecBase, corriger, DAY, FAUTE_ON, jour, ouvrirJournal, SANS_FAUTE } from "./helpers.ts";
+import {
+  avecBase,
+  corriger,
+  DAY,
+  EMPLOI_ON,
+  FAUTE_ON,
+  jour,
+  ouvrirJournal,
+  SANS_FAUTE,
+} from "./helpers.ts";
 
 const ON = "PAIRE:on/ont";
 
@@ -216,12 +225,12 @@ describe("Journal — cycle de vie des règles", () => {
 
     // Usage réel, mais 14 jours pas encore écoulés.
     for (let i = 1; i <= 5; i++) {
-      expect((await corriger(journal, SANS_FAUTE, dernier + i * DAY)).reussites).toEqual([]);
+      expect((await corriger(journal, EMPLOI_ON, dernier + i * DAY)).reussites).toEqual([]);
     }
-    expect((await corriger(journal, SANS_FAUTE, dernier + 13 * DAY)).reussites).toEqual([]);
+    expect((await corriger(journal, EMPLOI_ON, dernier + 13 * DAY)).reussites).toEqual([]);
 
     const acquis = dernier + SEUILS.acquisitionJoursSansFaute * DAY;
-    expect(await corriger(journal, SANS_FAUTE, acquis)).toEqual({
+    expect(await corriger(journal, EMPLOI_ON, acquis)).toEqual({
       intervention: null,
       reussites: [{ ruleKey: ON, titre: "on / ont" }],
     });
@@ -231,7 +240,7 @@ describe("Journal — cycle de vie des règles", () => {
       relapses: 0,
     });
     // Le message de réussite n'est donné qu'une fois.
-    expect((await corriger(journal, SANS_FAUTE, acquis + DAY)).reussites).toEqual([]);
+    expect((await corriger(journal, EMPLOI_ON, acquis + DAY)).reussites).toEqual([]);
 
     const rechute = await corriger(journal, FAUTE_ON, acquis + 2 * DAY);
     expect(rechute.intervention).toMatchObject({ type: "astuce", ruleKey: ON });
@@ -245,7 +254,7 @@ describe("Journal — cycle de vie des règles", () => {
     const types = (await journal.ruleEvents({ ruleKey: ON, limit: 1000 }))
       .map((e) => e.type)
       .reverse();
-    expect(types.filter((t) => !["astuce", "choix"].includes(t))).toEqual([
+    expect(types.filter((t) => !["astuce", "choix", "emploi"].includes(t))).toEqual([
       "observee",
       "signalee",
       "travaillee",
@@ -620,5 +629,89 @@ describe("Journal — migration du schéma", () => {
       await (await ouvrirJournal(path)).close();
       expect(contenu(path).version).toBe(SCHEMA_VERSION);
     });
+  });
+});
+
+describe("Journal — emplois corrects (issue #60)", () => {
+  const signaler = async (journal: Journal) => {
+    for (let i = 0; i < SEUILS.signalementOccurrences; i++) {
+      await corriger(journal, FAUTE_ON, jour(0) + i * 1000);
+    }
+  };
+  const emplois = async (journal: Journal) =>
+    (await journal.ruleEvents({ limit: 1000 })).filter((e) => e.type === "emploi");
+
+  it("journalise l'emploi correct d'une règle suivie, sans rien d'autre que la règle et la date", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    await corriger(journal, EMPLOI_ON, jour(1));
+    expect(await emplois(journal)).toEqual([
+      { id: expect.any(Number), ruleKey: ON, at: jour(1), type: "emploi", from: null, to: null },
+    ]);
+  });
+
+  it("ne journalise rien pour une règle qui n'est pas suivie", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await corriger(journal, FAUTE_ON, jour(0));
+    await corriger(journal, EMPLOI_ON, jour(1));
+    expect(await emplois(journal)).toEqual([]);
+  });
+
+  it("ne compte pas d'emploi correct dans un texte qui contient la faute", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    await corriger(
+      journal,
+      ["Ils ont dit qu'ils on fini.", "Ils ont dit qu'ils ont fini."],
+      jour(1),
+    );
+    expect(await emplois(journal)).toEqual([]);
+  });
+
+  it("expose le nombre d'emplois corrects depuis la dernière faute", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await corriger(journal, EMPLOI_ON, jour(-1));
+    await signaler(journal);
+    expect(await regle(journal)).toMatchObject({ correctUses: 0 });
+    await corriger(journal, EMPLOI_ON, jour(1));
+    await corriger(journal, EMPLOI_ON, jour(2));
+    expect(await regle(journal)).toMatchObject({ correctUses: 2 });
+    // Une nouvelle faute remet le compte à zéro.
+    await corriger(journal, FAUTE_ON, jour(3));
+    expect(await regle(journal)).toMatchObject({ correctUses: 0 });
+  });
+
+  it("ne donne pas de compte pour une règle sans détection d'emploi", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    const accord: [string, string] = ["Les enfant joue dehors.", "Les enfants jouent dehors."];
+    await corriger(journal, accord, jour(0));
+    const regles = await journal.rules();
+    expect(regles.length).toBeGreaterThan(0);
+    for (const r of regles) expect(r.correctUses).toBeNull();
+  });
+
+  it("une paire jamais employée ne devient pas acquise, même après le délai", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    const debut = SEUILS.acquisitionJoursSansFaute + 1;
+    for (let i = 0; i < SEUILS.acquisitionTextesMin + 2; i++) {
+      expect((await corriger(journal, SANS_FAUTE, jour(debut + i))).reussites).toEqual([]);
+    }
+    expect(await regle(journal)).toMatchObject({ state: "signalee" });
+  });
+
+  it("devient acquise après des emplois corrects répartis sur plusieurs jours", async () => {
+    const journal = await ouvrirJournal(":memory:");
+    await signaler(journal);
+    const n = SEUILS.acquisitionEmploisMin;
+    // Les premiers emplois ont lieu avant la fin du délai : ils comptent déjà.
+    for (let i = 1; i < n; i++) {
+      expect((await corriger(journal, EMPLOI_ON, jour(i))).reussites).toEqual([]);
+    }
+    const dernier = jour(SEUILS.acquisitionJoursSansFaute + 1);
+    expect((await corriger(journal, EMPLOI_ON, dernier)).reussites).toEqual([
+      { ruleKey: ON, titre: "on / ont" },
+    ]);
+    expect(await regle(journal)).toMatchObject({ state: "acquise", acquiredAt: dernier });
   });
 });

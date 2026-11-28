@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Journal } from "../journal.ts";
 import type { JournalDriver } from "../journal.driver.ts";
 import { SEUILS } from "../src/analysis/regles/seuils.ts";
-import { corriger, DAY, FAUTE_ON, jour, piloteEspion, SANS_FAUTE } from "./helpers.ts";
+import { corriger, DAY, EMPLOI_ON, FAUTE_ON, jour, piloteEspion, SANS_FAUTE } from "./helpers.ts";
 
 /** Texte de plus de 30 mots, sans faute. */
 const LONG = Array(2).fill(
@@ -47,8 +47,8 @@ describe("Journal — lire, calculer, écrire un lot", () => {
       [FAUTE_ON, jour(1)],
       [FAUTE_ON, jour(2)],
       [FAUTE_ON, jour(3)],
-      ...[4, 5, 6, 7, 8, 9].map((n): [string[], number] => [LONG, jour(n)]),
-      [SANS_FAUTE, jour(17)],
+      ...[4, 5, 6, 7, 8, 9].map((n): [string[], number] => [EMPLOI_ON, jour(n)]),
+      [EMPLOI_ON, jour(17)],
       [FAUTE_ON, jour(18)],
     ];
     for (const [i, [texte, now]] of textes.entries()) {
@@ -58,7 +58,16 @@ describe("Journal — lire, calculer, écrire un lot", () => {
     // Le scénario a bien traversé tout le cycle.
     const types = new Set((await journal.ruleEvents({ limit: 1000 })).map((e) => e.type));
     expect([...types].map(String).sort()).toEqual(
-      ["acquise", "astuce", "choix", "observee", "rechute", "signalee", "travaillee"].sort(),
+      [
+        "acquise",
+        "astuce",
+        "choix",
+        "emploi",
+        "observee",
+        "rechute",
+        "signalee",
+        "travaillee",
+      ].sort(),
     );
   });
 

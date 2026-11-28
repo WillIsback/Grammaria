@@ -447,7 +447,7 @@ export class Journal {
 
   /** Écran « Progression » : tout est calculé par `src/analysis/progression/`. */
   async progress(now: number = Date.now()): Promise<Progression & { mesure: Mesure }> {
-    const [texts, faults, states, dernieres, ...mesure] = await this.driver.readMany([
+    const [texts, faults, states, dernieres, emplois, ...mesure] = await this.driver.readMany([
       REQUETE_TEXTES,
       // Seules les fautes comptées des semaines affichées servent.
       {
@@ -459,7 +459,11 @@ export class Journal {
       ...REQUETES_LISTE,
       ...REQUETES_MESURE,
     ]);
-    const rules = vueRegles(states as RuleState[], dernieres as Parameters<typeof vueRegles>[1]);
+    const rules = vueRegles(
+      states as RuleState[],
+      dernieres as Parameters<typeof vueRegles>[1],
+      emplois as Parameters<typeof vueRegles>[2],
+    );
     return {
       ...calculerProgression(
         { texts: texts as LigneTexte[], faults: faults as LigneFaute[], rules },

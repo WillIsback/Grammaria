@@ -1,3 +1,4 @@
+import { SEUILS } from "../../src/analysis/regles/seuils";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { calculerProgression } from "../../src/analysis/progression/calcul";
@@ -102,6 +103,25 @@ function servir(...reponses: (Progression | Error)[]) {
 }
 
 describe("ProgressionScreen", () => {
+  it("montre les emplois corrects d'une règle à travailler (issue #60)", async () => {
+    const data = rempli();
+    data.rules.active = data.rules.active.map((r) => ({ ...r, correctUses: 2 }));
+    servir(data);
+    render(<ProgressionScreen onClose={vi.fn()} />);
+    expect(
+      await screen.findByText(new RegExp(`2 emplois corrects sur ${SEUILS.acquisitionEmploisMin}`)),
+    ).toBeTruthy();
+  });
+
+  it("ne parle pas d'emplois corrects pour une règle où on ne sait pas les reconnaître", async () => {
+    const data = rempli();
+    data.rules.active = data.rules.active.map((r) => ({ ...r, correctUses: null }));
+    servir(data);
+    render(<ProgressionScreen onClose={vi.fn()} />);
+    await screen.findByText(/À travailler/);
+    expect(screen.queryByText(/emplois? corrects?/)).toBeNull();
+  });
+
   it("affiche le score de maîtrise, les graphiques accessibles et les règles", async () => {
     const data = rempli();
     servir(data);
